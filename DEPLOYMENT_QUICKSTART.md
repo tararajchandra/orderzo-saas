@@ -140,7 +140,7 @@ TXT     _dmarc                  v=DMARC1; p=none    3600
 
 In Coolify Dashboard:
 1. Click **"+ New"** → **"Database"** → **"PostgreSQL"**
-2. Name: `ruchi-db`
+2. Name: `orderzo-db`
 3. Database: `restaurant_db`
 4. Click **"Create"**
 5. **Copy the connection details!**
@@ -149,7 +149,7 @@ In Coolify Dashboard:
 
 ```bash
 # On your local machine
-cd E:\Project\webDevelop\RuchiV2
+cd E:\Project\webDevelop\OrderZoV2
 
 # Initialize git (if not already)
 git init
@@ -158,7 +158,7 @@ git commit -m "Initial deployment"
 git branch -M main
 
 # Create repo on GitHub, then:
-git remote add origin https://github.com/YOUR_USERNAME/ruchi-app.git
+git remote add origin https://github.com/YOUR_USERNAME/orderzo-app.git
 git push -u origin main
 ```
 
@@ -167,7 +167,7 @@ git push -u origin main
 In Coolify:
 1. Click **"+ New"** → **"Application"**
 2. Select **"Public Repository"** or connect GitHub
-3. Repository: `https://github.com/YOUR_USERNAME/ruchi-app.git`
+3. Repository: `https://github.com/YOUR_USERNAME/orderzo-app.git`
 4. Branch: `main`
 5. Build Pack: `nixpacks` (auto-detected)
 
@@ -176,7 +176,7 @@ In Coolify:
 In Coolify → Your App → Environment Variables:
 
 ```env
-DB_HOST=ruchi-db
+DB_HOST=orderzo-db
 DB_PORT=5432
 DB_NAME=restaurant_db
 DB_USER=postgres
@@ -247,7 +247,7 @@ npm run create-admin
 - Password: `___________________`
 
 **Database:**
-- Host: `ruchi-db`
+- Host: `orderzo-db`
 - Database: `restaurant_db`
 - User: `postgres`
 - Password: `___________________`
@@ -267,7 +267,7 @@ npm run create-admin
 
 ### Issue: Database connection failed
 ```bash
-# Verify DB_HOST is set to service name: ruchi-db
+# Verify DB_HOST is set to service name: orderzo-db
 # Check database is running in Coolify
 ```
 
@@ -305,7 +305,7 @@ dig MX yourdomain.com
 docker ps
 
 # View app logs
-docker logs -f ruchi-app
+docker logs -f orderzo-app
 
 # Check memory usage
 free -h

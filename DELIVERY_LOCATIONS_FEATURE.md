@@ -184,7 +184,7 @@ Now returns delivery location information:
 ## File Structure
 
 ```
-RuchiV2/
+OrderZoV2/
 ├── app/
 │   ├── admin/
 │   │   ├── delivery-locations/

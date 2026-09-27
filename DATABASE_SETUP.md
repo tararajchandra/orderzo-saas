@@ -1,6 +1,6 @@
 # 🗄️ Database Setup Guide
 
-This guide explains how to set up the database for the Ruchi Restaurant Management System.
+This guide explains how to set up the database for the OrderZo Management System.
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## Yes! Menu Items Store Images in Two Ways
 
-Your Ruchi system has **two methods** for storing menu item images:
+Your OrderZo system has **two methods** for storing menu item images:
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## ✅ What Was Created
 
-I've created a comprehensive database setup system for your Ruchi Restaurant Management System with **multiple resources**:
+I've created a comprehensive database setup system for your OrderZo Management System with **multiple resources**:
 
 ---
 

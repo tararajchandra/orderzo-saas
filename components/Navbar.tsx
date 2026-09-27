@@ -34,7 +34,7 @@ export default function Navbar() {
         <nav className="navbar">
             <div className="container navbar-content">
                 <Link href="/" className="navbar-logo">
-                    Ruchi
+                    OrderZo
                 </Link>
 
                 <div className="navbar-links">

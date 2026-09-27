@@ -5,7 +5,7 @@
 ### **Step 1: Get Your DATABASE_URL from Railway**
 
 1. Go to [Railway Dashboard](https://railway.app)
-2. Click on your **PostgreSQL** service (not RuchiV2)
+2. Click on your **PostgreSQL** service (not OrderZoV2)
 3. Go to **Connect** tab
 4. Copy the **DATABASE_URL** (starts with `postgresql://`)
 
@@ -158,7 +158,7 @@ Password Hash: $2a$10$g/BDopkmH4ApGpJfgmCXMe4fgAgWIBlmzU3shxVX9ebmdgb6.d6im
 If the script shows everything is correct but login still fails:
 
 1. **Check Railway Logs:**
-   - Railway → RuchiV2 service → Deployments → Latest → View Logs
+   - Railway → OrderZoV2 service → Deployments → Latest → View Logs
    - Look for errors during login attempts
 
 2. **Check Browser Console:**
@@ -168,7 +168,7 @@ If the script shows everything is correct but login still fails:
    - Try to login and check for errors
 
 3. **Verify Environment Variables:**
-   - Railway → RuchiV2 service → Variables
+   - Railway → OrderZoV2 service → Variables
    - Make sure these are set:
      ```
      DB_HOST=${{Postgres.PGHOST}}
@@ -179,7 +179,7 @@ If the script shows everything is correct but login still fails:
      ```
 
 4. **Redeploy:**
-   - Railway → RuchiV2 → Settings → Redeploy
+   - Railway → OrderZoV2 → Settings → Redeploy
 
 ---
 

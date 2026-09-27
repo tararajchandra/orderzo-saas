@@ -51,13 +51,13 @@ If you don't have important data:
 
 1. **Drop and recreate the database**:
    ```sql
-   DROP DATABASE ruchi_restaurant;
-   CREATE DATABASE ruchi_restaurant;
+   DROP DATABASE orderzo_restaurant;
+   CREATE DATABASE orderzo_restaurant;
    ```
 
 2. **Run the full schema**:
    ```bash
-   psql -U postgres -d ruchi_restaurant -f database/schema.sql
+   psql -U postgres -d orderzo_restaurant -f database/schema.sql
    ```
 
 3. **Restart your Next.js server**

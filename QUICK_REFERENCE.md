@@ -1,4 +1,4 @@
-# ⚡ Quick Reference Guide - Ruchi Restaurant System
+# ⚡ Quick Reference Guide - OrderZo System
 
 > Fast access to common tasks and features
 
@@ -270,7 +270,7 @@ Dashboard → Sales Dashboard → View stats
 
 | Issue | Contact |
 |-------|---------|
-| **Technical Support** | support@ruchirestaurant.com |
+| **Technical Support** | support@orderzorestaurant.com |
 | **Order Issues** | [Restaurant Phone] |
 | **Payment Issues** | [Admin Contact] |
 | **Delivery Issues** | [Delivery Manager] |

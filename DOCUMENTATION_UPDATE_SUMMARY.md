@@ -278,7 +278,7 @@ STANDARD_OPERATING_PROCEDURES.md
 ## 📞 Support
 
 For questions about documentation:
-- Email: support@ruchirestaurant.com
+- Email: support@orderzorestaurant.com
 - Review: Monthly
 - Updates: As features are added
 

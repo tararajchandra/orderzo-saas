@@ -1,4 +1,4 @@
-# 📋 Ruchi Restaurant Management System - Standard Operating Procedures (SOP)
+# 📋 OrderZo Management System - Standard Operating Procedures (SOP)
 
 > **Document Version:** 2.0  
 > **Last Updated:** December 2025  
@@ -722,7 +722,7 @@ COD Collected - Commission Earned = Net Amount to Restaurant
    - [ ] Click **"Export All Data"**
    - [ ] Wait for file generation
    - [ ] Download JSON file
-   - [ ] File naming: `Ruchi_Backup_YYYY-MM-DD.json`
+   - [ ] File naming: `OrderZo_Backup_YYYY-MM-DD.json`
 
 4. **Verify Backup**
    - [ ] Check file size (should not be 0 KB)
@@ -945,7 +945,7 @@ COD Collected - Commission Earned = Net Amount to Restaurant
 ### Appendix B: Contact Information
 
 **Technical Support:**
-- Email: support@ruchirestaurant.com
+- Email: support@orderzorestaurant.com
 - Phone: [Support Number]
 - Hours: 9 AM - 9 PM
 
@@ -1003,4 +1003,4 @@ COD Collected - Commission Earned = Net Amount to Restaurant
 
 **End of Standard Operating Procedures**
 
-*For questions or suggestions, contact: admin@ruchirestaurant.com*
+*For questions or suggestions, contact: admin@orderzorestaurant.com*

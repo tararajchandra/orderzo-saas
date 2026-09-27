@@ -14,7 +14,7 @@ Menu items show when user is logged in, but NOT when logged out.
 The latest code changes might not be deployed yet.
 
 **Check:**
-- Go to Railway → RuchiV2 → Deployments
+- Go to Railway → OrderZoV2 → Deployments
 - Is the latest commit deployed and "Active"?
 - Latest commit should be: `efb2810` (Fix build warnings)
 
@@ -22,7 +22,7 @@ The latest code changes might not be deployed yet.
 Railway environment variables might not be set correctly.
 
 **Check:**
-- Railway → RuchiV2 → Variables
+- Railway → OrderZoV2 → Variables
 - Verify these exist:
   - `DB_HOST`
   - `DB_PORT`
@@ -62,7 +62,7 @@ The menu page might have a JavaScript error.
 
 ### Fix 1: Force Redeploy
 ```
-1. Go to Railway → RuchiV2 → Settings
+1. Go to Railway → OrderZoV2 → Settings
 2. Click "Redeploy"
 3. Wait 2-3 minutes
 4. Test again
@@ -77,7 +77,7 @@ The menu page might have a JavaScript error.
 
 ### Fix 3: Check Railway Logs
 ```
-1. Railway → RuchiV2 → Deployments → Latest
+1. Railway → OrderZoV2 → Deployments → Latest
 2. Click "View Logs"
 3. Look for errors related to:
    - Database connection

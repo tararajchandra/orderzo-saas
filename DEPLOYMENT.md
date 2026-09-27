@@ -1,6 +1,6 @@
-# Deployment Guide - Ruchi Restaurant App
+# Deployment Guide - OrderZo App
 
-This guide will help you deploy your Ruchi Restaurant application to various hosting platforms.
+This guide will help you deploy your OrderZo application to various hosting platforms.
 
 ## 📋 Prerequisites
 
@@ -92,10 +92,10 @@ In Vercel Dashboard → Settings → Environment Variables, add:
 ```
 DB_HOST=your-database-host
 DB_PORT=5432
-DB_NAME=ruchi_restaurant
+DB_NAME=orderzo_restaurant
 DB_USER=your-username
 DB_PASSWORD=your-password
-ADMIN_EMAIL=admin@ruchi.com
+ADMIN_EMAIL=admin@orderzo.com
 ADMIN_PASSWORD=your-secure-password
 NEXT_PUBLIC_API_URL=https://your-app.vercel.app
 ```
@@ -133,7 +133,7 @@ Railway auto-detects Next.js. Add these variables:
 
 ```
 DATABASE_URL=${{Postgres.DATABASE_URL}}
-ADMIN_EMAIL=admin@ruchi.com
+ADMIN_EMAIL=admin@orderzo.com
 ADMIN_PASSWORD=your-secure-password
 ```
 
@@ -219,13 +219,13 @@ Add in App Settings → Environment Variables
 
 1. Go to https://neon.tech
 2. Sign up and create project
-3. Create database: `ruchi_restaurant`
+3. Create database: `orderzo_restaurant`
 4. Get connection string
 5. Run migrations using provided connection string
 
 **Connection String Format:**
 ```
-postgresql://user:password@host/ruchi_restaurant?sslmode=require
+postgresql://user:password@host/orderzo_restaurant?sslmode=require
 ```
 
 ### Option 2: Supabase 🔋
@@ -269,12 +269,12 @@ Create `.env.production` with:
 # Database
 DB_HOST=your-production-db-host
 DB_PORT=5432
-DB_NAME=ruchi_restaurant
+DB_NAME=orderzo_restaurant
 DB_USER=your-username
 DB_PASSWORD=your-secure-password
 
 # Admin Credentials
-ADMIN_EMAIL=admin@ruchi.com
+ADMIN_EMAIL=admin@orderzo.com
 ADMIN_PASSWORD=your-secure-password
 
 # App URL
@@ -331,7 +331,7 @@ psql "your-connection-string" -f database/migrations/create_categories_table.sql
 
 ```sql
 INSERT INTO users (email, password_hash, name, role) 
-VALUES ('admin@ruchi.com', 'your-hashed-password', 'Admin', 'admin');
+VALUES ('admin@orderzo.com', 'your-hashed-password', 'Admin', 'admin');
 ```
 
 ### 4. Test All Features

@@ -60,7 +60,7 @@ Railway watches your GitHub repository. After pushing the fix:
 ### **Step 2: Monitor the Build**
 
 1. Go to your Railway dashboard
-2. Click on your RuchiV2 project
+2. Click on your OrderZoV2 project
 3. Watch the "Deployments" tab
 4. You should see:
    - ✅ Build succeeds
@@ -71,7 +71,7 @@ Railway watches your GitHub repository. After pushing the fix:
 
 Once deployed, Railway will give you a URL like:
 ```
-https://ruchiv2-production.up.railway.app
+https://orderzov2-production.up.railway.app
 ```
 
 Visit it to see your app live!

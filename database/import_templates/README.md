@@ -1,6 +1,6 @@
 # Import Templates
 
-This folder contains sample templates for importing data into the RuchiV2 system.
+This folder contains sample templates for importing data into the OrderZoV2 system.
 
 ## Available Templates
 

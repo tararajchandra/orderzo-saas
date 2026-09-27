@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Ruchi Restaurant Management System now implements a **daily sequential order numbering system** that automatically resets each day. This provides clear, organized order tracking with easy-to-read order numbers.
+The OrderZo Management System now implements a **daily sequential order numbering system** that automatically resets each day. This provides clear, organized order tracking with easy-to-read order numbers.
 
 ---
 
@@ -283,7 +283,7 @@ LIMIT 10;
 **Step 1: Run Migration**
 ```bash
 # Connect to your database
-psql -U your_user -d ruchi_db
+psql -U your_user -d orderzo_db
 
 # Run migration
 \i database/migrations/add_order_number.sql
@@ -319,7 +319,7 @@ git pull origin main
 
 # Restart application
 npm run build
-pm2 restart ruchi
+pm2 restart orderzo
 ```
 
 ---

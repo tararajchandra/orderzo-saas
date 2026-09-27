@@ -39,7 +39,7 @@ ORDER BY ordinal_position;
 
 After running the migration, test the endpoint:
 ```bash
-curl https://ruchiv2-production.up.railway.app/api/admin/payouts
+curl https://orderzov2-production.up.railway.app/api/admin/payouts
 ```
 
 You should get a 200 response with delivery boy commission data.

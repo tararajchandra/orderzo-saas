@@ -1,6 +1,6 @@
 # VPS Deployment Guide: Coolify (Simplified)
 
-This guide will help you deploy your Ruchi Restaurant app on a VPS (2 Core CPU, 2GB RAM) using Coolify.
+This guide will help you deploy your OrderZo app on a VPS (2 Core CPU, 2GB RAM) using Coolify.
 
 ## 📋 Prerequisites
 
@@ -236,7 +236,7 @@ fail2ban-client banned
 - ✅ Web attacks (bad bots, scripts) are also blocked
 - ⚠️ Make sure you have your IP whitelisted if needed
 
-## 🎯 Part 3: Deploy Ruchi App with Coolify
+## 🎯 Part 3: Deploy OrderZo App with Coolify
 
 ### Step 1: Prepare Your Repository
 
@@ -247,7 +247,7 @@ fail2ban-client banned
    git add .
    git commit -m "Initial commit"
    git branch -M main
-   git remote add origin https://github.com/yourusername/ruchi-app.git
+   git remote add origin https://github.com/yourusername/orderzo-app.git
    git push -u origin main
    ```
 
@@ -265,7 +265,7 @@ fail2ban-client banned
 1. In Coolify dashboard, click **"+ New"** → **"Database"**
 2. Select **"PostgreSQL"**
 3. Configure:
-   - Name: `ruchi-db`
+   - Name: `orderzo-db`
    - Version: `16` (latest stable)
    - Database Name: `restaurant_db`
    - Username: `postgres`
@@ -280,7 +280,7 @@ fail2ban-client banned
 
 2. **Select Source**:
    - Choose "Public Repository" or connect your GitHub account
-   - Repository URL: `https://github.com/yourusername/ruchi-app.git`
+   - Repository URL: `https://github.com/yourusername/orderzo-app.git`
    - Branch: `main`
 
 3. **Configure Build Settings**:
@@ -294,7 +294,7 @@ fail2ban-client banned
 
    ```env
    # Database Configuration
-   DATABASE_URL=postgresql://postgres:your-db-password@ruchi-db:5432/restaurant_db
+   DATABASE_URL=postgresql://postgres:your-db-password@orderzo-db:5432/restaurant_db
    
    # Application
    NEXT_PUBLIC_APP_URL=https://yourdomain.com
@@ -517,7 +517,7 @@ free -h
 docker ps
 
 # Check logs
-docker logs ruchi-app --tail 100
+docker logs orderzo-app --tail 100
 ```
 
 ### Weekly Maintenance
@@ -564,10 +564,10 @@ If you need to create manual database backups:
 
 ```bash
 # Create backup
-docker exec ruchi-db pg_dump -U postgres restaurant_db > backup_$(date +%Y%m%d).sql
+docker exec orderzo-db pg_dump -U postgres restaurant_db > backup_$(date +%Y%m%d).sql
 
 # Restore from backup
-docker exec -i ruchi-db psql -U postgres restaurant_db < backup_20260105.sql
+docker exec -i orderzo-db psql -U postgres restaurant_db < backup_20260105.sql
 ```
 
 ## 📞 Getting Help
@@ -576,10 +576,10 @@ docker exec -i ruchi-db psql -U postgres restaurant_db < backup_20260105.sql
 
 ```bash
 # App logs
-docker logs ruchi-app --tail 200
+docker logs orderzo-app --tail 200
 
 # Database logs
-docker logs ruchi-db --tail 200
+docker logs orderzo-db --tail 200
 
 # Coolify logs
 sudo journalctl -u coolify -n 200 --no-pager
@@ -599,7 +599,7 @@ sudo journalctl -xe
 
 ## 🎉 Deployment Complete!
 
-Your Ruchi Restaurant app should now be:
+Your OrderZo app should now be:
 - ✅ Running on your VPS
 - ✅ Accessible via HTTPS
 - ✅ Protected by firewall and intrusion prevention

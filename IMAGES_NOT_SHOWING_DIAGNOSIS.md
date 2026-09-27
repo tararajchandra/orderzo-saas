@@ -6,7 +6,7 @@ After importing menu items, product images are not displaying.
 ## Root Cause Analysis
 
 ### System Architecture
-The RuchiV2 system has TWO ways to store images:
+The OrderZoV2 system has TWO ways to store images:
 
 1. **Direct Storage** (in `menu_items` table):
    - Column: `image_data` (BYTEA - binary data)

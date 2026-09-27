@@ -2,14 +2,14 @@
 
 ## What Was Created
 
-I've created a comprehensive help documentation system for your Ruchi Restaurant Management System with **4 main resources** plus supporting files:
+I've created a comprehensive help documentation system for your OrderZo Management System with **4 main resources** plus supporting files:
 
 ---
 
 ## 📁 Main Documentation Files
 
 ### 1. **USER_HELP_GUIDE.md** - Complete User Manual
-**Location:** `e:\Project\webDevelop\RuchiV2\USER_HELP_GUIDE.md`
+**Location:** `e:\Project\webDevelop\OrderZoV2\USER_HELP_GUIDE.md`
 
 **What it contains:**
 - ✅ Complete step-by-step instructions for all features
@@ -25,7 +25,7 @@ I've created a comprehensive help documentation system for your Ruchi Restaurant
 ---
 
 ### 2. **QUICK_REFERENCE.md** - Cheat Sheet
-**Location:** `e:\Project\webDevelop\RuchiV2\QUICK_REFERENCE.md`
+**Location:** `e:\Project\webDevelop\OrderZoV2\QUICK_REFERENCE.md`
 
 **What it contains:**
 - ✅ Quick navigation table
@@ -42,7 +42,7 @@ I've created a comprehensive help documentation system for your Ruchi Restaurant
 ---
 
 ### 3. **public/help.html** - Interactive HTML Help
-**Location:** `e:\Project\webDevelop\RuchiV2\public\help.html`
+**Location:** `e:\Project\webDevelop\OrderZoV2\public\help.html`
 
 **What it contains:**
 - ✅ Beautiful, modern UI with glassmorphism design
@@ -62,7 +62,7 @@ I've created a comprehensive help documentation system for your Ruchi Restaurant
 ---
 
 ### 4. **DOCUMENTATION_INDEX.md** - Central Hub
-**Location:** `e:\Project\webDevelop\RuchiV2\DOCUMENTATION_INDEX.md`
+**Location:** `e:\Project\webDevelop\OrderZoV2\DOCUMENTATION_INDEX.md`
 
 **What it contains:**
 - ✅ Overview of all available documentation
@@ -79,7 +79,7 @@ I've created a comprehensive help documentation system for your Ruchi Restaurant
 ## 🌐 Supporting Files
 
 ### 5. **public/welcome.html** - Welcome Page
-**Location:** `e:\Project\webDevelop\RuchiV2\public\welcome.html`
+**Location:** `e:\Project\webDevelop\OrderZoV2\public\welcome.html`
 
 **What it contains:**
 - ✅ Beautiful landing page for documentation
@@ -92,7 +92,7 @@ I've created a comprehensive help documentation system for your Ruchi Restaurant
 ---
 
 ### 6. **README.md** - Updated
-**Location:** `e:\Project\webDevelop\RuchiV2\README.md`
+**Location:** `e:\Project\webDevelop\OrderZoV2\README.md`
 
 **What was added:**
 - ✅ New "Documentation" section

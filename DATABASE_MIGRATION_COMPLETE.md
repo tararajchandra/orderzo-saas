@@ -95,4 +95,4 @@ SELECT name, category, price FROM menu_items;
 
 ## ✅ Status: READY TO USE
 
-Your Ruchi Restaurant Management System is now fully set up and ready to use!
+Your OrderZo Management System is now fully set up and ready to use!

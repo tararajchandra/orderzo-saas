@@ -1,7 +1,7 @@
 # Data Import/Export Feature - Implementation Summary
 
 ## Overview
-Successfully implemented a comprehensive data import/export system for the RuchiV2 admin panel. This feature allows administrators to backup, restore, and migrate data across the system.
+Successfully implemented a comprehensive data import/export system for the OrderZoV2 admin panel. This feature allows administrators to backup, restore, and migrate data across the system.
 
 ## Files Created
 
@@ -248,4 +248,4 @@ Potential improvements:
 
 ## Conclusion
 
-The data import/export feature is now fully implemented and ready for use. It provides a robust, user-friendly solution for data backup, restoration, and migration in the RuchiV2 restaurant management system.
+The data import/export feature is now fully implemented and ready for use. It provides a robust, user-friendly solution for data backup, restoration, and migration in the OrderZoV2 restaurant management system.

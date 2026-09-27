@@ -14,7 +14,7 @@ Your Coolify deployment is failing with this error:
 fatal: could not read Username for 'https://github.com': No such device or address
 ```
 
-**Why?** Coolify cannot authenticate to your private GitHub repository (`chandratararaj-ctrl/RuchiV2`).
+**Why?** Coolify cannot authenticate to your private GitHub repository (`chandratararaj-ctrl/OrderZoV2`).
 
 ---
 
@@ -53,7 +53,7 @@ fatal: could not read Username for 'https://github.com': No such device or addre
 1. In Coolify: **"Sources"** → **"+ Add Source"** → **"GitHub"** → **"SSH Key"**
 2. Copy the public key shown
 3. Add to GitHub: https://github.com/settings/keys
-4. Update repository URL to: `git@github.com:chandratararaj-ctrl/RuchiV2.git`
+4. Update repository URL to: `git@github.com:chandratararaj-ctrl/OrderZoV2.git`
 5. Redeploy
 
 ---
@@ -62,7 +62,7 @@ fatal: could not read Username for 'https://github.com': No such device or addre
 
 ⚠️ **Only if your repo has no sensitive data!**
 
-1. Go to: https://github.com/chandratararaj-ctrl/RuchiV2/settings
+1. Go to: https://github.com/chandratararaj-ctrl/OrderZoV2/settings
 2. Scroll to **"Danger Zone"**
 3. Click **"Change visibility"** → **"Make public"**
 4. Redeploy in Coolify (no other changes needed)
@@ -102,7 +102,7 @@ If the error persists after trying these solutions:
    - Was copied completely
 
 2. **Check the repository:**
-   - URL is correct: `https://github.com/chandratararaj-ctrl/RuchiV2`
+   - URL is correct: `https://github.com/chandratararaj-ctrl/OrderZoV2`
    - You have access to it
    - Branch name is correct: `main`
 
@@ -130,4 +130,4 @@ Coolify uses Git to clone your repository during deployment. When using HTTPS UR
 
 *Last Updated: January 4, 2026*  
 *Issue: Coolify GitHub Authentication*  
-*Repository: chandratararaj-ctrl/RuchiV2*
+*Repository: chandratararaj-ctrl/OrderZoV2*

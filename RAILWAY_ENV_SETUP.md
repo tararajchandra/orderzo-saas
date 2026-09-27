@@ -8,9 +8,9 @@ Your database is set up correctly, but your app can't connect to it. Follow thes
 
 ## 📋 **Step-by-Step Instructions**
 
-### **Step 1: Go to RuchiV2 Service**
+### **Step 1: Go to OrderZoV2 Service**
 
-1. In Railway dashboard, click on **RuchiV2** (your app service, NOT Postgres)
+1. In Railway dashboard, click on **OrderZoV2** (your app service, NOT Postgres)
 2. Click on **Variables** tab at the top
 
 ### **Step 2: Add Database Connection Variables**
@@ -48,7 +48,7 @@ After adding all 5 variables, they should be automatically saved.
 
 ### **Step 4: Redeploy Your App**
 
-1. Go to **Deployments** tab (in RuchiV2 service)
+1. Go to **Deployments** tab (in OrderZoV2 service)
 2. Find the latest deployment
 3. Click the **three dots (...)** menu
 4. Click **"Redeploy"**
@@ -79,7 +79,7 @@ After adding all 5 variables, they should be automatically saved.
 
 ## 🔍 **How to Check Deployment Status**
 
-In Railway → RuchiV2 → Deployments:
+In Railway → OrderZoV2 → Deployments:
 - ⏳ **Building** - Wait...
 - ⏳ **Deploying** - Wait...
 - ✅ **Active** - Ready to test!
@@ -89,11 +89,11 @@ In Railway → RuchiV2 → Deployments:
 ## 🆘 **If Login Still Fails**
 
 1. **Check Deployment Logs:**
-   - Railway → RuchiV2 → Deployments → Latest → View Logs
+   - Railway → OrderZoV2 → Deployments → Latest → View Logs
    - Look for database connection errors
 
 2. **Verify Variables:**
-   - Railway → RuchiV2 → Variables
+   - Railway → OrderZoV2 → Variables
    - Make sure all 5 variables are there
 
 3. **Check Database Connection:**
@@ -116,7 +116,7 @@ And login should work immediately!
 ## 🎯 **Summary**
 
 **Problem:** App can't connect to database (500 error on login)  
-**Solution:** Add database environment variables to RuchiV2 service  
+**Solution:** Add database environment variables to OrderZoV2 service  
 **Result:** Login works! ✅
 
 ---

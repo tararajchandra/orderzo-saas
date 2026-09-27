@@ -1,7 +1,7 @@
 # Data Import/Export Feature
 
 ## Overview
-The Data Import/Export feature allows administrators to backup, restore, and migrate data across the RuchiV2 restaurant management system. This feature supports multiple data types and file formats.
+The Data Import/Export feature allows administrators to backup, restore, and migrate data across the OrderZoV2 restaurant management system. This feature supports multiple data types and file formats.
 
 ## Features
 

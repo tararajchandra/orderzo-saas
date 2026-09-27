@@ -14,7 +14,7 @@
 
 1. Go to: **https://github.com/new**
 2. Fill in:
-   - **Repository name**: `RuchiV2`
+   - **Repository name**: `OrderZoV2`
    - **Description**: `Restaurant Management System with Next.js, TypeScript, and PostgreSQL`
    - **Visibility**: Choose **Public** or **Private**
    - ⚠️ **DO NOT** check "Initialize this repository with a README"
@@ -26,7 +26,7 @@ After creating the repository, GitHub will show you commands. Run these in your 
 
 ```bash
 # Add remote (replace YOUR_USERNAME with your GitHub username)
-git remote add origin https://github.com/YOUR_USERNAME/RuchiV2.git
+git remote add origin https://github.com/YOUR_USERNAME/OrderZoV2.git
 
 # Rename branch to main
 git branch -M main
@@ -37,7 +37,7 @@ git push -u origin main
 
 **Example** (if your username is `trishita123`):
 ```bash
-git remote add origin https://github.com/trishita123/RuchiV2.git
+git remote add origin https://github.com/trishita123/OrderZoV2.git
 git branch -M main
 git push -u origin main
 ```
@@ -84,7 +84,7 @@ Should NOT see `.env` in the list!
 ```bash
 # Make sure you're logged into GitHub
 # Use HTTPS instead of SSH
-git remote set-url origin https://github.com/YOUR_USERNAME/RuchiV2.git
+git remote set-url origin https://github.com/YOUR_USERNAME/OrderZoV2.git
 ```
 
 ### "Repository not found" Error
@@ -98,7 +98,7 @@ git remote set-url origin https://github.com/YOUR_USERNAME/RuchiV2.git
 git remote -v
 
 # Change it
-git remote set-url origin https://github.com/NEW_USERNAME/RuchiV2.git
+git remote set-url origin https://github.com/NEW_USERNAME/OrderZoV2.git
 ```
 
 ## 📚 Full Documentation
@@ -121,4 +121,4 @@ Your project will be on GitHub! You can:
 **Ready?** Follow the steps above and your project will be on GitHub in 5 minutes! 🚀
 
 **Repository URL** (after creation):
-`https://github.com/YOUR_USERNAME/RuchiV2`
+`https://github.com/YOUR_USERNAME/OrderZoV2`

@@ -1,6 +1,6 @@
 # 📚 VPS Deployment Documentation Index
 
-Welcome! This folder contains everything you need to deploy your Ruchi Restaurant app to a VPS with Coolify and Stalwart Mail Server.
+Welcome! This folder contains everything you need to deploy your OrderZo app to a VPS with Coolify and Stalwart Mail Server.
 
 ---
 
@@ -208,7 +208,7 @@ Health check endpoint for monitoring app status.
 1. **Coolify** - Deployment platform (port 8000)
 2. **Stalwart** - Mail server (ports 25, 587, 465, 993, 143, 8080)
 3. **PostgreSQL** - Database (internal)
-4. **Your App** - Ruchi Restaurant (port 3000)
+4. **Your App** - OrderZo (port 3000)
 
 ### Estimated Costs
 - **VPS:** $5-10/month (DigitalOcean, Vultr, Linode)
@@ -427,5 +427,5 @@ If you have questions, check the troubleshooting guide or reach out to the Cooli
 ---
 
 *Last Updated: January 2026*  
-*For: Ruchi Restaurant App v1.0*  
+*For: OrderZo App v1.0*  
 *VPS Spec: 2 Core CPU, 2GB RAM*

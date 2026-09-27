@@ -19,7 +19,7 @@ fatal: could not read Username for 'https://github.com': No such device or addre
 1. Go to GitHub: https://github.com/settings/tokens
 2. Click **"Generate new token"** → **"Generate new token (classic)"**
 3. Configure the token:
-   - **Note:** `Coolify Deployment - RuchiV2`
+   - **Note:** `Coolify Deployment - OrderZoV2`
    - **Expiration:** 90 days (or No expiration for convenience)
    - **Select scopes:**
      - ✅ `repo` (Full control of private repositories)
@@ -51,7 +51,7 @@ fatal: could not read Username for 'https://github.com': No such device or addre
 2. Click **"Configuration"** → **"Source"**
 3. Under **"Git Repository"**, click **"Edit"**
 4. Select the GitHub source you just created
-5. Repository URL: `https://github.com/chandratararaj-ctrl/RuchiV2`
+5. Repository URL: `https://github.com/chandratararaj-ctrl/OrderZoV2`
 6. Branch: `main`
 7. Click **"Save"**
 
@@ -77,7 +77,7 @@ fatal: could not read Username for 'https://github.com': No such device or addre
 1. Go to GitHub: https://github.com/settings/keys
 2. Click **"New SSH key"**
 3. Fill in:
-   - **Title:** `Coolify VPS - RuchiV2`
+   - **Title:** `Coolify VPS - OrderZoV2`
    - **Key:** Paste the public key from Coolify
 4. Click **"Add SSH key"**
 
@@ -86,11 +86,11 @@ fatal: could not read Username for 'https://github.com': No such device or addre
 1. In Coolify, go to your application
 2. Edit the repository URL from:
    ```
-   https://github.com/chandratararaj-ctrl/RuchiV2
+   https://github.com/chandratararaj-ctrl/OrderZoV2
    ```
    To:
    ```
-   git@github.com:chandratararaj-ctrl/RuchiV2.git
+   git@github.com:chandratararaj-ctrl/OrderZoV2.git
    ```
 3. Save and redeploy
 
@@ -100,7 +100,7 @@ fatal: could not read Username for 'https://github.com': No such device or addre
 
 ⚠️ **Only if your repository doesn't contain sensitive data!**
 
-1. Go to: https://github.com/chandratararaj-ctrl/RuchiV2/settings
+1. Go to: https://github.com/chandratararaj-ctrl/OrderZoV2/settings
 2. Scroll to **"Danger Zone"**
 3. Click **"Change visibility"** → **"Make public"**
 4. Confirm the action
@@ -196,10 +196,10 @@ After applying one of the methods above:
 ### Repository URL Formats:
 ```bash
 # HTTPS (with token)
-https://github.com/chandratararaj-ctrl/RuchiV2
+https://github.com/chandratararaj-ctrl/OrderZoV2
 
 # SSH
-git@github.com:chandratararaj-ctrl/RuchiV2.git
+git@github.com:chandratararaj-ctrl/OrderZoV2.git
 ```
 
 ### Coolify Source Types:

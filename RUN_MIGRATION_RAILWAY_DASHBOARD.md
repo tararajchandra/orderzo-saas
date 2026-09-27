@@ -12,7 +12,7 @@ Since you don't have Railway CLI installed, follow these steps to run the migrat
 
 1. Go to [Railway Dashboard](https://railway.app/)
 2. Login to your account
-3. Select your **RuchiV2** project
+3. Select your **OrderZoV2** project
 
 ### **Step 2: Open PostgreSQL Database**
 

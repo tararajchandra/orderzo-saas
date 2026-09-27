@@ -1,6 +1,6 @@
-# 📚 Ruchi Restaurant Management System - User Help Guide
+# 📚 OrderZo Management System - User Help Guide
 
-> **Welcome to Ruchi!** Your complete guide to managing your restaurant operations efficiently.
+> **Welcome to OrderZo!** Your complete guide to managing your restaurant operations efficiently.
 
 > **📖 Additional Resources:**
 > - 🚀 [Quick Start Guide](QUICK_START_GUIDE.md) - Get started in 15 minutes
@@ -30,7 +30,7 @@
 - ✅ Screen resolution: 1280x720 or higher (recommended)
 
 ### First Time Setup
-1. **Access the Application**: Open your browser and navigate to your Ruchi application URL
+1. **Access the Application**: Open your browser and navigate to your OrderZo application URL
 2. **Admin Login**: Visit `/admin` to access the admin panel
 3. **Default Credentials** (change immediately after first login):
    - Email: `admin@restaurant.com`
@@ -677,7 +677,7 @@ A: You can only view orders that you have created, not orders from other salesme
 ### Getting Help
 
 **Technical Support**
-- 📧 Email: support@ruchirestaurant.com
+- 📧 Email: support@orderzorestaurant.com
 - 📱 Phone: [Your Support Number]
 - 🕐 Hours: 9 AM - 9 PM (Mon-Sat)
 
@@ -687,7 +687,7 @@ A: You can only view orders that you have created, not orders from other salesme
 
 **Feature Requests**
 - Submit feature requests through the admin panel
-- Or email: features@ruchirestaurant.com
+- Or email: features@orderzorestaurant.com
 
 ---
 
@@ -793,7 +793,7 @@ Check the `CHANGELOG.md` file for:
 
 ## 🌟 Conclusion
 
-Thank you for using **Ruchi Restaurant Management System**! This comprehensive platform is designed to streamline your restaurant operations, from customer orders to delivery management.
+Thank you for using **OrderZo Management System**! This comprehensive platform is designed to streamline your restaurant operations, from customer orders to delivery management.
 
 ### Quick Links
 - 🏠 [Homepage](/)

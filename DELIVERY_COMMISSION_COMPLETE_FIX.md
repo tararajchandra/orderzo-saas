@@ -113,7 +113,7 @@ Waiting for deployment to complete. Once deployed, the endpoint should work corr
 ### For Railway (After Deployment):
 1. Wait for automatic deployment (1-2 minutes)
 2. The adaptive code will automatically detect the `user_id` column
-3. Test: `https://ruchiv2-production.up.railway.app/api/admin/payouts`
+3. Test: `https://orderzov2-production.up.railway.app/api/admin/payouts`
 
 ### If Issues Persist:
 Check Railway logs for the detailed error message we added:

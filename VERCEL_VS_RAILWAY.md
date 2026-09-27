@@ -1,8 +1,8 @@
-# Vercel vs Railway - Deployment Comparison for RuchiV2
+# Vercel vs Railway - Deployment Comparison for OrderZoV2
 
 ## 🎯 **Quick Recommendation**
 
-**For RuchiV2, I recommend: Railway** 🚂
+**For OrderZoV2, I recommend: Railway** 🚂
 
 **Why?** Your project needs PostgreSQL database hosting, and Railway provides both app + database in one platform.
 
@@ -67,7 +67,7 @@
 
 ---
 
-## 🎯 **For Your RuchiV2 Project**
+## 🎯 **For Your OrderZoV2 Project**
 
 ### **What You Need:**
 1. ✅ Next.js hosting
@@ -78,7 +78,7 @@
 
 ### **Best Option: Railway** 🚂
 
-**Why Railway is better for RuchiV2:**
+**Why Railway is better for OrderZoV2:**
 
 1. **Database Included** ✅
    - Railway provides PostgreSQL out of the box
@@ -176,7 +176,7 @@ If you want to stay free:
 # 1. Go to Railway.app
 # 2. Sign in with GitHub
 # 3. New Project → Deploy from GitHub
-# 4. Select: chandratararaj-ctrl/RuchiV2
+# 4. Select: chandratararaj-ctrl/OrderZoV2
 # 5. Add PostgreSQL service
 # 6. Add environment variables:
 #    - DB_HOST (from Railway PostgreSQL)
@@ -213,7 +213,7 @@ If you want to stay free:
 
 ---
 
-## 🚂 **Why Railway Wins for RuchiV2**
+## 🚂 **Why Railway Wins for OrderZoV2**
 
 1. **Your imports take 30 seconds** → Railway has no timeout
 2. **You use PostgreSQL** → Railway includes it
@@ -239,4 +239,4 @@ Want to deploy to Railway? I can help you:
 **My Recommendation: Railway 🚂**  
 **Cost**: $5/month  
 **Setup Time**: 15 minutes  
-**Best For**: Your RuchiV2 project
+**Best For**: Your OrderZoV2 project

@@ -4,7 +4,7 @@
 
 **JWT (JSON Web Token)** is a secure way to handle authentication in web applications.
 
-### How Authentication Works in RuchiV2:
+### How Authentication Works in OrderZoV2:
 
 ```
 1. User Login
@@ -126,7 +126,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 - https://generate-secret.vercel.app/32
 - Only use for development, not production!
 
-## 🔍 How RuchiV2 Uses JWT
+## 🔍 How OrderZoV2 Uses JWT
 
 ### Login Process:
 

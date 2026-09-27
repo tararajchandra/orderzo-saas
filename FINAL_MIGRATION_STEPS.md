@@ -10,7 +10,7 @@ The changes have been pushed to GitHub and Railway will automatically deploy the
 
 ### **Step 1: Wait for Railway Deployment**
 
-1. Go to **Railway Dashboard** → **RuchiV2** service (not Postgres)
+1. Go to **Railway Dashboard** → **OrderZoV2** service (not Postgres)
 2. Click on **"Deployments"** tab
 3. Wait for the latest deployment to show **"Active"** (usually 2-3 minutes)
 4. Look for the green checkmark ✅
@@ -26,7 +26,7 @@ https://YOUR-RAILWAY-APP-URL/api/admin/run-migration
 **Replace `YOUR-RAILWAY-APP-URL` with your actual Railway app URL**
 
 For example:
-- `https://ruchiv2-production.up.railway.app/api/admin/run-migration`
+- `https://orderzov2-production.up.railway.app/api/admin/run-migration`
 
 ### **Step 3: Verify Success**
 
@@ -103,11 +103,11 @@ After the migration succeeds:
 - ✅ This is fine! It means the migration already ran successfully.
 
 **Error: 500 Internal Server Error**
-- Check Railway logs: Railway → RuchiV2 → Deployments → Latest → View Logs
+- Check Railway logs: Railway → OrderZoV2 → Deployments → Latest → View Logs
 - Look for database connection errors
 
 **Can't find your Railway app URL?**
-- Railway → RuchiV2 → Settings → Domains
+- Railway → OrderZoV2 → Settings → Domains
 - Copy the domain URL
 
 ---

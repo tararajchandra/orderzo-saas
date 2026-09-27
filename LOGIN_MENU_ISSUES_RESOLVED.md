@@ -12,7 +12,7 @@ All issues have been successfully resolved! Here's what was fixed:
 **Problem:** Database tables didn't exist, app couldn't connect to database  
 **Solution:** 
 - Created all database tables on Railway
-- Added database environment variables to RuchiV2 service
+- Added database environment variables to OrderZoV2 service
 - Created admin user with credentials
 
 **Result:** Login now works! 🎉
@@ -42,7 +42,7 @@ All issues have been successfully resolved! Here's what was fixed:
 ## 🔐 Login Credentials
 
 **Admin Login:**
-- **URL:** https://ruchiv2-production.up.railway.app/admin
+- **URL:** https://orderzov2-production.up.railway.app/admin
 - **Email:** `admin@restaurant.com`
 - **Password:** `admin123`
 
@@ -97,7 +97,7 @@ For smaller files (< 20 items), you can import directly without batching.
 
 ## 🔧 Environment Variables Set
 
-**In Railway RuchiV2 Service:**
+**In Railway OrderZoV2 Service:**
 ```
 DB_HOST = ${{Postgres.PGHOST}}
 DB_PORT = ${{Postgres.PGPORT}}
@@ -158,7 +158,7 @@ After Railway finishes deploying:
 
 1. **Wait for deployment** - Railway takes 2-3 minutes
 2. **Check deployment logs:**
-   - Railway → RuchiV2 → Deployments → Latest → View Logs
+   - Railway → OrderZoV2 → Deployments → Latest → View Logs
    - Look for "✅ Connected to PostgreSQL database"
 3. **Clear browser cache** - Ctrl+Shift+R
 4. **Check database:**
@@ -221,4 +221,4 @@ If you encounter any issues:
 
 ---
 
-🎉 **Congratulations! Your RuchiV2 app is now fully functional!** 🎉
+🎉 **Congratulations! Your OrderZoV2 app is now fully functional!** 🎉

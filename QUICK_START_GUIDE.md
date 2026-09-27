@@ -1,6 +1,6 @@
-# 🚀 Ruchi Restaurant Management System - Quick Start Guide
+# 🚀 OrderZo Management System - Quick Start Guide
 
-> **Get started in 15 minutes!** This guide will help you set up and start using Ruchi immediately.
+> **Get started in 15 minutes!** This guide will help you set up and start using OrderZo immediately.
 
 ---
 
@@ -18,7 +18,7 @@
 ### Step 1: Access the System (2 minutes)
 
 1. **Open your web browser** (Chrome, Firefox, Safari, or Edge)
-2. **Navigate to your Ruchi URL:**
+2. **Navigate to your OrderZo URL:**
    - Example: `https://your-restaurant.com`
    - Or: `http://localhost:3000` (for local installation)
 
@@ -397,7 +397,7 @@ A: Open order details, click "Generate Invoice", then "Print" button.
 - [Standard Operating Procedures](STANDARD_OPERATING_PROCEDURES.md)
 
 📧 **Support:**
-- Email: support@ruchirestaurant.com
+- Email: support@orderzorestaurant.com
 - Phone: [Your Support Number]
 
 ---
@@ -424,7 +424,7 @@ A: Open order details, click "Generate Invoice", then "Print" button.
 
 ## 🎉 You're Ready!
 
-Congratulations! You've completed the quick start guide. You're now ready to manage your restaurant with Ruchi.
+Congratulations! You've completed the quick start guide. You're now ready to manage your restaurant with OrderZo.
 
 ### Next Steps:
 

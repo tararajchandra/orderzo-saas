@@ -191,5 +191,5 @@ If needed, rollback by:
 
 ---
 
-**Maintained by**: RuchiV2 Development Team
+**Maintained by**: OrderZoV2 Development Team
 **Last Updated**: December 12, 2025

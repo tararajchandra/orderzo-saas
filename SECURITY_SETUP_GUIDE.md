@@ -1,6 +1,6 @@
 # 🔐 VPS Security Setup Guide
 
-Complete security hardening for your 2GB RAM VPS running Coolify and Ruchi Restaurant app.
+Complete security hardening for your 2GB RAM VPS running Coolify and OrderZo app.
 
 ---
 

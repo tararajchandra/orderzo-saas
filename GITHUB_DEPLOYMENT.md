@@ -1,6 +1,6 @@
 # GitHub Deployment Guide
 
-## Step-by-Step Guide to Deploy RuchiV2 to GitHub
+## Step-by-Step Guide to Deploy OrderZoV2 to GitHub
 
 ### Prerequisites
 
@@ -14,7 +14,7 @@
 
 ```bash
 # Navigate to project directory
-cd e:\Project\webDevelop\RuchiV2
+cd e:\Project\webDevelop\OrderZoV2
 
 # Initialize git repository
 git init
@@ -54,7 +54,7 @@ git add .
 git status
 
 # Commit with message
-git commit -m "Initial commit: Ruchi Restaurant Management System V2"
+git commit -m "Initial commit: OrderZo Management System V2"
 ```
 
 ### Step 4: Create GitHub Repository
@@ -62,7 +62,7 @@ git commit -m "Initial commit: Ruchi Restaurant Management System V2"
 1. Go to [GitHub](https://github.com)
 2. Click **"New repository"** (+ icon in top right)
 3. Fill in details:
-   - **Repository name**: `RuchiV2` or `ruchi-restaurant-management`
+   - **Repository name**: `OrderZoV2` or `orderzo-restaurant-management`
    - **Description**: "Restaurant management system with menu, orders, delivery tracking, and invoicing"
    - **Visibility**: Choose Public or Private
    - **DO NOT** initialize with README (we already have one)
@@ -74,7 +74,7 @@ GitHub will show you commands. Use these:
 
 ```bash
 # Add remote origin (replace YOUR_USERNAME with your GitHub username)
-git remote add origin https://github.com/YOUR_USERNAME/RuchiV2.git
+git remote add origin https://github.com/YOUR_USERNAME/OrderZoV2.git
 
 # Verify remote
 git remote -v
@@ -195,7 +195,7 @@ You'll need a PostgreSQL database. Options:
 
 ```bash
 # Use HTTPS instead of SSH
-git remote set-url origin https://github.com/YOUR_USERNAME/RuchiV2.git
+git remote set-url origin https://github.com/YOUR_USERNAME/OrderZoV2.git
 ```
 
 ### "Failed to push" Error

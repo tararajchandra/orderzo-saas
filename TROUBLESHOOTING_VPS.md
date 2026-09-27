@@ -125,9 +125,9 @@ NODE_OPTIONS=--max-old-space-size=1024
 
 # Option 2: Build locally and push image
 # On your local machine:
-docker build -t ruchi-app .
-docker tag ruchi-app your-registry/ruchi-app:latest
-docker push your-registry/ruchi-app:latest
+docker build -t orderzo-app .
+docker tag orderzo-app your-registry/orderzo-app:latest
+docker push your-registry/orderzo-app:latest
 
 # Then deploy the pre-built image in Coolify
 ```
@@ -153,7 +153,7 @@ docker push your-registry/ruchi-app:latest
 docker ps | grep postgres
 
 # 2. Check database logs
-docker logs ruchi-db --tail 100
+docker logs orderzo-db --tail 100
 
 # 3. Verify connection string in Coolify
 # Make sure DB_HOST matches the database service name
@@ -432,10 +432,10 @@ sudo systemctl status coolify
 docker logs coolify-proxy
 
 # Your app
-docker logs ruchi-app --tail 100
+docker logs orderzo-app --tail 100
 
 # Database
-docker logs ruchi-db --tail 100
+docker logs orderzo-db --tail 100
 
 # Stalwart
 docker logs stalwart-mail --tail 100
@@ -483,11 +483,11 @@ uptime
 1. **Stop the app**
 2. **Backup current database:**
    ```bash
-   docker exec ruchi-db pg_dump -U postgres restaurant_db > backup.sql
+   docker exec orderzo-db pg_dump -U postgres restaurant_db > backup.sql
    ```
 3. **Restore from backup:**
    ```bash
-   docker exec -i ruchi-db psql -U postgres restaurant_db < backup.sql
+   docker exec -i orderzo-db psql -U postgres restaurant_db < backup.sql
    ```
 
 ### If Coolify is Broken
@@ -534,10 +534,10 @@ SELECT pg_size_pretty(pg_database_size('restaurant_db'));
 
 ```bash
 # App logs
-docker logs ruchi-app --tail 200
+docker logs orderzo-app --tail 200
 
 # Database logs
-docker logs ruchi-db --tail 200
+docker logs orderzo-db --tail 200
 
 # Coolify logs
 sudo journalctl -u coolify -n 200 --no-pager

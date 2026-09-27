@@ -2,7 +2,7 @@
 
 ## ✅ What's Been Prepared
 
-Your Ruchi Restaurant app is now ready for Coolify deployment with:
+Your OrderZo app is now ready for Coolify deployment with:
 
 ### 1. **Configuration Files Created**
 - ✅ `.env.production.coolify` - Environment variables template
@@ -62,7 +62,7 @@ Follow these steps in order:
 1. Go to Coolify dashboard
 2. Click "+ New" → "New Resource"
 3. Choose "Private Repository (with GitHub App)" or "Public Repository"
-4. Enter repository URL: `https://github.com/YOUR_USERNAME/RuchiV2`
+4. Enter repository URL: `https://github.com/YOUR_USERNAME/OrderZoV2`
 5. Branch: `main`
 
 ### 2. Set Environment Variables in Coolify

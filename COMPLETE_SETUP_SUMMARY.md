@@ -1,8 +1,8 @@
-# 🎉 RuchiV2 - Complete Setup Summary
+# 🎉 OrderZoV2 - Complete Setup Summary
 
 ## ✅ **EVERYTHING IS WORKING!**
 
-Your RuchiV2 Restaurant Management System is now fully functional and deployed on Railway!
+Your OrderZoV2 Restaurant Management System is now fully functional and deployed on Railway!
 
 ---
 
@@ -38,7 +38,7 @@ Your RuchiV2 Restaurant Management System is now fully functional and deployed o
 ## 🔐 **Login Credentials**
 
 **Admin Access:**
-- URL: https://ruchiv2-production.up.railway.app/admin
+- URL: https://orderzov2-production.up.railway.app/admin
 - Email: `admin@restaurant.com`
 - Password: `admin123`
 
@@ -135,7 +135,7 @@ Every time you push to GitHub, Railway automatically:
 ## 📝 **How to Use**
 
 ### **For Customers:**
-1. Visit: https://ruchiv2-production.up.railway.app
+1. Visit: https://orderzov2-production.up.railway.app
 2. Browse menu with images
 3. Add items to cart
 4. Checkout and place order
@@ -195,7 +195,7 @@ Every time you push to GitHub, Railway automatically:
 ### **If Something Doesn't Work:**
 
 1. **Check Railway Logs:**
-   - Railway → RuchiV2 → Deployments → Latest → View Logs
+   - Railway → OrderZoV2 → Deployments → Latest → View Logs
 
 2. **Check Database:**
    ```bash
@@ -205,7 +205,7 @@ Every time you push to GitHub, Railway automatically:
    ```
 
 3. **Redeploy:**
-   - Railway → RuchiV2 → Settings → Redeploy
+   - Railway → OrderZoV2 → Settings → Redeploy
 
 4. **Clear Cache:**
    - Browser: Ctrl+Shift+R
@@ -256,14 +256,14 @@ All documentation is in the project root:
 
 ## 🎊 **Congratulations!**
 
-Your RuchiV2 Restaurant Management System is:
+Your OrderZoV2 Restaurant Management System is:
 - ✅ Fully functional
 - ✅ Deployed on Railway
 - ✅ Database populated with 207 menu items
 - ✅ Images displaying correctly
 - ✅ Ready for production use!
 
-**Your app is live at:** https://ruchiv2-production.up.railway.app
+**Your app is live at:** https://orderzov2-production.up.railway.app
 
 ---
 
@@ -277,7 +277,7 @@ Your RuchiV2 Restaurant Management System is:
 
 ---
 
-**Thank you for using RuchiV2!** 🍽️
+**Thank you for using OrderZoV2!** 🍽️
 
 **Last Updated:** 2025-12-13  
 **Version:** 2.0  

@@ -1,4 +1,4 @@
-# Deploying Ruchi Restaurant App on a New Windows Machine
+# Deploying OrderZo App on a New Windows Machine
 
 This guide covers how to move your application to a different Windows computer and get it running.
 
@@ -17,11 +17,11 @@ Before you begin, ensure the new computer has the following software installed:
 You have two options to move your code:
 
 **Option A: Using a USB Drive / Network Share (Manually)**
-1.  On your current machine, copy the entire `RuchiV2` project folder.
+1.  On your current machine, copy the entire `OrderZoV2` project folder.
 2.  **Exclude/Delete** these huge folders to save time (they will be recreated):
     *   `node_modules`
     *   `.next`
-3.  Paste the folder onto the new machine (e.g., `C:\Apps\RuchiV2`).
+3.  Paste the folder onto the new machine (e.g., `C:\Apps\OrderZoV2`).
 
 **Option B: Using GitHub (Recommended)**
 1.  Push your code to a private GitHub repository.
@@ -62,7 +62,7 @@ ADMIN_PASSWORD=admin123
 1.  Open Command Prompt (cmd) or PowerShell.
 2.  Navigate to the project folder:
     ```cmd
-    cd C:\Apps\RuchiV2
+    cd C:\Apps\OrderZoV2
     ```
 3.  Install the required software libraries:
     ```cmd

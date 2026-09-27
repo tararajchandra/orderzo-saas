@@ -16,7 +16,7 @@ Found several very large files that shouldn't be in Git:
 
 | File | Size | Should Be In Git? |
 |------|------|-------------------|
-| `RuchiV2.rar` | 1.6 GB | ❌ NO - Archive file |
+| `OrderZoV2.rar` | 1.6 GB | ❌ NO - Archive file |
 | `database/test.sql` | 227 MB | ❌ NO - Test database |
 | `database/test.csv` | 212 MB | ❌ NO - Test data |
 | `backup/menu_items_*.json` | 134 MB | ❌ NO - Backup file |
@@ -47,7 +47,7 @@ database/*.csv
 ### Step 2: Removed Large Files from Git
 
 ```bash
-git rm --cached RuchiV2.rar
+git rm --cached OrderZoV2.rar
 git rm --cached database/test.sql
 git rm --cached database/test.csv
 ```
@@ -104,7 +104,7 @@ git push -u origin main
 ## 🔒 Files Still On Your Computer
 
 These files were removed from Git but **still exist locally**:
-- `RuchiV2.rar` - Your archive file
+- `OrderZoV2.rar` - Your archive file
 - `database/test.sql` - Your test database
 - `database/test.csv` - Your test data
 - `backup/` folder - Your backups
@@ -171,7 +171,7 @@ If push still fails, you may need to clean git history:
 ```bash
 # Remove large files from all commits
 git filter-branch --force --index-filter \
-  "git rm --cached --ignore-unmatch RuchiV2.rar" \
+  "git rm --cached --ignore-unmatch OrderZoV2.rar" \
   --prune-empty --tag-name-filter cat -- --all
 
 # Force push

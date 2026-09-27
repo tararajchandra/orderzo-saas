@@ -42,8 +42,8 @@ htop                 # Overall system monitor
 systemctl status coolify
 systemctl status docker
 docker logs coolify-proxy
-docker logs ruchi-app
-docker logs ruchi-db
+docker logs orderzo-app
+docker logs orderzo-db
 docker logs stalwart-mail
 ```
 
@@ -51,8 +51,8 @@ docker logs stalwart-mail
 ```bash
 systemctl restart coolify
 systemctl restart docker
-docker restart ruchi-app
-docker restart ruchi-db
+docker restart orderzo-app
+docker restart orderzo-db
 cd /opt/stalwart && docker-compose restart
 ```
 
@@ -156,8 +156,8 @@ ufw allow 8000/tcp
 ```bash
 # Check DB is running
 docker ps | grep postgres
-# Verify DB_HOST=ruchi-db in env vars
-# Check logs: docker logs ruchi-db
+# Verify DB_HOST=orderzo-db in env vars
+# Check logs: docker logs orderzo-db
 ```
 
 ### App Won't Build
@@ -173,7 +173,7 @@ docker ps | grep postgres
 
 ```env
 # Database
-DB_HOST=ruchi-db
+DB_HOST=orderzo-db
 DB_PORT=5432
 DB_NAME=restaurant_db
 DB_USER=postgres
@@ -232,7 +232,7 @@ apt update && apt upgrade  # Update system
 ### Monthly
 ```bash
 # Review logs
-docker logs ruchi-app --tail 500
+docker logs orderzo-app --tail 500
 # Test backups
 # Update Docker images
 ```
@@ -249,9 +249,9 @@ docker logs ruchi-app --tail 500
 ### Database Corrupted
 ```bash
 # Backup first
-docker exec ruchi-db pg_dump -U postgres restaurant_db > backup.sql
+docker exec orderzo-db pg_dump -U postgres restaurant_db > backup.sql
 # Restore
-docker exec -i ruchi-db psql -U postgres restaurant_db < backup.sql
+docker exec -i orderzo-db psql -U postgres restaurant_db < backup.sql
 ```
 
 ### Coolify Broken

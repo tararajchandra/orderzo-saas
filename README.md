@@ -1,4 +1,4 @@
-# Ruchi Restaurant Management System V2
+# OrderZo Management System V2
 
 A comprehensive restaurant management system built with Next.js, TypeScript, and PostgreSQL. Features include menu management, order processing, delivery tracking, invoicing, and data import/export capabilities.
 
@@ -40,8 +40,8 @@ A comprehensive restaurant management system built with Next.js, TypeScript, and
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/RuchiV2.git
-cd RuchiV2
+git clone https://github.com/YOUR_USERNAME/OrderZoV2.git
+cd OrderZoV2
 ```
 
 ### 2. Install Dependencies
@@ -107,7 +107,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## 📁 Project Structure
 
 ```
-RuchiV2/
+OrderZoV2/
 ├── app/                      # Next.js app directory
 │   ├── api/                  # API routes
 │   │   ├── admin/           # Admin-specific APIs
@@ -258,7 +258,7 @@ Enable "Sign in with Google" functionality:
 - ✅ **Coolify** - Self-hosted deployment platform
 - ✅ **Stalwart Mail Server** - Email functionality
 - ✅ **PostgreSQL** - Database
-- ✅ **Your App** - Ruchi Restaurant with SSL
+- ✅ **Your App** - OrderZo with SSL
 
 #### Requirements
 - VPS with 2 Core CPU, 2GB RAM
@@ -364,7 +364,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 📞 Support
 
-For support, email support@ruchi.com or open an issue on GitHub.
+For support, email support@orderzo.com or open an issue on GitHub.
 
 ---
 

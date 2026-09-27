@@ -1,4 +1,4 @@
-# Coolify Deployment Checklist for Ruchi Restaurant App
+# Coolify Deployment Checklist for OrderZo App
 
 ## ✅ Pre-Deployment Checklist
 
@@ -40,7 +40,7 @@
 
 ### Step 2: Configure Repository
 
-- **Repository URL:** `https://github.com/YOUR_USERNAME/RuchiV2`
+- **Repository URL:** `https://github.com/YOUR_USERNAME/OrderZoV2`
 - **Branch:** `main`
 - **Build Pack:** `nixpacks` (auto-detected)
 
@@ -237,7 +237,7 @@ df -h
 
 ## 🎉 Success!
 
-Your Ruchi Restaurant app should now be:
+Your OrderZo app should now be:
 - ✅ Running on your VPS via Coolify
 - ✅ Connected to PostgreSQL database
 - ✅ Accessible via HTTPS

@@ -1,6 +1,6 @@
 # Google OAuth Setup Guide
 
-This guide will help you set up Google OAuth authentication for your Ruchi application.
+This guide will help you set up Google OAuth authentication for your OrderZo application.
 
 ## Problem
 The "Sign up with Google" and "Sign in with Google" buttons are not working because Google OAuth credentials are not configured in your environment variables.
@@ -16,7 +16,7 @@ The "Sign up with Google" and "Sign in with Google" buttons are not working beca
 2. **Create or Select a Project**
    - Click on the project dropdown at the top
    - Either select an existing project or click "New Project"
-   - Give your project a name (e.g., "Ruchi Restaurant App")
+   - Give your project a name (e.g., "OrderZo App")
    - Click "Create"
 
 3. **Enable Google+ API**
@@ -29,7 +29,7 @@ The "Sign up with Google" and "Sign in with Google" buttons are not working beca
    - Select "External" user type (unless you have a Google Workspace)
    - Click "Create"
    - Fill in the required fields:
-     - **App name**: Ruchi Restaurant
+     - **App name**: OrderZo
      - **User support email**: Your email
      - **Developer contact information**: Your email
    - Click "Save and Continue"
@@ -41,7 +41,7 @@ The "Sign up with Google" and "Sign in with Google" buttons are not working beca
    - Go to "APIs & Services" → "Credentials"
    - Click "Create Credentials" → "OAuth 2.0 Client ID"
    - Select "Web application" as the application type
-   - Give it a name (e.g., "Ruchi Web Client")
+   - Give it a name (e.g., "OrderZo Web Client")
    - Under "Authorized redirect URIs", add:
      - For local development: `http://localhost:3000/api/auth/google/callback`
      - For production: `https://yourdomain.com/api/auth/google/callback`

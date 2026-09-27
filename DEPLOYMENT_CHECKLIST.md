@@ -121,7 +121,7 @@ Password: __________________________________
 
 ### PostgreSQL Database
 - [ ] Database created in Coolify
-- [ ] Name: `ruchi-db`
+- [ ] Name: `orderzo-db`
 - [ ] Database name: `restaurant_db`
 - [ ] Username: `postgres`
 - [ ] Password generated/set
@@ -129,7 +129,7 @@ Password: __________________________________
 
 ### Credentials to Save
 ```
-DB Host: ruchi-db
+DB Host: orderzo-db
 DB Name: restaurant_db
 DB User: postgres
 DB Password: _______________________________
@@ -154,7 +154,7 @@ DB Password: _______________________________
 - [ ] Start command: `npm start`
 
 ### Environment Variables Set
-- [ ] `DB_HOST=ruchi-db`
+- [ ] `DB_HOST=orderzo-db`
 - [ ] `DB_PORT=5432`
 - [ ] `DB_NAME=restaurant_db`
 - [ ] `DB_USER=postgres`

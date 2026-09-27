@@ -1,6 +1,6 @@
-# 📖 Documentation Index - Ruchi Restaurant Management System
+# 📖 Documentation Index - OrderZo Management System
 
-Welcome to the complete documentation for Ruchi! Choose the guide that best fits your needs:
+Welcome to the complete documentation for OrderZo! Choose the guide that best fits your needs:
 
 ---
 
@@ -157,15 +157,15 @@ Welcome to the complete documentation for Ruchi! Choose the guide that best fits
 
 ### Documentation Issues
 If you find errors or have suggestions for improving documentation:
-- Contact: support@ruchirestaurant.com
+- Contact: support@orderzorestaurant.com
 - Submit feedback through admin panel
 
 ### Feature Requests
-- Email: features@ruchirestaurant.com
+- Email: features@orderzorestaurant.com
 - Describe the feature and use case
 
 ### Technical Support
-- Email: support@ruchirestaurant.com
+- Email: support@orderzorestaurant.com
 - Phone: [Your Support Number]
 - Hours: 9 AM - 9 PM (Mon-Sat)
 
@@ -174,7 +174,7 @@ If you find errors or have suggestions for improving documentation:
 ## 📊 Documentation Overview
 
 ```
-RuchiV2/
+OrderZoV2/
 ├── 📘 USER_HELP_GUIDE.md          # Complete user documentation
 ├── ⚡ QUICK_REFERENCE.md          # Quick lookup guide
 ├── 📋 DOCUMENTATION_INDEX.md      # This file

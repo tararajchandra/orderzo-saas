@@ -1,6 +1,6 @@
 # VPS Deployment Guide: Coolify + Stalwart Mail Server
 
-This guide will help you deploy your Ruchi Restaurant app on a VPS (2 Core CPU, 2GB RAM) using Coolify and set up Stalwart Mail Server.
+This guide will help you deploy your OrderZo app on a VPS (2 Core CPU, 2GB RAM) using Coolify and set up Stalwart Mail Server.
 
 ## 📋 Prerequisites
 
@@ -338,7 +338,7 @@ In Stalwart admin panel:
    - `admin@yourdomain.com` (for admin emails)
    - `support@yourdomain.com` (for customer support)
 
-## 🎯 Part 4: Deploy Ruchi App with Coolify
+## 🎯 Part 4: Deploy OrderZo App with Coolify
 
 ### Step 1: Prepare Your Repository
 
@@ -349,7 +349,7 @@ In Stalwart admin panel:
    git add .
    git commit -m "Initial commit"
    git branch -M main
-   git remote add origin https://github.com/yourusername/ruchi-app.git
+   git remote add origin https://github.com/yourusername/orderzo-app.git
    git push -u origin main
    ```
 
@@ -367,7 +367,7 @@ In Stalwart admin panel:
 1. In Coolify dashboard, click **"+ New"** → **"Database"**
 2. Select **"PostgreSQL"**
 3. Configure:
-   - Name: `ruchi-db`
+   - Name: `orderzo-db`
    - Version: `16` (latest stable)
    - Database Name: `restaurant_db`
    - Username: `postgres`
@@ -382,7 +382,7 @@ In Stalwart admin panel:
 
 2. **Select Source**:
    - Choose "Public Repository" or connect your GitHub account
-   - Repository URL: `https://github.com/yourusername/ruchi-app.git`
+   - Repository URL: `https://github.com/yourusername/orderzo-app.git`
    - Branch: `main`
 
 3. **Configure Build Settings**:
@@ -396,7 +396,7 @@ In Stalwart admin panel:
 
    ```env
    # Database Configuration
-   DB_HOST=ruchi-db  # Use the database service name from Coolify
+   DB_HOST=orderzo-db  # Use the database service name from Coolify
    DB_PORT=5432
    DB_NAME=restaurant_db
    DB_USER=postgres
@@ -485,13 +485,13 @@ After the first deployment:
 # Create backup script
 cat > /root/backup-app.sh << 'EOF'
 #!/bin/bash
-BACKUP_DIR="/backups/ruchi-app"
+BACKUP_DIR="/backups/orderzo-app"
 DATE=$(date +%Y%m%d_%H%M%S)
 
 mkdir -p $BACKUP_DIR
 
 # Backup database
-docker exec ruchi-db pg_dump -U postgres restaurant_db > $BACKUP_DIR/db_$DATE.sql
+docker exec orderzo-db pg_dump -U postgres restaurant_db > $BACKUP_DIR/db_$DATE.sql
 
 # Backup uploaded files (if any)
 # tar -czf $BACKUP_DIR/files_$DATE.tar.gz /path/to/uploads
@@ -790,7 +790,7 @@ free -h
 docker ps
 
 # Check logs
-docker logs ruchi-app --tail 100
+docker logs orderzo-app --tail 100
 ```
 
 ### Weekly Maintenance
@@ -815,7 +815,7 @@ docker logs ruchi-app --tail 100
 
 ```bash
 # Check logs
-docker logs ruchi-app
+docker logs orderzo-app
 
 # Check if database is running
 docker ps | grep postgres
@@ -828,7 +828,7 @@ docker ps | grep postgres
 
 ```bash
 # Test database connection
-docker exec -it ruchi-db psql -U postgres -d restaurant_db
+docker exec -it orderzo-db psql -U postgres -d restaurant_db
 
 # Check environment variables
 # In Coolify: App → Environment Variables

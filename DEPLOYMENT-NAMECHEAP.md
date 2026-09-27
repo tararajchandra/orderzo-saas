@@ -1,4 +1,4 @@
-# Deploying Ruchi Restaurant App with Namecheap
+# Deploying OrderZo App with Namecheap
 
 Since you have Namecheap, here are your best options:
 
@@ -28,7 +28,7 @@ git add .
 git commit -m "Initial commit"
 
 # Create repository on GitHub, then:
-git remote add origin https://github.com/yourusername/ruchi-restaurant.git
+git remote add origin https://github.com/yourusername/orderzo-restaurant.git
 git branch -M main
 git push -u origin main
 ```
@@ -47,8 +47,8 @@ git push -u origin main
 #### Step 3: Set Up Database (Neon - Free)
 1. Go to https://neon.tech
 2. Create account (free)
-3. Create project: "Ruchi Restaurant"
-4. Create database: `ruchi_restaurant`
+3. Create project: "OrderZo"
+4. Create database: `orderzo_restaurant`
 5. Copy connection string
 
 #### Step 4: Add Environment Variables in Vercel
@@ -58,10 +58,10 @@ Add these:
 ```
 DB_HOST=your-neon-host.neon.tech
 DB_PORT=5432
-DB_NAME=ruchi_restaurant
+DB_NAME=orderzo_restaurant
 DB_USER=your-username
 DB_PASSWORD=your-password
-ADMIN_EMAIL=admin@ruchi.com
+ADMIN_EMAIL=admin@orderzo.com
 ADMIN_PASSWORD=your-secure-password
 ```
 
@@ -77,7 +77,7 @@ Connect to Neon database and run:
 #### Step 1: Get Vercel DNS Records
 1. In Vercel Dashboard → Your Project → Settings → Domains
 2. Click "Add Domain"
-3. Enter your domain (e.g., `ruchi-restaurant.com`)
+3. Enter your domain (e.g., `orderzo-restaurant.com`)
 4. Vercel will show you DNS records to add
 
 **You'll see something like:**
@@ -165,9 +165,9 @@ systemctl enable postgresql
 
 # Create database
 sudo -u postgres psql
-CREATE DATABASE ruchi_restaurant;
-CREATE USER ruchi_user WITH PASSWORD 'your-secure-password';
-GRANT ALL PRIVILEGES ON DATABASE ruchi_restaurant TO ruchi_user;
+CREATE DATABASE orderzo_restaurant;
+CREATE USER orderzo_user WITH PASSWORD 'your-secure-password';
+GRANT ALL PRIVILEGES ON DATABASE orderzo_restaurant TO orderzo_user;
 \q
 ```
 
@@ -180,8 +180,8 @@ npm install -g pm2
 ```bash
 # Clone repository
 cd /var/www
-git clone https://github.com/yourusername/ruchi-restaurant.git
-cd ruchi-restaurant
+git clone https://github.com/yourusername/orderzo-restaurant.git
+cd orderzo-restaurant
 
 # Install dependencies
 npm install
@@ -194,7 +194,7 @@ nano .env.production
 npm run build
 
 # Start with PM2
-pm2 start npm --name "ruchi-restaurant" -- start
+pm2 start npm --name "orderzo-restaurant" -- start
 pm2 save
 pm2 startup
 ```
@@ -205,7 +205,7 @@ pm2 startup
 apt install -y nginx
 
 # Create Nginx configuration
-nano /etc/nginx/sites-available/ruchi-restaurant
+nano /etc/nginx/sites-available/orderzo-restaurant
 ```
 
 Add this configuration:
@@ -227,7 +227,7 @@ server {
 
 Enable the site:
 ```bash
-ln -s /etc/nginx/sites-available/ruchi-restaurant /etc/nginx/sites-enabled/
+ln -s /etc/nginx/sites-available/orderzo-restaurant /etc/nginx/sites-enabled/
 nginx -t
 systemctl restart nginx
 ```

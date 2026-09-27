@@ -2,7 +2,7 @@
 
 ## 🗄️ How to Create Tables in Railway PostgreSQL
 
-Your RuchiV2 app needs database tables to work. Here's how to set them up on Railway.
+Your OrderZoV2 app needs database tables to work. Here's how to set them up on Railway.
 
 ---
 
@@ -27,7 +27,7 @@ Railway automatically creates these environment variables:
 
 **Update your app's environment variables:**
 
-1. Click on your **RuchiV2 service**
+1. Click on your **OrderZoV2 service**
 2. Go to **"Variables"** tab
 3. Add these variables:
 
@@ -229,7 +229,7 @@ Railway Dashboard → New → Database → PostgreSQL
 
 ### **2. Configure Environment Variables**
 
-In your RuchiV2 service:
+In your OrderZoV2 service:
 
 ```
 DB_HOST=${{Postgres.PGHOST}}
@@ -269,7 +269,7 @@ SELECT * FROM users WHERE role = 'admin';
 ### **5. Redeploy App**
 
 ```
-Railway Dashboard → RuchiV2 → Deployments → Redeploy
+Railway Dashboard → OrderZoV2 → Deployments → Redeploy
 ```
 
 ---

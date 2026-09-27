@@ -73,7 +73,7 @@ WHERE email = 'admin@restaurant.com';
 **Solution:**
 
 1. **Check Environment Variables in Railway:**
-   - Go to RuchiV2 service → Variables
+   - Go to OrderZoV2 service → Variables
    - Verify these are set:
      ```
      DB_HOST=${{Postgres.PGHOST}}
@@ -84,7 +84,7 @@ WHERE email = 'admin@restaurant.com';
      ```
 
 2. **Redeploy the app:**
-   - Railway → RuchiV2 → Deployments → Redeploy
+   - Railway → OrderZoV2 → Deployments → Redeploy
 
 ---
 
@@ -175,7 +175,7 @@ WHERE email = 'admin@restaurant.com';
 ### **3. Check Database Connection**
 
 On Railway:
-1. Go to RuchiV2 service → Deployments
+1. Go to OrderZoV2 service → Deployments
 2. Click latest deployment
 3. View logs
 4. Look for:
@@ -275,7 +275,7 @@ Should show 1 row.
    - Look for errors
 
 2. **Check Railway logs:**
-   - Railway → RuchiV2 → Deployments
+   - Railway → OrderZoV2 → Deployments
    - Click latest deployment
    - View logs
    - Look for errors during login
