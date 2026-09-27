@@ -1,0 +1,75 @@
+# Dependencies
+node_modules
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Next.js
+/.next/
+/out/
+
+# Production
+/build
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files
+.env*.local
+.env
+!.env.example
+!.env.production.coolify
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Export/Import files (don't commit data exports)
+*_2025-*.json
+*_2025-*.csv
+menu_items_*.json
+categories_*.json
+delivery_locations_*.json
+users_*.json
+salesmen_*.json
+delivery_boys_*.json
+
+# Database backups
+*.sql.backup
+*.dump
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Large files and archives (NEW)
+*.rar
+*.zip
+*.7z
+*.tar.gz
+backup/
+backups/
+database/test.sql
+database/test.csv
+database/*.sql
+database/*.csv
+!database/schema.sql
+!database/migrations/*.sql

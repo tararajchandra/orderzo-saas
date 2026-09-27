@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Ruchi - Getting Started</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:wght@700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1a0033 0%, #0f1729 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #a855f7 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.5rem;
+            opacity: 0.9;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 60px rgba(168, 85, 247, 0.3);
+            border-color: #a855f7;
+        }
+
+        .card-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #a855f7;
+        }
+
+        .card p {
+            opacity: 0.8;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .card-link {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #a855f7 0%, #3b82f6 100%);
+            border-radius: 50px;
+            text-decoration: none;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .card-link:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(168, 85, 247, 0.5);
+        }
+
+        .quick-links {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .quick-links h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #3b82f6;
+        }
+
+        .link-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .quick-link {
+            display: block;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .quick-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #3b82f6;
+            transform: translateY(-3px);
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero p {
+                font-size: 1.2rem;
+            }
+
+            .cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="hero">
+            <h1>🎉 Welcome to Ruchi!</h1>
+            <p>Your Complete Restaurant Management Solution</p>
+        </div>
+
+        <div class="cards">
+            <div class="card">
+                <div class="card-icon">📘</div>
+                <h2>Complete User Guide</h2>
+                <p>Comprehensive documentation covering all features, step-by-step tutorials, and detailed explanations
+                    for every user role.</p>
+                <a href="../USER_HELP_GUIDE.md" class="card-link">Read Full Guide →</a>
+            </div>
+
+            <div class="card">
+                <div class="card-icon">⚡</div>
+                <h2>Quick Reference</h2>
+                <p>Fast access to common tasks, keyboard shortcuts, URLs, and daily checklists. Perfect for quick
+                    lookups!</p>
+                <a href="../QUICK_REFERENCE.md" class="card-link">View Quick Ref →</a>
+            </div>
+
+            <div class="card">
+                <div class="card-icon">🌐</div>
+                <h2>Interactive Help</h2>
+                <p>Beautiful, searchable browser-based help with smooth navigation, visual cards, and mobile-responsive
+                    design.</p>
+                <a href="help.html" class="card-link">Open Interactive Help →</a>
+            </div>
+        </div>
+
+        <div class="quick-links">
+            <h3>🚀 Quick Start Links</h3>
+            <div class="link-grid">
+                <a href="/" class="quick-link">
+                    🏠 Home
+                </a>
+                <a href="/menu" class="quick-link">
+                    🍽️ Browse Menu
+                </a>
+                <a href="/cart" class="quick-link">
+                    🛒 Shopping Cart
+                </a>
+                <a href="/admin" class="quick-link">
+                    👨‍💼 Admin Login
+                </a>
+                <a href="/admin/dashboard" class="quick-link">
+                    📊 Dashboard
+                </a>
+                <a href="/admin/orders" class="quick-link">
+                    📦 Orders
+                </a>
+                <a href="help.html" class="quick-link">
+                    ❓ Help Center
+                </a>
+                <a href="../DOCUMENTATION_INDEX.md" class="quick-link">
+                    📚 All Docs
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

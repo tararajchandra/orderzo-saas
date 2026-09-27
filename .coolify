@@ -1,0 +1,19 @@
+# Coolify Configuration for Ruchi Restaurant App
+
+# This file helps Coolify understand how to build and run your app
+# Place this in the root of your repository
+
+# Build configuration
+BUILD_COMMAND=npm run build
+START_COMMAND=npm start
+PORT=3000
+
+# Health check endpoint
+HEALTHCHECK_PATH=/api/health
+
+# Resource limits (important for 2GB RAM VPS)
+MEMORY_LIMIT=512m
+CPU_LIMIT=1
+
+# Restart policy
+RESTART_POLICY=unless-stopped

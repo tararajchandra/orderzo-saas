@@ -1,0 +1,35 @@
+ ✓ Compiled /api/admin/data-management/import in 352ms (330 modules)
+ ✓ Compiled in 514ms (330 modules)
+ ✓ Compiled in 576ms (330 modules)
+Import error: Error: Connection terminated due to connection timeout
+    at F:\OrderZoV2\OrderZoV2\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async getClient (webpack-internal:///(rsc)/./lib/db.ts:50:20)
+    at async POST (webpack-internal:///(rsc)/./app/api/admin/data-management/import/route.ts:90:24)
+    at async F:\OrderZoV2\OrderZoV2\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:57228
+    at async eT.execute (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:46851)
+    at async eT.handle (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:58760)
+    at async doRender (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\server\base-server.js:1366:42)
+    at async cacheEntry.responseCache.get.routeKind (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\server\base-server.js:1588:28)
+    at async DevServer.renderToResponseWithComponentsImpl (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\server\base-server.js:1496:28)
+    at async DevServer.renderPageComponent (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\server\base-server.js:1924:24)
+    at async DevServer.renderToResponseImpl (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\server\base-server.js:1962:32)
+    at async DevServer.pipeImpl (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\server\base-server.js:922:25)
+    at async NextNodeServer.handleCatchallRenderRequest (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\server\next-server.js:272:17)
+    at async DevServer.handleRequestImpl (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\server\base-server.js:818:17)
+    at async F:\OrderZoV2\OrderZoV2\node_modules\next\dist\server\dev\next-dev-server.js:339:20
+    at async Span.traceAsyncFn (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\trace\trace.js:154:20)
+    at async DevServer.handleRequest (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\server\dev\next-dev-server.js:336:24)
+    at async invokeRender (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\server\lib\router-server.js:179:21)
+    at async handleRequest (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\server\lib\router-server.js:359:24)
+    at async requestHandlerImpl (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\server\lib\router-server.js:383:13)
+    at async Server.requestListener (F:\OrderZoV2\OrderZoV2\node_modules\next\dist\server\lib\start-server.js:141:13) {
+  [cause]: Error: Connection terminated unexpectedly
+      at Connection.<anonymous> (F:\OrderZoV2\OrderZoV2\node_modules\pg\lib\client.js:136:73)
+      at Object.onceWrapper (node:events:622:28)
+      at Connection.emit (node:events:508:28)
+      at Socket.<anonymous> (F:\OrderZoV2\OrderZoV2\node_modules\pg\lib\connection.js:62:12)
+      at Socket.emit (node:events:508:28)
+      at TCP.<anonymous> (node:net:346:12)
+}
+ POST /api/admin/data-management/import 500 in 16059ms

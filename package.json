@@ -1,0 +1,39 @@
+{
+  "name": "ruchi-restaurant",
+  "version": "1.0.0",
+  "engines": {
+    "node": "18.x"
+  },
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "node scripts/deploy_task.js && next start",
+    "lint": "next lint",
+    "migrate": "node scripts/migrate-railway.js",
+    "verify-migration": "node scripts/verify-migration.js",
+    "create-admin": "node scripts/create-admin.js",
+    "test-login": "node scripts/test-login.js",
+    "check-users": "node scripts/check-users.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "date-fns": "^3.0.0",
+    "dotenv": "^17.2.3",
+    "next": "^14.2.35",
+    "pg": "^8.11.3",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "recharts": "^3.5.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/pg": "^8.10.9",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "^14.2.0",
+    "typescript": "^5"
+  }
+}

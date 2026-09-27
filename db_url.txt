@@ -1,0 +1,1 @@
+postgresql://postgres:YOUR_PASSWORD@ruchi-db:5432/restaurant_db

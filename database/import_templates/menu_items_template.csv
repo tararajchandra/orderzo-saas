@@ -1,0 +1,6 @@
+name,description,category_id,price,gst_rate,available
+Paneer Tikka,Grilled cottage cheese marinated in spices,1,250.00,5,true
+Chicken Biryani,Aromatic basmati rice with tender chicken,2,350.00,5,true
+Dal Makhani,Creamy black lentils cooked overnight,2,200.00,5,true
+Butter Naan,Soft leavened bread with butter,3,50.00,5,true
+Gulab Jamun,Sweet dumplings in sugar syrup,4,80.00,5,true
