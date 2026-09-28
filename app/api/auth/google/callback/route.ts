@@ -71,12 +71,10 @@ export async function GET(request: Request) {
         const token = Buffer.from(`${user.id}-${user.email}-${Date.now()}`).toString('base64');
 
         // Redirect to frontend with token
-        // We need to pass the token to the client. 
-        // A common way is to redirect to a page that reads the token from URL and saves it.
-        // Or set a cookie. But our AuthContext reads from localStorage.
-        // So we'll redirect to a special route /auth/callback that handles this.
-
-        const callbackUrl = new URL('/auth/callback', request.url);
+        // Use NEXT_PUBLIC_APP_URL to prevent localhost redirect issues in production (Render proxy)
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const callbackUrl = new URL('/auth/callback', baseUrl);
+        
         callbackUrl.searchParams.set('token', token);
         callbackUrl.searchParams.set('user', JSON.stringify({
             id: user.id,
