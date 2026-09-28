@@ -1,0 +1,3 @@
+SanjuOrder50252
+
+postgresql://postgres:SanjuOrder50252@db.jzzuqrnrceoaxegcrzmu.supabase.co:5432/postgres
