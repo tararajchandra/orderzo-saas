@@ -92,6 +92,9 @@ export default function GSTReportPage() {
             const gstBreakdown = new Map<number, { sales: number; gst: number; count: number }>();
 
             filteredOrders.forEach((order: any) => {
+                // If tax is 0 or not present (e.g. unregistered), skip GST calculation for this order
+                if (!order.tax || parseFloat(order.tax) === 0) return;
+
                 if (Array.isArray(order.items)) {
                     order.items.forEach((item: any) => {
                         const gstRate = item.menuItem.gst_rate || 5;
