@@ -20,7 +20,7 @@ export default function KitchenStaffPage() {
 
     const fetchKitchenStaff = async () => {
         try {
-            const response = await fetch('/api/admin/KitchenStaff');
+            const response = await fetch('/api/admin/kitchen-staff');
             const data = await response.json();
             if (data.success) {
                 setKitchenStaff(data.data);
@@ -36,7 +36,7 @@ export default function KitchenStaffPage() {
         if (!confirm('Are you sure you want to delete this KitchenStaff?')) return;
 
         try {
-            const response = await fetch(`/api/admin/KitchenStaff/${id}`, {
+            const response = await fetch(`/api/admin/kitchen-staff/${id}`, {
                 method: 'DELETE',
             });
             const data = await response.json();
@@ -63,7 +63,7 @@ export default function KitchenStaffPage() {
                             ← Back to Dashboard
                         </Link>
                     </div>
-                    <Link href="/admin/KitchenStaff/new" className="btn btn-primary">
+                    <Link href="/admin/kitchen-staff/new" className="btn btn-primary">
                         + Add New KitchenStaff
                     </Link>
                 </div>
@@ -93,7 +93,7 @@ export default function KitchenStaffPage() {
                                         <td style={{ padding: '1rem' }}>{KitchenStaff.phone || '-'}</td>
                                         <td style={{ padding: '1rem', textAlign: 'right' }}>
                                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                                <Link href={`/admin/KitchenStaff/${KitchenStaff.id}/edit`} className="btn btn-ghost" style={{ padding: '0.5rem' }}>
+                                                <Link href={`/admin/kitchen-staff/${KitchenStaff.id}/edit`} className="btn btn-ghost" style={{ padding: '0.5rem' }}>
                                                     ✏️
                                                 </Link>
                                                 <button
