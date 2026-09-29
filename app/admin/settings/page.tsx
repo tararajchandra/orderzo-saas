@@ -14,6 +14,7 @@ interface Settings {
     paperWidth: '58mm' | '80mm';
     showLogo: boolean;
     footerText: string;
+    totalTables: string;
 }
 
 const defaultSettings: Settings = {
@@ -27,6 +28,7 @@ const defaultSettings: Settings = {
     paperWidth: '80mm',
     showLogo: true,
     footerText: 'Thank you for your business!',
+    totalTables: '16',
 };
 
 export default function SettingsPage() {
@@ -50,8 +52,7 @@ export default function SettingsPage() {
             const response = await fetch('/api/settings');
             const data = await response.json();
             if (data.success) {
-                setSettings(data.data);
-                // Also update localStorage for fallback/legacy support if needed
+                setSettings({ ...defaultSettings, ...data.data });
                 localStorage.setItem('printerSettings', JSON.stringify(data.data));
             }
         } catch (error) {
@@ -165,6 +166,22 @@ export default function SettingsPage() {
                                         onChange={(e) => setSettings({ ...settings, restaurantEmail: e.target.value })}
                                         className="input"
                                         placeholder="Enter email"
+                                    />
+                                </div>
+                            </div>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                                        Total Tables (For Active Tables View)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={settings.totalTables}
+                                        onChange={(e) => setSettings({ ...settings, totalTables: e.target.value })}
+                                        className="input"
+                                        placeholder="e.g. 16"
+                                        min="1"
                                     />
                                 </div>
                             </div>

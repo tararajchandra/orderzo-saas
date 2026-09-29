@@ -344,46 +344,55 @@ export default function SalesmanDashboard() {
 
             {viewMode === 'tables' ? (
                 // ACTIVE TABLES VIEW
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                    {Object.keys(tableGroups).length === 0 ? (
-                        <div className="glass-card" style={{ padding: '2rem', gridColumn: '1/-1', textAlign: 'center' }}>
-                            <p className="text-muted">No active dine-in tables right now.</p>
-                        </div>
-                    ) : (
-                        Object.entries(tableGroups).map(([tableNo, group]: [string, any]) => (
-                            <div key={tableNo} className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
-                                    <h3 style={{ margin: 0, color: 'var(--primary)' }}>Table {tableNo}</h3>
-                                    <span className="badge" style={{ background: 'var(--warning)', color: 'white' }}>
-                                        {group.orders.length} Orders
-                                    </span>
-                                </div>
-
-                                <div style={{ flex: 1 }}>
-                                    {group.orders.map((o: any) => (
-                                        <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
-                                            <span>#{o.order_number || o.id}</span>
-                                            <span>₹{parseFloat(o.total_amount).toFixed(2)}</span>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', borderTop: '2px dashed var(--border-color)' }}>
-                                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>₹{group.total.toFixed(2)}</span>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        <button 
-                                            className="btn btn-primary" 
-                                            onClick={() => handleSettleTable(tableNo, 'cash', group.orders)}
-                                            disabled={settlingTable === tableNo}
-                                        >
-                                            {settlingTable === tableNo ? '...' : 'Settle Cash'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
+                <>
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', 
+                        gap: '1rem',
+                        marginBottom: '2rem'
+                    }}>
+                        {Array.from({ length: parseInt(settings?.totalTables || '16', 10) }, (_, i) => (i + 1).toString()).map(tableNo => {
+                            const isOccupied = !!tableGroups[tableNo];
+                            
+                            return (
+                                <button
+                                    key={tableNo}
+                                    onClick={() => {
+                                        if (isOccupied) {
+                                            const confirmSettle = confirm(`Settle bill of ₹${tableGroups[tableNo].total.toFixed(0)} for Table ${tableNo} (Cash)?`);
+                                            if (confirmSettle) {
+                                                handleSettleTable(tableNo, 'cash', tableGroups[tableNo].orders);
+                                            }
+                                        } else {
+                                            alert(`Table ${tableNo} is currently empty.`);
+                                        }
+                                    }}
+                                    style={{
+                                        height: '100px',
+                                        borderRadius: '12px',
+                                        border: 'none',
+                                        background: isOccupied ? 'var(--error)' : 'var(--success)',
+                                        color: 'white',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        cursor: 'pointer',
+                                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                                        transition: 'transform 0.2s',
+                                    }}
+                                >
+                                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>T-{tableNo}</span>
+                                    {isOccupied && (
+                                        <span style={{ fontSize: '0.8rem', marginTop: '0.5rem', background: 'rgba(255,255,255,0.2)', padding: '2px 6px', borderRadius: '4px' }}>
+                                            ₹{tableGroups[tableNo].total.toFixed(0)}
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </>
             ) : viewMode === 'list' ? (
                 // PENDING ORDERS LIST VIEW
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
@@ -561,13 +570,17 @@ export default function SalesmanDashboard() {
                                         <option value="takeaway">Takeaway</option>
                                     </select>
                                     {orderType === 'dine_in' && (
-                                        <input
+                                        <select
                                             className="input"
-                                            placeholder="Table No."
                                             value={tableNumber}
                                             onChange={e => setTableNumber(e.target.value)}
                                             style={{ padding: '0.8rem' }}
-                                        />
+                                        >
+                                            <option value="" disabled>Select Table</option>
+                                            {Array.from({ length: parseInt(settings?.totalTables || '16', 10) }, (_, i) => (i + 1).toString()).map(num => (
+                                                <option key={num} value={num}>Table {num}</option>
+                                            ))}
+                                        </select>
                                     )}
                                 </div>
 

@@ -13,6 +13,7 @@ const KEY_MAPPING: Record<string, string> = {
     paperWidth: 'paper_width',
     showLogo: 'show_logo',
     footerText: 'footer_text',
+    totalTables: 'total_tables',
 };
 
 const REVERSE_MAPPING: Record<string, string> = Object.entries(KEY_MAPPING).reduce((acc, [k, v]) => {
@@ -47,6 +48,7 @@ export async function GET() {
             paperWidth: '80mm',
             showLogo: true,
             footerText: 'Thank you for your business!',
+            totalTables: '16',
         };
 
         return NextResponse.json({
