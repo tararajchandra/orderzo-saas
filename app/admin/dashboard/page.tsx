@@ -131,6 +131,11 @@ export default function AdminDashboard() {
                         <h3>Commissions</h3>
                         <p className="text-muted">Payouts & Reports</p>
                     </Link>
+                    <Link href="/admin/tables" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1, borderColor: 'var(--warning)', borderWidth: '2px' }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🍽️</div>
+                        <h3 style={{ color: 'var(--warning)' }}>Active Tables</h3>
+                        <p className="text-muted">Manage Dine-in Tabs</p>
+                    </Link>
                     <Link href="/admin/quick-bill" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1, borderColor: 'var(--primary)', borderWidth: '2px' }}>
                         <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🧾</div>
                         <h3 style={{ color: 'var(--primary)' }}>Quick Bill</h3>

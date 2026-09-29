@@ -30,9 +30,11 @@ export default function SalesmanDashboard() {
     const [categories, setCategories] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [pendingOrders, setPendingOrders] = useState<any[]>([]);
+    const [activeTables, setActiveTables] = useState<any[]>([]);
+    const [settlingTable, setSettlingTable] = useState<string | null>(null);
 
     // UI State
-    const [viewMode, setViewMode] = useState<'create' | 'list'>('create');
+    const [viewMode, setViewMode] = useState<'create' | 'list' | 'tables'>('create');
     const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
@@ -56,6 +58,7 @@ export default function SalesmanDashboard() {
         fetchMenuItems();
         if (user) {
             fetchPendingOrders();
+            fetchActiveTables();
         }
     }, [user]);
 
@@ -104,6 +107,26 @@ export default function SalesmanDashboard() {
         }
     };
 
+    const fetchActiveTables = async () => {
+        if (!user) return;
+        try {
+            // Fetch all orders to get active tables regardless of who placed them
+            const res = await fetch(`/api/orders`);
+            const data = await res.json();
+            if (data.success) {
+                const dineInOrders = data.data.filter((o: any) => 
+                    (o.order_type === 'dine_in' || o.order_type === 'dine-in') && 
+                    o.table_number && 
+                    o.payment_status !== 'paid' &&
+                    o.order_status !== 'cancelled'
+                );
+                setActiveTables(dineInOrders);
+            }
+        } catch (error) {
+            console.error('Error fetching active tables:', error);
+        }
+    };
+
     const handleEditOrder = (order: any) => {
         setEditingOrderId(order.id);
         setCustomerName(order.customer_name || '');
@@ -134,6 +157,36 @@ export default function SalesmanDashboard() {
         setCustomerPhone('');
         setOrderType('dine_in');
         setShowCartMobile(false);
+    };
+
+    const handleSettleTable = async (tableNo: string, paymentMethod: string, groupOrders: any[]) => {
+        const confirmSettle = confirm(`Settle all pending orders for Table ${tableNo}?`);
+        if (!confirmSettle) return;
+        
+        setSettlingTable(tableNo);
+        try {
+            const updatePromises = groupOrders.map((order: any) => 
+                fetch(`/api/orders/${order.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        payment_status: 'paid',
+                        payment_method: paymentMethod,
+                        order_status: 'delivered'
+                    }),
+                })
+            );
+            
+            await Promise.all(updatePromises);
+            alert(`Table ${tableNo} settled successfully!`);
+            fetchActiveTables();
+            fetchPendingOrders();
+        } catch (error) {
+            console.error('Error settling table:', error);
+            alert('Failed to settle table.');
+        } finally {
+            setSettlingTable(null);
+        }
     };
 
     // Filter Logic
@@ -233,6 +286,7 @@ export default function SalesmanDashboard() {
                 alert(editingOrderId ? 'Order Updated Successfully!' : `Order Placed Successfully! \nInvoice: ${data.data.invoice_number}`);
                 resetForm();
                 fetchPendingOrders(); // Refresh list
+                fetchActiveTables();
             } else {
                 alert(`Failed to save order: ${data.error}`);
             }
@@ -243,6 +297,15 @@ export default function SalesmanDashboard() {
             setSubmitting(false);
         }
     };
+    
+    // Group active tables
+    const tableGroups = activeTables.reduce((acc: any, order: any) => {
+        const table = order.table_number;
+        if (!acc[table]) acc[table] = { orders: [], total: 0 };
+        acc[table].orders.push(order);
+        acc[table].total += parseFloat(order.total_amount || 0);
+        return acc;
+    }, {});
 
     return (
         <main className="container" style={{ padding: '2rem 1.5rem', minHeight: '100vh', display: 'flex', flexDirection: 'column', paddingBottom: '90px' }}>
@@ -264,7 +327,13 @@ export default function SalesmanDashboard() {
                             className={`btn ${viewMode === 'list' ? 'btn-primary' : 'btn-ghost'}`}
                             onClick={() => { setViewMode('list'); fetchPendingOrders(); }}
                         >
-                            Saved Orders ({pendingOrders.length})
+                            My Orders ({pendingOrders.length})
+                        </button>
+                        <button
+                            className={`btn ${viewMode === 'tables' ? 'btn-primary' : 'btn-ghost'}`}
+                            onClick={() => { setViewMode('tables'); fetchActiveTables(); }}
+                        >
+                            Active Tables ({Object.keys(tableGroups).length})
                         </button>
                     </div>
                     <button onClick={logout} className="btn btn-ghost" style={{ color: 'var(--error)' }}>
@@ -273,7 +342,49 @@ export default function SalesmanDashboard() {
                 </div>
             </div>
 
-            {viewMode === 'list' ? (
+            {viewMode === 'tables' ? (
+                // ACTIVE TABLES VIEW
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                    {Object.keys(tableGroups).length === 0 ? (
+                        <div className="glass-card" style={{ padding: '2rem', gridColumn: '1/-1', textAlign: 'center' }}>
+                            <p className="text-muted">No active dine-in tables right now.</p>
+                        </div>
+                    ) : (
+                        Object.entries(tableGroups).map(([tableNo, group]: [string, any]) => (
+                            <div key={tableNo} className="glass-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+                                    <h3 style={{ margin: 0, color: 'var(--primary)' }}>Table {tableNo}</h3>
+                                    <span className="badge" style={{ background: 'var(--warning)', color: 'white' }}>
+                                        {group.orders.length} Orders
+                                    </span>
+                                </div>
+
+                                <div style={{ flex: 1 }}>
+                                    {group.orders.map((o: any) => (
+                                        <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.9rem' }}>
+                                            <span>#{o.order_number || o.id}</span>
+                                            <span>₹{parseFloat(o.total_amount).toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', borderTop: '2px dashed var(--border-color)' }}>
+                                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>₹{group.total.toFixed(2)}</span>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <button 
+                                            className="btn btn-primary" 
+                                            onClick={() => handleSettleTable(tableNo, 'cash', group.orders)}
+                                            disabled={settlingTable === tableNo}
+                                        >
+                                            {settlingTable === tableNo ? '...' : 'Settle Cash'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            ) : viewMode === 'list' ? (
                 // PENDING ORDERS LIST VIEW
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
                     {pendingOrders.length === 0 ? (
