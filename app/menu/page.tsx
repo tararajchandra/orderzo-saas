@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { MenuItem } from '@/types';
 import { useCart } from '@/contexts/CartContext';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 
 function MenuContent() {
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -119,6 +120,7 @@ function MenuContent() {
                             <div style={{
                                 width: '100%',
                                 height: '200px',
+                                position: 'relative',
                                 background: item.image_url ? 'transparent' : 'linear-gradient(135deg, rgba(255,100,50,0.2) 0%, rgba(150,50,255,0.2) 100%)',
                                 borderRadius: 'var(--radius-md)',
                                 marginBottom: '1rem',
@@ -129,10 +131,13 @@ function MenuContent() {
                                 overflow: 'hidden',
                             }}>
                                 {item.image_url ? (
-                                    <img
+                                    <Image
                                         src={item.image_url}
                                         alt={item.name}
-                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                        fill
+                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                        style={{ objectFit: 'cover' }}
+                                        loading="lazy"
                                     />
                                 ) : (
                                     '🍽️'

@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-    LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-    XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-} from 'recharts';
+import dynamic from 'next/dynamic';
 
+const AnalyticsCharts = dynamic(() => import('./AnalyticsCharts'), { 
+    ssr: false,
+    loading: () => <div style={{ textAlign: 'center', padding: '2rem' }}>Loading charts...</div>
+});
 
 interface AnalyticsData {
     totalRevenue: number;
@@ -18,8 +19,6 @@ interface AnalyticsData {
     paymentMethods: { method: string; count: number; amount: number }[];
     categoryRevenue: { category: string; revenue: number }[];
 }
-
-const COLORS = ['#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444'];
 
 export default function AnalyticsPage() {
     const router = useRouter();
@@ -73,51 +72,22 @@ export default function AnalyticsPage() {
     }
 
     return (
-        <main className="container" style={{ padding: '2rem 1.5rem' }}>
+        <main className="container" style={{ padding: '2rem 1rem' }}>
             <div className="fade-in">
-                {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                     <h1>Analytics Dashboard</h1>
-                    <button onClick={() => router.push('/admin/dashboard')} className="btn btn-ghost">
-                        ← Back to Dashboard
-                    </button>
-                </div>
-
-                {/* Date Range Filter */}
-                <div className="glass-card" style={{ marginBottom: '2rem' }}>
-                    <h3 style={{ marginBottom: '1rem' }}>Time Period</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
-                        <button
-                            onClick={() => setDateRange('7days')}
-                            className={dateRange === '7days' ? 'btn btn-primary' : 'btn btn-ghost'}
-                        >
-                            Last 7 Days
-                        </button>
-                        <button
-                            onClick={() => setDateRange('30days')}
-                            className={dateRange === '30days' ? 'btn btn-primary' : 'btn btn-ghost'}
-                        >
-                            Last 30 Days
-                        </button>
-                        <button
-                            onClick={() => setDateRange('90days')}
-                            className={dateRange === '90days' ? 'btn btn-primary' : 'btn btn-ghost'}
-                        >
-                            Last 90 Days
-                        </button>
-                        <button
-                            onClick={() => setDateRange('year')}
-                            className={dateRange === 'year' ? 'btn btn-primary' : 'btn btn-ghost'}
-                        >
-                            Last Year
-                        </button>
-                        <button
-                            onClick={() => setDateRange('all')}
-                            className={dateRange === 'all' ? 'btn btn-primary' : 'btn btn-ghost'}
-                        >
-                            All Time
-                        </button>
-                    </div>
+                    <select
+                        className="input"
+                        value={dateRange}
+                        onChange={(e) => setDateRange(e.target.value)}
+                        style={{ width: 'auto' }}
+                    >
+                        <option value="7days">Last 7 Days</option>
+                        <option value="30days">Last 30 Days</option>
+                        <option value="90days">Last 90 Days</option>
+                        <option value="year">Last 1 Year</option>
+                        <option value="all">All Time</option>
+                    </select>
                 </div>
 
                 {/* Key Metrics */}
@@ -136,164 +106,7 @@ export default function AnalyticsPage() {
                     </div>
                 </div>
 
-                {/* Revenue Trend Chart */}
-                <div className="glass-card" style={{ marginBottom: '2rem' }}>
-                    <h2 style={{ marginBottom: '1.5rem' }}>Revenue Trend</h2>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={analytics.revenueByDay}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                            <XAxis dataKey="date" stroke="var(--text-muted)" />
-                            <YAxis stroke="var(--text-muted)" />
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: 'var(--bg-secondary)',
-                                    border: '1px solid var(--border-color)',
-                                    borderRadius: '8px',
-                                }}
-                            />
-                            <Legend />
-                            <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} name="Revenue (₹)" />
-                            <Line type="monotone" dataKey="orders" stroke="#8b5cf6" strokeWidth={2} name="Orders" />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
-
-                {/* Charts Grid */}
-                <div className="grid grid-2" style={{ marginBottom: '2rem' }}>
-                    {/* Top Selling Items */}
-                    <div className="glass-card">
-                        <h2 style={{ marginBottom: '1.5rem' }}>Top Selling Items</h2>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={analytics.topSellingItems.slice(0, 5)}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                                <XAxis dataKey="name" stroke="var(--text-muted)" />
-                                <YAxis stroke="var(--text-muted)" />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: 'var(--bg-secondary)',
-                                        border: '1px solid var(--border-color)',
-                                        borderRadius: '8px',
-                                    }}
-                                />
-                                <Legend />
-                                <Bar dataKey="revenue" fill="#8b5cf6" name="Revenue (₹)" />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    {/* Category Revenue */}
-                    <div className="glass-card">
-                        <h2 style={{ marginBottom: '1.5rem' }}>Revenue by Category</h2>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <PieChart>
-                                <Pie
-                                    data={analytics.categoryRevenue}
-                                    cx="50%"
-                                    cy="50%"
-                                    labelLine={false}
-                                    label={(entry) => `${entry.category}: ₹${entry.revenue.toFixed(0)}`}
-                                    outerRadius={80}
-                                    fill="#8884d8"
-                                    dataKey="revenue"
-                                >
-                                    {analytics.categoryRevenue.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: 'var(--bg-secondary)',
-                                        border: '1px solid var(--border-color)',
-                                        borderRadius: '8px',
-                                    }}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    {/* Order Status */}
-                    <div className="glass-card">
-                        <h2 style={{ marginBottom: '1.5rem' }}>Orders by Status</h2>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <PieChart>
-                                <Pie
-                                    data={analytics.ordersByStatus}
-                                    cx="50%"
-                                    cy="50%"
-                                    labelLine={false}
-                                    label={(entry) => `${entry.status}: ${entry.count}`}
-                                    outerRadius={80}
-                                    fill="#8884d8"
-                                    dataKey="count"
-                                >
-                                    {analytics.ordersByStatus.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: 'var(--bg-secondary)',
-                                        border: '1px solid var(--border-color)',
-                                        borderRadius: '8px',
-                                    }}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    {/* Payment Methods */}
-                    <div className="glass-card">
-                        <h2 style={{ marginBottom: '1.5rem' }}>Payment Methods</h2>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={analytics.paymentMethods}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                                <XAxis dataKey="method" stroke="var(--text-muted)" />
-                                <YAxis stroke="var(--text-muted)" />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: 'var(--bg-secondary)',
-                                        border: '1px solid var(--border-color)',
-                                        borderRadius: '8px',
-                                    }}
-                                />
-                                <Legend />
-                                <Bar dataKey="amount" fill="#ec4899" name="Amount (₹)" />
-                                <Bar dataKey="count" fill="#f59e0b" name="Count" />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Top Selling Items Table */}
-                <div className="glass-card">
-                    <h2 style={{ marginBottom: '1.5rem' }}>Top 10 Selling Items</h2>
-                    <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
-                                    <th style={{ padding: '1rem', textAlign: 'left' }}>Rank</th>
-                                    <th style={{ padding: '1rem', textAlign: 'left' }}>Item Name</th>
-                                    <th style={{ padding: '1rem', textAlign: 'right' }}>Quantity Sold</th>
-                                    <th style={{ padding: '1rem', textAlign: 'right' }}>Revenue</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {analytics.topSellingItems.map((item, index) => (
-                                    <tr key={index} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                        <td style={{ padding: '1rem' }}>
-                                            <span className="badge badge-primary">#{index + 1}</span>
-                                        </td>
-                                        <td style={{ padding: '1rem', fontWeight: 500 }}>{item.name}</td>
-                                        <td style={{ padding: '1rem', textAlign: 'right' }}>{item.quantity}</td>
-                                        <td style={{ padding: '1rem', textAlign: 'right', color: 'var(--success)', fontWeight: 600 }}>
-                                            ₹{item.revenue.toFixed(2)}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <AnalyticsCharts analytics={analytics} />
             </div>
         </main>
     );

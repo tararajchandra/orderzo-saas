@@ -82,10 +82,12 @@ export async function POST(request: Request) {
         }
 
         // Generate invoice number with format INV-YYYYMMDD-XXXX
-        const invoiceDate = new Date().toISOString().split('T')[0].replace(/-/g, '');
+        const invoiceDateStr = new Date().toISOString().split('T')[0];
+        const invoiceDate = invoiceDateStr.replace(/-/g, '');
         const invoiceCountResult = await query(
-            `SELECT COUNT(*) as count FROM invoices WHERE invoice_number LIKE $1`,
-            [`INV-${invoiceDate}-%`]
+            `SELECT COUNT(*) as count FROM invoices 
+             WHERE generated_at >= CURRENT_DATE 
+             AND generated_at < (CURRENT_DATE + INTERVAL '1 day')`
         );
         const invoiceCount = parseInt(invoiceCountResult.rows[0].count) + 1;
         const invoiceNumber = `INV-${invoiceDate}-${String(invoiceCount).padStart(4, '0')}`;

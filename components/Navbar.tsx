@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useCart } from '@/contexts/CartContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import Image from 'next/image';
 
 export default function Navbar() {
     const pathname = usePathname();
@@ -34,7 +35,14 @@ export default function Navbar() {
         <nav className="navbar">
             <div className="container navbar-content">
                 <Link href="/" className="navbar-logo" style={{ display: 'flex', alignItems: 'center' }}>
-                    <img src="/OrderZo_Logo_Mod.png" alt="OrderZo Logo" style={{ height: '120px', width: 'auto', marginLeft: '-15px' }} />
+                    <Image 
+                        src="/OrderZo_Logo_Mod.png" 
+                        alt="OrderZo Logo" 
+                        width={240} 
+                        height={120} 
+                        priority
+                        style={{ height: '120px', width: 'auto', marginLeft: '-15px' }} 
+                    />
                 </Link>
 
                 <div className="navbar-links">

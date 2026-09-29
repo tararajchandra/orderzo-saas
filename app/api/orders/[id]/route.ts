@@ -135,13 +135,12 @@ export async function PUT(
         
         if (invoiceCheck.rows.length === 0 && payment_status === 'paid') {
             // Generate invoice if paid and doesn't exist yet
-            const invoiceDate = new Date().toISOString().split('T')[0].replace(/-/g, '');
+            const invoiceDateStr = new Date().toISOString().split('T')[0];
+            const invoiceDate = invoiceDateStr.replace(/-/g, '');
             const invoiceCountResult = await query(
                 `SELECT COUNT(*) as count FROM invoices 
                  WHERE generated_at >= CURRENT_DATE 
-                 AND generated_at < (CURRENT_DATE + INTERVAL '1 day')
-                 AND invoice_number LIKE $1`,
-                [`INV-${invoiceDate}-%`]
+                 AND generated_at < (CURRENT_DATE + INTERVAL '1 day')`
             );
             const invoiceCount = parseInt(invoiceCountResult.rows[0].count) + 1;
             const invoiceNumber = `INV-${invoiceDate}-${String(invoiceCount).padStart(4, '0')}`;

@@ -148,13 +148,11 @@ export async function POST(request: Request) {
         const today = new Date();
         const datePrefix = today.toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD format
 
-        // Optimized count query using date range instead of DATE() function for better index usage
+        // Optimized count query using date range for better index usage
         const orderCountResult = await client.query(
             `SELECT COUNT(*) as count FROM orders 
              WHERE created_at >= CURRENT_DATE 
-             AND created_at < (CURRENT_DATE + INTERVAL '1 day')
-             AND order_number LIKE $1`,
-            [`${datePrefix}-%`]
+             AND created_at < (CURRENT_DATE + INTERVAL '1 day')`
         );
         const orderCount = parseInt(orderCountResult.rows[0].count) + 1;
         const orderNumber = `${datePrefix}-${String(orderCount).padStart(3, '0')}`; // Format: YYYYMMDD-XXX
@@ -208,15 +206,14 @@ export async function POST(request: Request) {
         let invoiceNumber = null;
         
         if (payment_status === 'paid') {
-            const invoiceDate = new Date().toISOString().split('T')[0].replace(/-/g, '');
+            const invoiceDateStr = new Date().toISOString().split('T')[0];
+            const invoiceDate = invoiceDateStr.replace(/-/g, '');
 
-            // Optimized invoice count query
+            // Optimized invoice count query using date range for index usage
             const invoiceCountResult = await client.query(
                 `SELECT COUNT(*) as count FROM invoices 
                  WHERE generated_at >= CURRENT_DATE 
-                 AND generated_at < (CURRENT_DATE + INTERVAL '1 day')
-                 AND invoice_number LIKE $1`,
-                [`INV-${invoiceDate}-%`]
+                 AND generated_at < (CURRENT_DATE + INTERVAL '1 day')`
             );
             const invoiceCount = parseInt(invoiceCountResult.rows[0].count) + 1;
             invoiceNumber = `INV-${invoiceDate}-${String(invoiceCount).padStart(4, '0')}`;

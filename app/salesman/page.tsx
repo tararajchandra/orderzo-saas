@@ -110,14 +110,13 @@ export default function SalesmanDashboard() {
     const fetchActiveTables = async () => {
         if (!user) return;
         try {
-            // Fetch all orders to get active tables regardless of who placed them
-            const res = await fetch(`/api/orders`);
+            // Fetch all dine-in orders that are pending payment
+            const res = await fetch(`/api/orders?type=dine_in&payment_status=pending&limit=200&include_items=true`);
             const data = await res.json();
             if (data.success) {
+                // Filter out cancelled just in case
                 const dineInOrders = data.data.filter((o: any) => 
-                    (o.order_type === 'dine_in' || o.order_type === 'dine-in') && 
                     o.table_number && 
-                    o.payment_status !== 'paid' &&
                     o.order_status !== 'cancelled'
                 );
                 setActiveTables(dineInOrders);
