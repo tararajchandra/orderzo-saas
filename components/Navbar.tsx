@@ -38,10 +38,10 @@ export default function Navbar() {
                     <Image 
                         src="/OrderZo_Logo_Mod.png" 
                         alt="OrderZo Logo" 
-                        width={240} 
-                        height={120} 
+                        width={120} 
+                        height={60} 
                         priority
-                        style={{ height: '120px', width: 'auto', marginLeft: '-15px' }} 
+                        style={{ height: '60px', width: 'auto', marginLeft: '-15px' }} 
                     />
                 </Link>
 

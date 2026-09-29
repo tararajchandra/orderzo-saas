@@ -146,6 +146,11 @@ export default function AdminDashboard() {
                         <h3 style={{ color: 'var(--primary)' }}>Quick Bill</h3>
                         <p className="text-muted">Create Invoice & Print</p>
                     </Link>
+                    <Link href="/admin/qr-codes" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📱</div>
+                        <h3>Table QR Codes</h3>
+                        <p className="text-muted">Print QR for tables</p>
+                    </Link>
                     <Link href="/admin/data-management" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
                         <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📊</div>
                         <h3>Data Import/Export</h3>
@@ -180,6 +185,11 @@ export default function AdminDashboard() {
                         <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>👨‍💼</div>
                         <h3>Salesman Report</h3>
                         <p className="text-muted">Salesman-wise sales data</p>
+                    </Link>
+                    <Link href="/admin/table-report" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🍽️</div>
+                        <h3>Table Report</h3>
+                        <p className="text-muted">Table-wise sales data</p>
                     </Link>
                 </div>
 
