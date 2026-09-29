@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function NewKitchen StaffPage() {
+export default function NewKitchenStaffPage() {
     const router = useRouter();
     const [formData, setFormData] = useState({
         name: '',
@@ -34,7 +34,7 @@ export default function NewKitchen StaffPage() {
                 setError(data.error);
             }
         } catch (err) {
-            setError('Failed to create Kitchen Staff');
+            setError('Failed to create KitchenStaff');
         } finally {
             setSaving(false);
         }
@@ -44,7 +44,7 @@ export default function NewKitchen StaffPage() {
         <main className="container" style={{ padding: '2rem 1.5rem' }}>
             <div className="fade-in" style={{ maxWidth: '600px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '2rem' }}>
-                    <h1>Add New Kitchen Staff</h1>
+                    <h1>Add New KitchenStaff</h1>
                     <Link href="/admin/kitchen-staff" className="text-muted" style={{ textDecoration: 'none' }}>
                         ← Back to List
                     </Link>
@@ -107,7 +107,7 @@ export default function NewKitchen StaffPage() {
                             className="btn btn-primary"
                             disabled={saving}
                         >
-                            {saving ? 'Creating...' : 'Create Kitchen Staff'}
+                            {saving ? 'Creating...' : 'Create KitchenStaff'}
                         </button>
                     </form>
                 </div>

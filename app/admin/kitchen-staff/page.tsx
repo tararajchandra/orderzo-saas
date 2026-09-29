@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-export default function Kitchen StaffPage() {
-    const [Kitchen Staff, setKitchen Staff] = useState<any[]>([]);
+export default function KitchenStaffPage() {
+    const [KitchenStaff, setKitchenStaff] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
@@ -15,39 +15,39 @@ export default function Kitchen StaffPage() {
             router.push('/admin');
             return;
         }
-        fetchKitchen Staff();
+        fetchKitchenStaff();
     }, []);
 
-    const fetchKitchen Staff = async () => {
+    const fetchKitchenStaff = async () => {
         try {
-            const response = await fetch('/api/admin/Kitchen Staff');
+            const response = await fetch('/api/admin/KitchenStaff');
             const data = await response.json();
             if (data.success) {
-                setKitchen Staff(data.data);
+                setKitchenStaff(data.data);
             }
         } catch (error) {
-            console.error('Error fetching Kitchen Staff:', error);
+            console.error('Error fetching KitchenStaff:', error);
         } finally {
             setLoading(false);
         }
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Are you sure you want to delete this Kitchen Staff?')) return;
+        if (!confirm('Are you sure you want to delete this KitchenStaff?')) return;
 
         try {
-            const response = await fetch(`/api/admin/Kitchen Staff/${id}`, {
+            const response = await fetch(`/api/admin/KitchenStaff/${id}`, {
                 method: 'DELETE',
             });
             const data = await response.json();
             if (data.success) {
-                fetchKitchen Staff();
+                fetchKitchenStaff();
             } else {
                 alert(data.error);
             }
         } catch (error) {
-            console.error('Error deleting Kitchen Staff:', error);
-            alert('Failed to delete Kitchen Staff');
+            console.error('Error deleting KitchenStaff:', error);
+            alert('Failed to delete KitchenStaff');
         }
     };
 
@@ -58,13 +58,13 @@ export default function Kitchen StaffPage() {
             <div className="fade-in">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                     <div>
-                        <h1>Kitchen Staff Management</h1>
+                        <h1>KitchenStaff Management</h1>
                         <Link href="/admin/dashboard" className="text-muted" style={{ textDecoration: 'none' }}>
                             ← Back to Dashboard
                         </Link>
                     </div>
-                    <Link href="/admin/Kitchen Staff/new" className="btn btn-primary">
-                        + Add New Kitchen Staff
+                    <Link href="/admin/KitchenStaff/new" className="btn btn-primary">
+                        + Add New KitchenStaff
                     </Link>
                 </div>
 
@@ -79,25 +79,25 @@ export default function Kitchen StaffPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {Kitchen Staff.length === 0 ? (
+                            {KitchenStaff.length === 0 ? (
                                 <tr>
                                     <td colSpan={4} className="text-center p-4 text-muted">
-                                        No Kitchen Staff found. Create one to get started.
+                                        No KitchenStaff found. Create one to get started.
                                     </td>
                                 </tr>
                             ) : (
-                                Kitchen Staff.map((Kitchen Staff) => (
-                                    <tr key={Kitchen Staff.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                        <td style={{ padding: '1rem' }}>{Kitchen Staff.name}</td>
-                                        <td style={{ padding: '1rem' }}>{Kitchen Staff.email}</td>
-                                        <td style={{ padding: '1rem' }}>{Kitchen Staff.phone || '-'}</td>
+                                KitchenStaff.map((KitchenStaff) => (
+                                    <tr key={KitchenStaff.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                        <td style={{ padding: '1rem' }}>{KitchenStaff.name}</td>
+                                        <td style={{ padding: '1rem' }}>{KitchenStaff.email}</td>
+                                        <td style={{ padding: '1rem' }}>{KitchenStaff.phone || '-'}</td>
                                         <td style={{ padding: '1rem', textAlign: 'right' }}>
                                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                                <Link href={`/admin/Kitchen Staff/${Kitchen Staff.id}/edit`} className="btn btn-ghost" style={{ padding: '0.5rem' }}>
+                                                <Link href={`/admin/KitchenStaff/${KitchenStaff.id}/edit`} className="btn btn-ghost" style={{ padding: '0.5rem' }}>
                                                     ✏️
                                                 </Link>
                                                 <button
-                                                    onClick={() => handleDelete(Kitchen Staff.id)}
+                                                    onClick={() => handleDelete(KitchenStaff.id)}
                                                     className="btn btn-ghost"
                                                     style={{ padding: '0.5rem', color: 'var(--error)' }}
                                                 >

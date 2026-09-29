@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function EditKitchen StaffPage() {
+export default function EditKitchenStaffPage() {
     const router = useRouter();
     const params = useParams();
     const [formData, setFormData] = useState({
@@ -18,10 +18,10 @@ export default function EditKitchen StaffPage() {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        fetchKitchen Staff();
+        fetchKitchenStaff();
     }, []);
 
-    const fetchKitchen Staff = async () => {
+    const fetchKitchenStaff = async () => {
         try {
             const response = await fetch(`/api/admin/kitchen-staff`); // Fetch all and find (not optimal but api supports generic get list or generic put) 
             // Better to fetch specific, but my API was /api/admin/kitchen-staff (List) and /api/admin/kitchen-staff/[id] (PUT/DELETE)
@@ -32,16 +32,16 @@ export default function EditKitchen StaffPage() {
             const listData = await listResponse.json();
 
             if (listData.success) {
-                const Kitchen Staff = listData.data.find((s: any) => s.id.toString() === params.id);
-                if (Kitchen Staff) {
+                const KitchenStaff = listData.data.find((s: any) => s.id.toString() === params.id);
+                if (KitchenStaff) {
                     setFormData({
-                        name: Kitchen Staff.name,
-                        email: Kitchen Staff.email,
+                        name: KitchenStaff.name,
+                        email: KitchenStaff.email,
                         password: '',
-                        phone: Kitchen Staff.phone || '',
+                        phone: KitchenStaff.phone || '',
                     });
                 } else {
-                    setError('Kitchen Staff not found');
+                    setError('KitchenStaff not found');
                 }
             }
         } catch (err) {
@@ -79,7 +79,7 @@ export default function EditKitchen StaffPage() {
                 setError(data.error);
             }
         } catch (err) {
-            setError('Failed to update Kitchen Staff');
+            setError('Failed to update KitchenStaff');
         } finally {
             setSaving(false);
         }
@@ -92,7 +92,7 @@ export default function EditKitchen StaffPage() {
         <main className="container" style={{ padding: '2rem 1.5rem' }}>
             <div className="fade-in" style={{ maxWidth: '600px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '2rem' }}>
-                    <h1>Edit Kitchen Staff</h1>
+                    <h1>Edit KitchenStaff</h1>
                     <Link href="/admin/kitchen-staff" className="text-muted" style={{ textDecoration: 'none' }}>
                         ← Back to List
                     </Link>
@@ -154,7 +154,7 @@ export default function EditKitchen StaffPage() {
                             className="btn btn-primary"
                             disabled={saving}
                         >
-                            {saving ? 'Saving...' : 'Update Kitchen Staff'}
+                            {saving ? 'Saving...' : 'Update KitchenStaff'}
                         </button>
                     </form>
                 </div>
