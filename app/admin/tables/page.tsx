@@ -53,7 +53,7 @@ export default function AdminTablesPage() {
 
     const fetchActiveTableOrders = async (isPolling = false) => {
         try {
-            const response = await fetch('/api/orders', { cache: 'no-store' });
+            const response = await fetch('/api/orders?type=dine_in&payment_status=pending&limit=200&include_items=true', { cache: 'no-store' });
             const data = await response.json();
             if (data.success) {
                 const activeDineInOrders = data.data.filter((o: any) => 

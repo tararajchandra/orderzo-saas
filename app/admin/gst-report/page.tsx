@@ -45,7 +45,7 @@ export default function GSTReportPage() {
             setLoading(true);
 
             // Fetch orders with invoices
-            const ordersResponse = await fetch('/api/orders');
+            const ordersResponse = await fetch('/api/orders?include_items=true&limit=2000');
             const ordersData = await ordersResponse.json();
 
             if (!ordersData.success) {

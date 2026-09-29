@@ -46,7 +46,7 @@ export default function DeliveryDashboard() {
             const salesmenIds = salesmenData.success ? salesmenData.data.map((s: any) => s.id) : [];
 
             // Fetch Orders
-            const ordersRes = await fetch('/api/orders');
+            const ordersRes = await fetch('/api/orders?include_items=true');
             const ordersData = await ordersRes.json();
 
             if (ordersData.success) {

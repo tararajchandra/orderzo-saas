@@ -53,7 +53,7 @@ export default function ProductSalesReportPage() {
 
     const fetchProductSales = async () => {
         try {
-            const response = await fetch('/api/orders');
+            const response = await fetch('/api/orders?include_items=true&limit=2000');
             const data = await response.json();
 
             if (data.success) {
