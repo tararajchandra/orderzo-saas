@@ -10,10 +10,10 @@ export default function Footer() {
                     <span className="text-muted">Developed by</span>
                     <div className="footer-logo">
                         <Image
-                            src="/logo.png"
+                            src="/OrderZo_Logo_Mod.jpg"
                             alt="Developer Logo"
-                            width={100}
-                            height={40}
+                            width={120}
+                            height={60}
                             style={{ objectFit: 'contain' }}
                         />
                     </div>

@@ -34,7 +34,7 @@ export default function Navbar() {
         <nav className="navbar">
             <div className="container navbar-content">
                 <Link href="/" className="navbar-logo" style={{ display: 'flex', alignItems: 'center' }}>
-                    <img src="/logo.png" alt="OrderZo Logo" style={{ height: '100px', width: 'auto', marginLeft: '-15px' }} />
+                    <img src="/OrderZo_Logo_Mod.jpg" alt="OrderZo Logo" style={{ height: '120px', width: 'auto', marginLeft: '-15px' }} />
                 </Link>
 
                 <div className="navbar-links">
