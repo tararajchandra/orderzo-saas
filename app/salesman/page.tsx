@@ -165,19 +165,64 @@ export default function SalesmanDashboard() {
         
         setSettlingTable(tableNo);
         try {
-            const updatePromises = groupOrders.map((order: any) => 
-                fetch(`/api/orders/${order.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        payment_status: 'paid',
-                        payment_method: paymentMethod,
-                        order_status: 'delivered'
-                    }),
-                })
-            );
+            // Sort by oldest first so we keep the first order id as the master
+            const sortedOrders = [...groupOrders].sort((a: any, b: any) => a.id - b.id);
+            const masterOrder = sortedOrders[0];
+            const otherOrders = sortedOrders.slice(1);
+
+            let combinedItems: any[] = [];
+            let totalSubtotal = 0;
+            let totalTax = 0;
+            let totalDiscount = 0;
             
-            await Promise.all(updatePromises);
+            sortedOrders.forEach((o: any) => {
+                let parsedItems = [];
+                try {
+                    parsedItems = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []);
+                } catch(e) {}
+                combinedItems = [...combinedItems, ...parsedItems];
+                totalSubtotal += parseFloat(o.subtotal || 0);
+                totalTax += parseFloat(o.tax || 0);
+                totalDiscount += parseFloat(o.discount || 0);
+            });
+
+            const mergedItemsMap = new Map();
+            combinedItems.forEach(item => {
+                const key = item.menuItem.id;
+                if (mergedItemsMap.has(key)) {
+                    const existing = mergedItemsMap.get(key);
+                    mergedItemsMap.set(key, { ...existing, quantity: existing.quantity + item.quantity });
+                } else {
+                    mergedItemsMap.set(key, item);
+                }
+            });
+            const finalItems = Array.from(mergedItemsMap.values());
+            const finalTotal = totalSubtotal + totalTax - totalDiscount;
+
+            // Update Master Order with merged items and totals
+            await fetch(`/api/orders/${masterOrder.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    payment_status: 'paid',
+                    payment_method: paymentMethod,
+                    order_status: 'delivered',
+                    items: finalItems,
+                    subtotal: totalSubtotal,
+                    tax: totalTax,
+                    discount: totalDiscount,
+                    total_amount: finalTotal
+                }),
+            });
+            
+            // Delete the duplicate separated orders since they are now merged
+            if (otherOrders.length > 0) {
+                const deletePromises = otherOrders.map((o: any) => 
+                    fetch(`/api/orders/${o.id}`, { method: 'DELETE' })
+                );
+                await Promise.all(deletePromises);
+            }
+            
             alert(`Table ${tableNo} settled successfully!`);
             fetchActiveTables();
             fetchPendingOrders();
