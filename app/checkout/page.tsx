@@ -29,6 +29,8 @@ export default function CheckoutPage() {
     const [detectedLocationInfo, setDetectedLocationInfo] = useState<string>('');
     const [customerCoords, setCustomerCoords] = useState<{lat: number, lng: number, distance: number} | null>(null);
 
+    const [tableNumber, setTableNumber] = useState<string | null>(null);
+
     useEffect(() => {
         // Fetch settings and delivery locations in parallel
         Promise.all([
@@ -40,6 +42,12 @@ export default function CheckoutPage() {
                 if (locationsData.success) setDeliveryLocations(locationsData.data);
             })
             .catch(err => console.error('Error fetching checkout data:', err));
+            
+        // Check for table number
+        const storedTable = sessionStorage.getItem('table_number');
+        if (storedTable) {
+            setTableNumber(storedTable);
+        }
     }, []);
 
     const [formData, setFormData] = useState({
@@ -76,6 +84,7 @@ export default function CheckoutPage() {
     };
 
     const getDeliveryCharge = () => {
+        if (tableNumber) return 0; // No delivery charge for dine in
         if (!selectedLocationId) return 0;
         const location = deliveryLocations.find(loc => loc.id === selectedLocationId || Number(loc.id) === Number(selectedLocationId));
         return location ? parseFloat(location.delivery_charge.toString()) : 0;
@@ -88,16 +97,18 @@ export default function CheckoutPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!selectedLocationId) {
-            alert('Please select a delivery location');
-            return;
-        }
+        if (!tableNumber) {
+            if (!selectedLocationId) {
+                alert('Please select a delivery location');
+                return;
+            }
 
-        const location = deliveryLocations.find(loc => loc.id === selectedLocationId || Number(loc.id) === Number(selectedLocationId));
-        if (location && location.min_order_value && subtotal < parseFloat(location.min_order_value.toString())) {
-            alert(`Minimum order value for ${location.location_name} is ₹${parseFloat(location.min_order_value.toString()).toFixed(2)}. Your current subtotal is ₹${subtotal.toFixed(2)}.`);
-            setLoading(false);
-            return;
+            const location = deliveryLocations.find(loc => loc.id === selectedLocationId || Number(loc.id) === Number(selectedLocationId));
+            if (location && location.min_order_value && subtotal < parseFloat(location.min_order_value.toString())) {
+                alert(`Minimum order value for ${location.location_name} is ₹${parseFloat(location.min_order_value.toString()).toFixed(2)}. Your current subtotal is ₹${subtotal.toFixed(2)}.`);
+                setLoading(false);
+                return;
+            }
         }
 
         setLoading(true);
@@ -105,10 +116,11 @@ export default function CheckoutPage() {
         try {
             const orderData = {
                 user_id: user?.id,
-                customer_name: formData.name,
-                customer_phone: formData.phone,
-                customer_address: formData.address,
-                order_type: 'delivery',
+                customer_name: formData.name || 'Walk-in Customer',
+                customer_phone: formData.phone || 'N/A',
+                customer_address: tableNumber ? null : formData.address,
+                order_type: tableNumber ? 'dine_in' : 'delivery',
+                table_number: tableNumber,
                 items: cart.map(item => ({
                     menuItem: {
                         id: item.menuItem.id,
@@ -121,14 +133,14 @@ export default function CheckoutPage() {
                 subtotal,
                 tax,
                 discount: 0,
-                delivery_location_id: selectedLocationId ? Number(selectedLocationId) : null,
+                delivery_location_id: tableNumber ? null : (selectedLocationId ? Number(selectedLocationId) : null),
                 delivery_charge: deliveryCharge,
                 total_amount: total,
                 payment_method: formData.paymentMethod,
                 notes: formData.notes,
-                customer_lat: customerCoords?.lat,
-                customer_lng: customerCoords?.lng,
-                distance: customerCoords?.distance,
+                customer_lat: tableNumber ? null : customerCoords?.lat,
+                customer_lng: tableNumber ? null : customerCoords?.lng,
+                distance: tableNumber ? null : customerCoords?.distance,
             };
 
             const response = await fetch('/api/orders', {
@@ -141,6 +153,8 @@ export default function CheckoutPage() {
 
             if (data.success) {
                 clearCart();
+                // Optionally clear table number after successful order so next orders don't default to it if they left the table
+                // sessionStorage.removeItem('table_number');
                 router.push(`/orders?success=true&orderId=${data.data.id}`);
             } else {
                 alert('Failed to place order. Please try again.');
@@ -154,6 +168,7 @@ export default function CheckoutPage() {
     };
 
     const detectMyLocation = async (isSilent: boolean = false) => {
+        if (tableNumber) return; // Skip if dine in
         if (!navigator.geolocation) {
             if (!isSilent) alert('GPS is not supported by your browser. Please select your location manually.');
             return;
@@ -348,14 +363,14 @@ export default function CheckoutPage() {
 
     // Auto-detect location on page load
     useEffect(() => {
-        if (cartLoaded && !authLoading && cart.length > 0 && !selectedLocationId) {
+        if (cartLoaded && !authLoading && cart.length > 0 && !selectedLocationId && !tableNumber) {
             // Wait a moment for everything to settle
             const timer = setTimeout(() => {
                 detectMyLocation(true);
             }, 1000);
             return () => clearTimeout(timer);
         }
-    }, [cartLoaded, authLoading, cart.length]);
+    }, [cartLoaded, authLoading, cart.length, tableNumber]);
 
     if (!cartLoaded || authLoading) {
         return (
@@ -378,124 +393,14 @@ export default function CheckoutPage() {
 
                 <form onSubmit={handleSubmit}>
                     <div style={{ display: 'grid', gap: '2rem' }}>
-                        {/* Customer Details */}
-                        <div className="glass-card">
-                            <h3 style={{ marginBottom: '1.5rem' }}>Delivery Details</h3>
-
-                            <div style={{ display: 'grid', gap: '1.25rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-                                        Full Name *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        className="input"
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        placeholder="Enter your full name"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-                                        Phone Number *
-                                    </label>
-                                    <input
-                                        type="tel"
-                                        required
-                                        className="input"
-                                        value={formData.phone}
-                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                        placeholder="Enter your phone number"
-                                    />
-                                </div>
-
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                        <label style={{ fontWeight: 500 }}>
-                                            Delivery Location *
-                                        </label>
-                                        <button
-                                            type="button"
-                                            onClick={() => detectMyLocation(false)}
-                                            disabled={detectingLocation}
-                                            className="btn btn-ghost"
-                                            style={{
-                                                padding: '0.5rem 1rem',
-                                                fontSize: '0.875rem',
-                                                background: 'rgba(59, 130, 246, 0.1)',
-                                                border: '1px solid rgba(59, 130, 246, 0.3)'
-                                            }}
-                                        >
-                                            {detectingLocation ? (
-                                                <>
-                                                    <span className="spinner" style={{ width: '14px', height: '14px', marginRight: '0.5rem' }}></span>
-                                                    Detecting...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    📍 {selectedLocationId ? 'Refresh Location' : 'Detect My Location'}
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-
-                                    {detectedLocationInfo && (
-                                        <div style={{
-                                            marginBottom: '0.75rem',
-                                            padding: '0.75rem',
-                                            background: detectedLocationInfo.includes('✓') ? 'rgba(34, 197, 94, 0.1)' : 'rgba(251, 146, 60, 0.1)',
-                                            border: `1px solid ${detectedLocationInfo.includes('✓') ? 'rgba(34, 197, 94, 0.3)' : 'rgba(251, 146, 60, 0.3)'}`,
-                                            borderRadius: '8px',
-                                            fontSize: '0.875rem',
-                                            color: detectedLocationInfo.includes('✓') ? 'var(--success)' : 'var(--warning)'
-                                        }}>
-                                            {detectedLocationInfo}
-                                        </div>
-                                    )}
-
-                                    <select
-                                        required
-                                        className="input"
-                                        value={selectedLocationId || ''}
-                                        onChange={(e) => setSelectedLocationId(e.target.value ? parseInt(e.target.value) : null)}
-                                    >
-                                        <option value="">Select your delivery location</option>
-                                        {deliveryLocations.map(loc => (
-                                            <option key={loc.id} value={loc.id}>
-                                                {loc.location_name} - ₹{parseFloat(loc.delivery_charge.toString()).toFixed(2)}
-                                                {loc.min_order_value && parseFloat(loc.min_order_value.toString()) > 0 ? ` (Min: ₹${parseFloat(loc.min_order_value.toString()).toFixed(2)})` : ''}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {selectedLocationId && (
-                                        <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                                            📍 Delivery charge: ₹{deliveryCharge.toFixed(2)}
-                                        </div>
-                                    )}
-
-                                    <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                        💡 Tip: We detect your location automatically. On iPhone/mobile, please ensure Location Services & Precise Location are enabled in your browser settings.
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-                                        Delivery Address *
-                                    </label>
-                                    <textarea
-                                        required
-                                        className="input"
-                                        value={formData.address}
-                                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                        placeholder="Enter your complete delivery address"
-                                        rows={3}
-                                        style={{ resize: 'vertical' }}
-                                    />
-                                </div>
-
-                                <div>
+                        
+                        {tableNumber ? (
+                            <div className="glass-card" style={{ border: '2px solid var(--primary)', backgroundColor: 'rgba(var(--primary-rgb), 0.05)' }}>
+                                <h3 style={{ marginBottom: '0.5rem', color: 'var(--primary)' }}>Dine-In Order</h3>
+                                <p style={{ fontSize: '1.25rem', fontWeight: 600 }}>Table Number: {tableNumber}</p>
+                                <p className="text-muted" style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>Your order will be served directly to your table. No delivery charge applies.</p>
+                                
+                                <div style={{ marginTop: '1.5rem' }}>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
                                         Special Instructions (Optional)
                                     </label>
@@ -503,13 +408,145 @@ export default function CheckoutPage() {
                                         className="input"
                                         value={formData.notes}
                                         onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                        placeholder="Any special requests or instructions"
+                                        placeholder="Any special requests or instructions for the chef"
                                         rows={2}
                                         style={{ resize: 'vertical' }}
                                     />
                                 </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="glass-card">
+                                <h3 style={{ marginBottom: '1.5rem' }}>Delivery Details</h3>
+
+                                <div style={{ display: 'grid', gap: '1.25rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                                            Full Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="input"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                            placeholder="Enter your full name"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                                            Phone Number *
+                                        </label>
+                                        <input
+                                            type="tel"
+                                            required
+                                            className="input"
+                                            value={formData.phone}
+                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                            placeholder="Enter your phone number"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                            <label style={{ fontWeight: 500 }}>
+                                                Delivery Location *
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => detectMyLocation(false)}
+                                                disabled={detectingLocation}
+                                                className="btn btn-ghost"
+                                                style={{
+                                                    padding: '0.5rem 1rem',
+                                                    fontSize: '0.875rem',
+                                                    background: 'rgba(59, 130, 246, 0.1)',
+                                                    border: '1px solid rgba(59, 130, 246, 0.3)'
+                                                }}
+                                            >
+                                                {detectingLocation ? (
+                                                    <>
+                                                        <span className="spinner" style={{ width: '14px', height: '14px', marginRight: '0.5rem' }}></span>
+                                                        Detecting...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        📍 {selectedLocationId ? 'Refresh Location' : 'Detect My Location'}
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+
+                                        {detectedLocationInfo && (
+                                            <div style={{
+                                                marginBottom: '0.75rem',
+                                                padding: '0.75rem',
+                                                background: detectedLocationInfo.includes('✓') ? 'rgba(34, 197, 94, 0.1)' : 'rgba(251, 146, 60, 0.1)',
+                                                border: `1px solid ${detectedLocationInfo.includes('✓') ? 'rgba(34, 197, 94, 0.3)' : 'rgba(251, 146, 60, 0.3)'}`,
+                                                borderRadius: '8px',
+                                                fontSize: '0.875rem',
+                                                color: detectedLocationInfo.includes('✓') ? 'var(--success)' : 'var(--warning)'
+                                            }}>
+                                                {detectedLocationInfo}
+                                            </div>
+                                        )}
+
+                                        <select
+                                            required
+                                            className="input"
+                                            value={selectedLocationId || ''}
+                                            onChange={(e) => setSelectedLocationId(e.target.value ? parseInt(e.target.value) : null)}
+                                        >
+                                            <option value="">Select your delivery location</option>
+                                            {deliveryLocations.map(loc => (
+                                                <option key={loc.id} value={loc.id}>
+                                                    {loc.location_name} - ₹{parseFloat(loc.delivery_charge.toString()).toFixed(2)}
+                                                    {loc.min_order_value && parseFloat(loc.min_order_value.toString()) > 0 ? ` (Min: ₹${parseFloat(loc.min_order_value.toString()).toFixed(2)})` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {selectedLocationId && (
+                                            <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                                                📍 Delivery charge: ₹{deliveryCharge.toFixed(2)}
+                                            </div>
+                                        )}
+
+                                        <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                            💡 Tip: We detect your location automatically. On iPhone/mobile, please ensure Location Services & Precise Location are enabled in your browser settings.
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                                            Delivery Address *
+                                        </label>
+                                        <textarea
+                                            required
+                                            className="input"
+                                            value={formData.address}
+                                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                            placeholder="Enter your complete delivery address"
+                                            rows={3}
+                                            style={{ resize: 'vertical' }}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                                            Special Instructions (Optional)
+                                        </label>
+                                        <textarea
+                                            className="input"
+                                            value={formData.notes}
+                                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                            placeholder="Any special requests or instructions"
+                                            rows={2}
+                                            style={{ resize: 'vertical' }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Payment Method */}
                         <div className="glass-card">
@@ -517,7 +554,7 @@ export default function CheckoutPage() {
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
                                 {[
-                                    { value: 'cash', label: 'Cash on Delivery', icon: '💵' },
+                                    { value: 'cash', label: tableNumber ? 'Pay at Counter / Cash' : 'Cash on Delivery', icon: '💵' },
                                 ].map((method) => (
                                     <button
                                         key={method.value}
@@ -575,7 +612,7 @@ export default function CheckoutPage() {
                                         <span>₹{tax.toFixed(2)}</span>
                                     </div>
                                 )}
-                                {deliveryCharge > 0 && (
+                                {deliveryCharge > 0 && !tableNumber && (
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                                         <span className="text-muted">Delivery Charge</span>
                                         <span>₹{deliveryCharge.toFixed(2)}</span>

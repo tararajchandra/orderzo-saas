@@ -42,7 +42,7 @@ export default function SalesmanDashboard() {
     const [settings, setSettings] = useState<any>(null);
 
     // Order Details
-    const [orderType, setOrderType] = useState<'dine-in' | 'takeaway'>('dine-in');
+    const [orderType, setOrderType] = useState<'dine_in' | 'takeaway'>('dine_in');
     const [tableNumber, setTableNumber] = useState('');
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
@@ -108,7 +108,7 @@ export default function SalesmanDashboard() {
         setEditingOrderId(order.id);
         setCustomerName(order.customer_name || '');
         setCustomerPhone(order.customer_phone || '');
-        setOrderType(order.order_type || 'dine-in');
+        setOrderType(order.order_type || 'dine_in');
         setTableNumber(order.table_number || '');
         setPaymentMethod(order.payment_method || 'cash');
 
@@ -132,7 +132,7 @@ export default function SalesmanDashboard() {
         setTableNumber('');
         setCustomerName('');
         setCustomerPhone('');
-        setOrderType('dine-in');
+        setOrderType('dine_in');
         setShowCartMobile(false);
     };
 
@@ -184,7 +184,7 @@ export default function SalesmanDashboard() {
     const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
 
     const handleSubmitOrder = async (status: string = 'pending') => {
-        if (orderType === 'dine-in' && !tableNumber) {
+        if (orderType === 'dine_in' && !tableNumber) {
             alert('Please provide Table Number for Dine-in');
             return;
         }
@@ -446,10 +446,10 @@ export default function SalesmanDashboard() {
                                         className="input"
                                         style={{ padding: '0.8rem' }}
                                     >
-                                        <option value="dine-in">Dine-in</option>
+                                        <option value="dine_in">Dine-in</option>
                                         <option value="takeaway">Takeaway</option>
                                     </select>
-                                    {orderType === 'dine-in' && (
+                                    {orderType === 'dine_in' && (
                                         <input
                                             className="input"
                                             placeholder="Table No."

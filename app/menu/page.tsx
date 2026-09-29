@@ -1,20 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { MenuItem } from '@/types';
 import { useCart } from '@/contexts/CartContext';
+import { useSearchParams } from 'next/navigation';
 
-export default function MenuPage() {
+function MenuContent() {
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const { addToCart } = useCart();
     const [addedItems, setAddedItems] = useState<Set<number>>(new Set());
+    
+    const searchParams = useSearchParams();
 
     useEffect(() => {
+        // Capture table number from URL and save to sessionStorage
+        const table = searchParams.get('table');
+        if (table) {
+            sessionStorage.setItem('table_number', table);
+            // Optionally, we can dispatch this to a context if needed, but sessionStorage is enough
+        }
+        
         fetchMenuItems();
-    }, []);
+    }, [searchParams]);
 
     const fetchMenuItems = async () => {
         try {
@@ -164,5 +174,17 @@ export default function MenuPage() {
                 )}
             </div>
         </main>
+    );
+}
+
+export default function MenuPage() {
+    return (
+        <Suspense fallback={
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+                <div className="spinner"></div>
+            </div>
+        }>
+            <MenuContent />
+        </Suspense>
     );
 }

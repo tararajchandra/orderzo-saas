@@ -34,6 +34,8 @@ export interface Order {
     payment_method: 'cash' | 'card' | 'upi' | 'wallet';
     payment_status?: 'pending' | 'paid' | 'failed';
     order_status?: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+    order_type?: 'delivery' | 'takeaway' | 'dine_in';
+    table_number?: string;
     notes?: string;
     created_at?: Date;
     updated_at?: Date;
