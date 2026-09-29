@@ -24,8 +24,18 @@ function AuthCallbackContent() {
                 const user = JSON.parse(userStr);
                 login(token, user);
                 processed.current = true;
-                // Force a page refresh to clear URL and load menu cleanly
-                window.location.href = '/menu';
+                
+                if (user.role === 'admin') {
+                    window.location.href = '/admin/dashboard';
+                } else if (user.role === 'salesman') {
+                    window.location.href = '/salesman';
+                } else if (user.role === 'delivery_boy') {
+                    window.location.href = '/delivery';
+                } else if (user.role === 'kitchen') {
+                    window.location.href = '/kitchen';
+                } else {
+                    window.location.href = '/menu';
+                }
             } catch (error) {
                 console.error('Error parsing user data:', error);
                 router.push('/login?error=Invalid user data');

@@ -116,6 +116,11 @@ export default function AdminDashboard() {
                         <h3>Salesmen</h3>
                         <p className="text-muted">Manage sales staff</p>
                     </Link>
+                    <Link href="/admin/kitchen-staff" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>👨‍🍳</div>
+                        <h3>Kitchen Staff</h3>
+                        <p className="text-muted">Manage chefs</p>
+                    </Link>
                     <Link href="/admin/delivery-boys" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
                         <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🛵</div>
                         <h3>Delivery Boys</h3>

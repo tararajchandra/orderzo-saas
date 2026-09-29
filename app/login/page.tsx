@@ -35,6 +35,8 @@ export default function LoginPage() {
                     router.push('/salesman');
                 } else if (data.data.user.role === 'delivery_boy') {
                     router.push('/delivery');
+                } else if (data.data.user.role === 'kitchen') {
+                    router.push('/kitchen');
                 } else {
                     router.push('/menu');
                 }
