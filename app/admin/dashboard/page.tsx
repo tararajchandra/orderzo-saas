@@ -176,6 +176,11 @@ export default function AdminDashboard() {
                         <h3>GST Report</h3>
                         <p className="text-muted">Tax breakdown & compliance</p>
                     </Link>
+                    <Link href="/admin/salesman-report" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>👨‍💼</div>
+                        <h3>Salesman Report</h3>
+                        <p className="text-muted">Salesman-wise sales data</p>
+                    </Link>
                 </div>
 
                 {/* Stats */}
