@@ -9,7 +9,7 @@ interface MenuItem {
     id: number;
     name: string;
     description: string;
-    category: string;
+    category_name: string;
     price: number;
     gst_rate?: number;
     image_type: string;
@@ -84,7 +84,7 @@ export default function SalesmanDashboard() {
             const data = await res.json();
             if (data.success) {
                 setMenuItems(data.data);
-                const cats = Array.from(new Set(data.data.map((i: MenuItem) => i.category).filter(Boolean))) as string[];
+                const cats = Array.from(new Set(data.data.map((i: MenuItem) => i.category_name).filter(Boolean))) as string[];
                 setCategories(['all', ...cats]);
             }
         } catch (error) {
@@ -192,7 +192,7 @@ export default function SalesmanDashboard() {
     // Filter Logic
     const filteredItems = menuItems.filter(item => {
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+        const matchesCategory = selectedCategory === 'all' || item.category_name === selectedCategory;
         return matchesSearch && matchesCategory;
     });
 

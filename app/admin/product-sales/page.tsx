@@ -98,7 +98,7 @@ export default function ProductSalesReportPage() {
                         productMap.set(productId, {
                             productId,
                             productName: item.menuItem.name,
-                            category: item.menuItem.category || 'Uncategorized',
+                            category: item.menuItem.category_name || item.menuItem.category || 'Uncategorized',
                             totalQuantity: quantity,
                             totalRevenue: itemRevenue,
                             orderCount: 1,
