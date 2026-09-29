@@ -165,26 +165,30 @@ export async function POST(request: Request) {
             }
         }
 
-        // Auto-generate invoice
+        // Auto-generate invoice only if paid
         const order = orderResult.rows[0];
-        const invoiceDate = new Date().toISOString().split('T')[0].replace(/-/g, '');
+        let invoiceNumber = null;
+        
+        if (payment_status === 'paid') {
+            const invoiceDate = new Date().toISOString().split('T')[0].replace(/-/g, '');
 
-        // Optimized invoice count query
-        const invoiceCountResult = await client.query(
-            `SELECT COUNT(*) as count FROM invoices 
-             WHERE generated_at >= CURRENT_DATE 
-             AND generated_at < (CURRENT_DATE + INTERVAL '1 day')
-             AND invoice_number LIKE $1`,
-            [`INV-${invoiceDate}-%`]
-        );
-        const invoiceCount = parseInt(invoiceCountResult.rows[0].count) + 1;
-        const invoiceNumber = `INV-${invoiceDate}-${String(invoiceCount).padStart(4, '0')}`;
+            // Optimized invoice count query
+            const invoiceCountResult = await client.query(
+                `SELECT COUNT(*) as count FROM invoices 
+                 WHERE generated_at >= CURRENT_DATE 
+                 AND generated_at < (CURRENT_DATE + INTERVAL '1 day')
+                 AND invoice_number LIKE $1`,
+                [`INV-${invoiceDate}-%`]
+            );
+            const invoiceCount = parseInt(invoiceCountResult.rows[0].count) + 1;
+            invoiceNumber = `INV-${invoiceDate}-${String(invoiceCount).padStart(4, '0')}`;
 
-        await client.query(
-            `INSERT INTO invoices (order_id, invoice_number, subtotal, tax, discount, total)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-            [order.id, invoiceNumber, subtotal, tax || 0, discount || 0, total_amount]
-        );
+            await client.query(
+                `INSERT INTO invoices (order_id, invoice_number, subtotal, tax, discount, total)
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [order.id, invoiceNumber, subtotal, tax || 0, discount || 0, total_amount]
+            );
+        }
 
         // COMMIT TRANSACTION
         await client.query('COMMIT');

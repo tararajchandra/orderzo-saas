@@ -132,8 +132,38 @@ export async function PUT(
             );
         }
 
-        // Also update the corresponding invoice if discount, subtotal, tax, or total_amount changed
-        if (discount !== undefined || subtotal !== undefined || tax !== undefined || total_amount !== undefined) {
+        // Handle Invoice Generation/Update
+        const invoiceCheck = await query('SELECT * FROM invoices WHERE order_id = $1', [params.id]);
+        
+        if (invoiceCheck.rows.length === 0 && payment_status === 'paid') {
+            // Generate invoice if paid and doesn't exist yet
+            const invoiceDate = new Date().toISOString().split('T')[0].replace(/-/g, '');
+            const invoiceCountResult = await query(
+                `SELECT COUNT(*) as count FROM invoices 
+                 WHERE generated_at >= CURRENT_DATE 
+                 AND generated_at < (CURRENT_DATE + INTERVAL '1 day')
+                 AND invoice_number LIKE $1`,
+                [`INV-${invoiceDate}-%`]
+            );
+            const invoiceCount = parseInt(invoiceCountResult.rows[0].count) + 1;
+            const invoiceNumber = `INV-${invoiceDate}-${String(invoiceCount).padStart(4, '0')}`;
+            
+            const updatedOrder = result.rows[0];
+
+            await query(
+                `INSERT INTO invoices (order_id, invoice_number, subtotal, tax, discount, total)
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [
+                    params.id, 
+                    invoiceNumber, 
+                    subtotal ?? updatedOrder.subtotal, 
+                    tax ?? updatedOrder.tax ?? 0, 
+                    discount ?? updatedOrder.discount ?? 0, 
+                    total_amount ?? updatedOrder.total_amount
+                ]
+            );
+        } else if (invoiceCheck.rows.length > 0 && (discount !== undefined || subtotal !== undefined || tax !== undefined || total_amount !== undefined)) {
+            // Update existing invoice
             await query(
                 `UPDATE invoices 
                  SET subtotal = COALESCE($1, subtotal),
