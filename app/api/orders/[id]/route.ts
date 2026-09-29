@@ -59,28 +59,26 @@ export async function PUT(
 
         let driverCommission = null;
 
-        // If status is changing to 'delivered', calculate commission
+        // If status is changing to 'delivered', calculate commission with a single JOIN query
         if (order_status === 'delivered') {
-            // ... (keep existing commission logic if needed, or query again. 
-            // For simplicity, we'll keep the logic but we need to use the NEW total_amount if provided)
+            const dbId = delivery_boy_id; // Use provided ID first
+            
+            const commissionRes = await query(`
+                SELECT 
+                    o.total_amount, o.delivery_boy_id,
+                    u.commission_rate, u.commission_type
+                FROM orders o
+                LEFT JOIN users u ON u.id = COALESCE($1::int, o.delivery_boy_id)
+                WHERE o.id = $2
+            `, [dbId || null, params.id]);
 
-            // First get the order details to know the total amount and assigned delivery boy
-            const orderRes = await query('SELECT total_amount, delivery_boy_id FROM orders WHERE id = $1', [params.id]);
-            if (orderRes.rows.length > 0) {
-                const order = orderRes.rows[0];
-                const finalTotal = total_amount || order.total_amount; // Use new total if provided
-                const dbId = delivery_boy_id || order.delivery_boy_id;
-
-                if (dbId) {
-                    const dbRes = await query('SELECT commission_rate, commission_type FROM users WHERE id = $1', [dbId]);
-                    if (dbRes.rows.length > 0) {
-                        const { commission_rate, commission_type } = dbRes.rows[0];
-                        if (commission_type === 'percent') {
-                            driverCommission = (parseFloat(finalTotal) * parseFloat(commission_rate)) / 100;
-                        } else {
-                            driverCommission = parseFloat(commission_rate);
-                        }
-                    }
+            if (commissionRes.rows.length > 0) {
+                const row = commissionRes.rows[0];
+                const finalTotal = total_amount || row.total_amount;
+                if (row.commission_rate) {
+                    driverCommission = row.commission_type === 'percent'
+                        ? (parseFloat(finalTotal) * parseFloat(row.commission_rate)) / 100
+                        : parseFloat(row.commission_rate);
                 }
             }
         }

@@ -6,7 +6,7 @@ import {
     LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { formatDate } from '@/lib/utils';
+
 
 interface AnalyticsData {
     totalRevenue: number;
@@ -48,146 +48,15 @@ export default function AnalyticsPage() {
     const fetchAnalytics = async () => {
         try {
             setLoading(true);
+            const res = await fetch(`/api/admin/analytics?range=${dateRange}`);
+            const data = await res.json();
 
-            // Fetch orders
-            const ordersResponse = await fetch('/api/orders');
-            const ordersData = await ordersResponse.json();
-
-            if (!ordersData.success) {
-                console.error('Failed to fetch orders');
+            if (!data.success) {
+                console.error('Failed to fetch analytics');
                 return;
             }
 
-            const orders = ordersData.data;
-
-            // Filter by date range
-            const now = new Date();
-            let startDate = new Date();
-
-            if (dateRange === '7days') {
-                startDate.setDate(now.getDate() - 7);
-            } else if (dateRange === '30days') {
-                startDate.setDate(now.getDate() - 30);
-            } else if (dateRange === '90days') {
-                startDate.setDate(now.getDate() - 90);
-            } else if (dateRange === 'year') {
-                startDate.setFullYear(now.getFullYear() - 1);
-            }
-
-            const filteredOrders = dateRange === 'all'
-                ? orders
-                : orders.filter((o: any) => new Date(o.created_at) >= startDate);
-
-            // Calculate metrics
-            const totalRevenue = filteredOrders.reduce((sum: number, o: any) =>
-                sum + parseFloat(o.total_amount), 0
-            );
-
-            const totalOrders = filteredOrders.length;
-            const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
-            // Top selling items
-            const itemsMap = new Map<string, { quantity: number; revenue: number }>();
-            filteredOrders.forEach((order: any) => {
-                if (Array.isArray(order.items)) {
-                    order.items.forEach((item: any) => {
-                        const name = item.menuItem.name;
-                        const quantity = parseInt(item.quantity);
-                        const revenue = parseFloat(item.menuItem.price) * quantity;
-
-                        if (itemsMap.has(name)) {
-                            const current = itemsMap.get(name)!;
-                            current.quantity += quantity;
-                            current.revenue += revenue;
-                        } else {
-                            itemsMap.set(name, { quantity, revenue });
-                        }
-                    });
-                }
-            });
-
-            const topSellingItems = Array.from(itemsMap.entries())
-                .map(([name, data]) => ({ name, ...data }))
-                .sort((a, b) => b.revenue - a.revenue)
-                .slice(0, 10);
-
-            // Revenue by day
-            const revenueByDayMap = new Map<string, { revenue: number; orders: number }>();
-            filteredOrders.forEach((order: any) => {
-                const date = new Date(order.created_at).toISOString().split('T')[0];
-                const revenue = parseFloat(order.total_amount);
-
-                if (revenueByDayMap.has(date)) {
-                    const current = revenueByDayMap.get(date)!;
-                    current.revenue += revenue;
-                    current.orders += 1;
-                } else {
-                    revenueByDayMap.set(date, { revenue, orders: 1 });
-                }
-            });
-
-            const revenueByDay = Array.from(revenueByDayMap.entries())
-                .map(([date, data]) => ({ date, ...data }))
-                .sort((a, b) => a.date.localeCompare(b.date))
-                .map(item => ({
-                    ...item,
-                    date: formatDate(item.date)
-                }));
-
-            // Orders by status
-            const statusMap = new Map<string, number>();
-            filteredOrders.forEach((order: any) => {
-                const status = order.order_status;
-                statusMap.set(status, (statusMap.get(status) || 0) + 1);
-            });
-
-            const ordersByStatus = Array.from(statusMap.entries())
-                .map(([status, count]) => ({ status, count }));
-
-            // Payment methods
-            const paymentMap = new Map<string, { count: number; amount: number }>();
-            filteredOrders.forEach((order: any) => {
-                const method = order.payment_method;
-                const amount = parseFloat(order.total_amount);
-
-                if (paymentMap.has(method)) {
-                    const current = paymentMap.get(method)!;
-                    current.count += 1;
-                    current.amount += amount;
-                } else {
-                    paymentMap.set(method, { count: 1, amount });
-                }
-            });
-
-            const paymentMethods = Array.from(paymentMap.entries())
-                .map(([method, data]) => ({ method, ...data }));
-
-            // Category revenue
-            const categoryMap = new Map<string, number>();
-            filteredOrders.forEach((order: any) => {
-                if (Array.isArray(order.items)) {
-                    order.items.forEach((item: any) => {
-                        const category = item.menuItem.category_name || 'Uncategorized';
-                        const revenue = parseFloat(item.menuItem.price) * parseInt(item.quantity);
-                        categoryMap.set(category, (categoryMap.get(category) || 0) + revenue);
-                    });
-                }
-            });
-
-            const categoryRevenue = Array.from(categoryMap.entries())
-                .map(([category, revenue]) => ({ category, revenue }))
-                .sort((a, b) => b.revenue - a.revenue);
-
-            setAnalytics({
-                totalRevenue,
-                totalOrders,
-                averageOrderValue,
-                topSellingItems,
-                revenueByDay,
-                ordersByStatus,
-                paymentMethods,
-                categoryRevenue,
-            });
+            setAnalytics(data.data);
         } catch (error) {
             console.error('Error fetching analytics:', error);
         } finally {

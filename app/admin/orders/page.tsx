@@ -25,6 +25,7 @@ export default function AdminOrdersPage() {
     // Track previous order IDs to detect new orders
     const prevOrderIdsRef = useRef<Set<number>>(new Set());
     const audioCtxRef = useRef<AudioContext | null>(null);
+    const lastFetchTimeRef = useRef<string | null>(null);
 
     // Generate a notification beep using Web Audio API (no external URL needed)
     const playNotificationSound = () => {
@@ -122,33 +123,51 @@ export default function AdminOrdersPage() {
 
     const fetchOrders = async (isPolling = false) => {
         try {
-            const response = await fetch('/api/orders', { cache: 'no-store' });
+            // For polling: only fetch orders created since last check using timestamp
+            // For initial load: fetch today's orders + recent 200 to show history
+            let url = '/api/orders?include_items=true&date=today&limit=200';
+            
+            if (isPolling && lastFetchTimeRef.current) {
+                url = `/api/orders?include_items=true&since=${encodeURIComponent(lastFetchTimeRef.current)}&limit=50`;
+            }
+
+            // Update timestamp before fetch to avoid missing orders created during the request
+            const fetchTime = new Date().toISOString();
+            
+            const response = await fetch(url, { cache: 'no-store' });
             const data = await response.json();
             if (data.success) {
                 const newOrders = data.data;
                 
-                // If polling, check for new IDs that weren't in our set
-                if (isPolling && prevOrderIdsRef.current.size > 0) {
-                    const freshOrder = newOrders.find((order: any) => {
-                        const isNew = !prevOrderIdsRef.current.has(order.id);
-                        if (!isNew) return false;
+                if (isPolling && lastFetchTimeRef.current) {
+                    // Merge new orders into existing state
+                    if (newOrders.length > 0) {
+                        setOrders(prev => {
+                            const existingIds = new Set(prev.map((o: any) => o.id));
+                            const brandNew = newOrders.filter((o: any) => !existingIds.has(o.id));
 
-                        // Skip sound if the order was created by a salesman
-                        const isFromSalesman = salesmen.some(s => s.id === order.user_id);
-                        return !isFromSalesman;
-                    });
+                            // Check for notification (non-salesman orders only)
+                            const freshOrder = brandNew.find((order: any) => {
+                                return !salesmen.some(s => s.id === order.user_id);
+                            });
+                            if (freshOrder) {
+                                playNotificationSound();
+                                alert(`🔔 New Order Received: #${freshOrder.order_number || freshOrder.id} from ${freshOrder.customer_name}`);
+                            }
 
-                    if (freshOrder) {
-                        playNotificationSound();
-                        alert(`🔔 New Order Received: #${freshOrder.order_number || freshOrder.id} from ${freshOrder.customer_name}`);
+                            if (brandNew.length === 0) return prev;
+                            const merged = [...brandNew, ...prev];
+                            prevOrderIdsRef.current = new Set(merged.map((o: any) => o.id));
+                            return merged;
+                        });
                     }
+                } else {
+                    // Full refresh
+                    prevOrderIdsRef.current = new Set(newOrders.map((o: any) => o.id));
+                    setOrders(newOrders);
                 }
 
-                // Update the set of seen IDs
-                const currentIds = new Set<number>(newOrders.map((o: any) => o.id));
-                prevOrderIdsRef.current = currentIds;
-
-                setOrders(newOrders);
+                lastFetchTimeRef.current = fetchTime;
             }
         } catch (error) {
             console.error('Error fetching orders:', error);

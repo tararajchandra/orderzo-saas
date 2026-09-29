@@ -10,9 +10,26 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const userId = searchParams.get('userId');
         const status = searchParams.get('status');
+        const orderType = searchParams.get('type');
+        const paymentStatus = searchParams.get('payment_status');
+        const dateParam = searchParams.get('date'); // 'today' or ISO date string
+        const since = searchParams.get('since'); // ISO timestamp for polling
+        const includeItems = searchParams.get('include_items') === 'true';
+        const limit = parseInt(searchParams.get('limit') || '500');
 
+        // Select specific columns (avoid sending heavy JSONB items in list views)
+        const itemsCol = includeItems ? 'o.items,' : '';
         let queryText = `
-            SELECT o.*, dl.location_name as delivery_location_name 
+            SELECT 
+                o.id, o.order_number, o.user_id, o.salesman_id,
+                o.customer_name, o.customer_phone, o.customer_address,
+                o.order_type, o.table_number,
+                o.subtotal, o.tax, o.discount, o.delivery_charge, o.total_amount,
+                o.payment_method, o.payment_status, o.order_status,
+                o.delivery_boy_id, o.driver_commission,
+                o.notes, o.created_at, o.updated_at,
+                ${itemsCol}
+                dl.location_name as delivery_location_name
             FROM orders o
             LEFT JOIN delivery_locations dl ON o.delivery_location_id = dl.id
             WHERE 1=1
@@ -32,7 +49,28 @@ export async function GET(request: Request) {
             paramCount++;
         }
 
-        queryText += ' ORDER BY o.created_at DESC';
+        if (orderType) {
+            queryText += ` AND o.order_type = $${paramCount}`;
+            params.push(orderType);
+            paramCount++;
+        }
+
+        if (paymentStatus) {
+            queryText += ` AND o.payment_status = $${paramCount}`;
+            params.push(paymentStatus);
+            paramCount++;
+        }
+
+        if (dateParam === 'today') {
+            queryText += ` AND o.created_at >= CURRENT_DATE AND o.created_at < (CURRENT_DATE + INTERVAL '1 day')`;
+        } else if (since) {
+            queryText += ` AND o.created_at > $${paramCount}`;
+            params.push(since);
+            paramCount++;
+        }
+
+        queryText += ` ORDER BY o.created_at DESC LIMIT $${paramCount}`;
+        params.push(limit);
 
         const result = await query(queryText, params);
 
