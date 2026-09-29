@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -11,7 +11,11 @@ function AuthCallbackContent() {
     const searchParams = useSearchParams();
     const { login } = useAuth();
 
+    const processed = useRef(false);
+
     useEffect(() => {
+        if (processed.current) return;
+        
         const token = searchParams.get('token');
         const userStr = searchParams.get('user');
 
@@ -19,7 +23,9 @@ function AuthCallbackContent() {
             try {
                 const user = JSON.parse(userStr);
                 login(token, user);
-                router.push('/menu');
+                processed.current = true;
+                // Force a page refresh to clear URL and load menu cleanly
+                window.location.href = '/menu';
             } catch (error) {
                 console.error('Error parsing user data:', error);
                 router.push('/login?error=Invalid user data');

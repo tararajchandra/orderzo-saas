@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
 interface User {
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
     }, []);
 
-    const login = (newToken: string, newUser: User) => {
+    const login = useCallback((newToken: string, newUser: User) => {
         setToken(newToken);
         setUser(newUser);
         localStorage.setItem('authToken', newToken);
@@ -65,9 +65,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else if (newUser.role === 'delivery_boy') {
             localStorage.setItem('deliveryToken', newToken);
         }
-    };
+    }, []);
 
-    const logout = () => {
+    const logout = useCallback(() => {
         setToken(null);
         setUser(null);
         localStorage.removeItem('authToken');
@@ -79,13 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('deliveryToken');
 
         router.push('/login');
-    };
+    }, [router]);
 
     // Protect routes
     useEffect(() => {
         if (loading) return;
 
-        const publicRoutes = ['/', '/menu', '/login', '/signup', '/cart'];
+        const publicRoutes = ['/', '/menu', '/login', '/signup', '/cart', '/auth/callback'];
         const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/menu/');
         const isAdminRoute = pathname.startsWith('/admin');
         const isSalesmanRoute = pathname.startsWith('/salesman');
