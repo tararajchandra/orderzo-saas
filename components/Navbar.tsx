@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCart } from '@/contexts/CartContext';
@@ -15,6 +16,13 @@ export default function Navbar() {
     const { theme, toggleTheme } = useTheme();
     const { user, logout, isAuthenticated, isAdmin, isSalesman } = useAuth();
     const cartCount = getCartCount();
+    const [isTableOrder, setIsTableOrder] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setIsTableOrder(!!localStorage.getItem('tableNumber'));
+        }
+    }, []);
 
     const isActive = (path: string) => pathname === path;
 
