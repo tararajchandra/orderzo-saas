@@ -10,8 +10,14 @@ export default function CartPage() {
     const { cart, updateQuantity, removeFromCart, getCartTotal, clearCart } = useCart();
     // Add settings state
     const [settings, setSettings] = useState<any>(null);
+    const [checkoutPath, setCheckoutPath] = useState('/checkout');
 
     useEffect(() => {
+        // Check for table number
+        if (sessionStorage.getItem('table_number')) {
+            setCheckoutPath('/dine-in-checkout');
+        }
+
         // Fetch settings
         fetch('/api/settings')
             .then(res => res.json())
@@ -167,7 +173,7 @@ export default function CartPage() {
                         </div>
 
                         <Link
-                            href="/checkout"
+                            href={checkoutPath}
                             className="btn btn-primary"
                             style={{ 
                                 width: '100%', 

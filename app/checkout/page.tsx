@@ -29,8 +29,6 @@ export default function CheckoutPage() {
     const [detectedLocationInfo, setDetectedLocationInfo] = useState<string>('');
     const [customerCoords, setCustomerCoords] = useState<{lat: number, lng: number, distance: number} | null>(null);
 
-    const [tableNumber, setTableNumber] = useState<string | null>(null);
-
     useEffect(() => {
         // Fetch settings and delivery locations in parallel
         Promise.all([
@@ -42,12 +40,6 @@ export default function CheckoutPage() {
                 if (locationsData.success) setDeliveryLocations(locationsData.data);
             })
             .catch(err => console.error('Error fetching checkout data:', err));
-            
-        // Check for table number
-        const storedTable = sessionStorage.getItem('table_number');
-        if (storedTable) {
-            setTableNumber(storedTable);
-        }
     }, []);
 
     const [formData, setFormData] = useState({
@@ -84,7 +76,6 @@ export default function CheckoutPage() {
     };
 
     const getDeliveryCharge = () => {
-        if (tableNumber) return 0; // No delivery charge for dine in
         if (!selectedLocationId) return 0;
         const location = deliveryLocations.find(loc => loc.id === selectedLocationId || Number(loc.id) === Number(selectedLocationId));
         return location ? parseFloat(location.delivery_charge.toString()) : 0;
@@ -97,18 +88,16 @@ export default function CheckoutPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!tableNumber) {
-            if (!selectedLocationId) {
-                alert('Please select a delivery location');
-                return;
-            }
+        if (!selectedLocationId) {
+            alert('Please select a delivery location');
+            return;
+        }
 
-            const location = deliveryLocations.find(loc => loc.id === selectedLocationId || Number(loc.id) === Number(selectedLocationId));
-            if (location && location.min_order_value && subtotal < parseFloat(location.min_order_value.toString())) {
-                alert(`Minimum order value for ${location.location_name} is ₹${parseFloat(location.min_order_value.toString()).toFixed(2)}. Your current subtotal is ₹${subtotal.toFixed(2)}.`);
-                setLoading(false);
-                return;
-            }
+        const location = deliveryLocations.find(loc => loc.id === selectedLocationId || Number(loc.id) === Number(selectedLocationId));
+        if (location && location.min_order_value && subtotal < parseFloat(location.min_order_value.toString())) {
+            alert(`Minimum order value for ${location.location_name} is ₹${parseFloat(location.min_order_value.toString()).toFixed(2)}. Your current subtotal is ₹${subtotal.toFixed(2)}.`);
+            setLoading(false);
+            return;
         }
 
         setLoading(true);
@@ -118,9 +107,9 @@ export default function CheckoutPage() {
                 user_id: user?.id,
                 customer_name: formData.name || 'Walk-in Customer',
                 customer_phone: formData.phone || 'N/A',
-                customer_address: tableNumber ? null : formData.address,
-                order_type: tableNumber ? 'dine_in' : 'delivery',
-                table_number: tableNumber,
+                customer_address: formData.address,
+                order_type: 'delivery',
+                table_number: null,
                 items: cart.map(item => ({
                     menuItem: {
                         id: item.menuItem.id,
@@ -133,14 +122,14 @@ export default function CheckoutPage() {
                 subtotal,
                 tax,
                 discount: 0,
-                delivery_location_id: tableNumber ? null : (selectedLocationId ? Number(selectedLocationId) : null),
+                delivery_location_id: selectedLocationId ? Number(selectedLocationId) : null,
                 delivery_charge: deliveryCharge,
                 total_amount: total,
                 payment_method: formData.paymentMethod,
                 notes: formData.notes,
-                customer_lat: tableNumber ? null : customerCoords?.lat,
-                customer_lng: tableNumber ? null : customerCoords?.lng,
-                distance: tableNumber ? null : customerCoords?.distance,
+                customer_lat: customerCoords?.lat,
+                customer_lng: customerCoords?.lng,
+                distance: customerCoords?.distance,
             };
 
             const response = await fetch('/api/orders', {
@@ -153,8 +142,6 @@ export default function CheckoutPage() {
 
             if (data.success) {
                 clearCart();
-                // Optionally clear table number after successful order so next orders don't default to it if they left the table
-                // sessionStorage.removeItem('table_number');
                 router.push(`/orders?success=true&orderId=${data.data.id}`);
             } else {
                 alert('Failed to place order. Please try again.');
@@ -168,7 +155,6 @@ export default function CheckoutPage() {
     };
 
     const detectMyLocation = async (isSilent: boolean = false) => {
-        if (tableNumber) return; // Skip if dine in
         if (!navigator.geolocation) {
             if (!isSilent) alert('GPS is not supported by your browser. Please select your location manually.');
             return;
@@ -363,14 +349,14 @@ export default function CheckoutPage() {
 
     // Auto-detect location on page load
     useEffect(() => {
-        if (cartLoaded && !authLoading && cart.length > 0 && !selectedLocationId && !tableNumber) {
+        if (cartLoaded && !authLoading && cart.length > 0 && !selectedLocationId) {
             // Wait a moment for everything to settle
             const timer = setTimeout(() => {
                 detectMyLocation(true);
             }, 1000);
             return () => clearTimeout(timer);
         }
-    }, [cartLoaded, authLoading, cart.length, tableNumber]);
+    }, [cartLoaded, authLoading, cart.length, selectedLocationId]);
 
     if (!cartLoaded || authLoading) {
         return (
@@ -394,27 +380,6 @@ export default function CheckoutPage() {
                 <form onSubmit={handleSubmit}>
                     <div style={{ display: 'grid', gap: '2rem' }}>
                         
-                        {tableNumber ? (
-                            <div className="glass-card" style={{ border: '2px solid var(--primary)', backgroundColor: 'rgba(var(--primary-rgb), 0.05)' }}>
-                                <h3 style={{ marginBottom: '0.5rem', color: 'var(--primary)' }}>Dine-In Order</h3>
-                                <p style={{ fontSize: '1.25rem', fontWeight: 600 }}>Table Number: {tableNumber}</p>
-                                <p className="text-muted" style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>Your order will be served directly to your table. No delivery charge applies.</p>
-                                
-                                <div style={{ marginTop: '1.5rem' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-                                        Special Instructions (Optional)
-                                    </label>
-                                    <textarea
-                                        className="input"
-                                        value={formData.notes}
-                                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                        placeholder="Any special requests or instructions for the chef"
-                                        rows={2}
-                                        style={{ resize: 'vertical' }}
-                                    />
-                                </div>
-                            </div>
-                        ) : (
                             <div className="glass-card">
                                 <h3 style={{ marginBottom: '1.5rem' }}>Delivery Details</h3>
 
@@ -546,7 +511,6 @@ export default function CheckoutPage() {
                                     </div>
                                 </div>
                             </div>
-                        )}
 
                         {/* Payment Method */}
                         <div className="glass-card">
@@ -554,7 +518,7 @@ export default function CheckoutPage() {
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
                                 {[
-                                    { value: 'cash', label: tableNumber ? 'Pay at Counter / Cash' : 'Cash on Delivery', icon: '💵' },
+                                    { value: 'cash', label: 'Cash on Delivery', icon: '💵' },
                                 ].map((method) => (
                                     <button
                                         key={method.value}
@@ -612,7 +576,7 @@ export default function CheckoutPage() {
                                         <span>₹{tax.toFixed(2)}</span>
                                     </div>
                                 )}
-                                {deliveryCharge > 0 && !tableNumber && (
+                                {deliveryCharge > 0 && (
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                                         <span className="text-muted">Delivery Charge</span>
                                         <span>₹{deliveryCharge.toFixed(2)}</span>

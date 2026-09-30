@@ -17,19 +17,38 @@ function OrdersContent() {
     const [showSuccess, setShowSuccess] = useState(false);
 
     useEffect(() => {
-        if (!authLoading && !isAuthenticated) {
+        const orderId = searchParams.get('orderId');
+        
+        if (!authLoading && !isAuthenticated && !orderId) {
             router.push('/login');
             return;
         }
 
-        if (user) {
-            if (searchParams.get('success') === 'true') {
-                setShowSuccess(true);
-                setTimeout(() => setShowSuccess(false), 5000);
-            }
+        if (searchParams.get('success') === 'true') {
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 5000);
+        }
+
+        if (orderId) {
+            fetchSingleOrder(orderId);
+        } else if (user) {
             fetchOrders();
         }
     }, [searchParams, user, authLoading, isAuthenticated]);
+
+    const fetchSingleOrder = async (orderId: string) => {
+        try {
+            const response = await fetch(`/api/orders/${orderId}`);
+            const data = await response.json();
+            if (data.success) {
+                setOrders([data.data]);
+            }
+        } catch (error) {
+            console.error('Error fetching order:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchOrders = async () => {
         if (!user) return;
