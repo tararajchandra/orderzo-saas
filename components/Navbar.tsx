@@ -163,13 +163,17 @@ export default function Navbar() {
                             </button>
                         </div>
                     ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Link href="/login" className="btn btn-ghost" style={{ padding: '0.5rem 1rem' }}>
-                                Login
-                            </Link>
-                            <Link href="/signup" className="btn btn-primary" style={{ padding: '0.5rem 1rem' }}>
-                                Sign Up
-                            </Link>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            {(!isTableOrder && pathname !== '/menu' && pathname !== '/cart' && pathname !== '/dine-in-checkout') && (
+                                <>
+                                    <Link href="/login" className="btn btn-ghost" style={{ padding: '0.5rem 1rem' }}>
+                                        Login
+                                    </Link>
+                                    <Link href="/signup" className="btn btn-primary" style={{ padding: '0.5rem 1rem' }}>
+                                        Sign Up
+                                    </Link>
+                                </>
+                            )}
                         </div>
                     )}
                 </div>
