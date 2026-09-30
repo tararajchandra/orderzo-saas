@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useFinancialYear } from '@/contexts/FinancialYearContext';
 import { useRouter } from 'next/navigation';
 import { formatDate } from '@/lib/utils';
 
@@ -9,6 +10,7 @@ export default function AdminBillingPage() {
     const [orders, setOrders] = useState<any[]>([]);
     const [invoices, setInvoices] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { selectedFY } = useFinancialYear();
     const [stats, setStats] = useState({
         totalRevenue: 0,
         paidOrders: 0,
@@ -22,14 +24,14 @@ export default function AdminBillingPage() {
             router.push('/admin');
             return;
         }
-        fetchData();
-    }, []); // Empty dependency - only run on mount
+        if(selectedFY) fetchData();
+    }, [selectedFY]); // Empty dependency - only run on mount
 
     const fetchData = async () => {
         try {
             const [ordersRes, invoicesRes] = await Promise.all([
-                fetch('/api/orders'),
-                fetch('/api/invoices'),
+                fetch(`/api/orders?fy_id=${selectedFY?.id || ''}`),
+                fetch(`/api/invoices?fy_id=${selectedFY?.id || ''}`),
             ]);
 
             const ordersData = await ordersRes.json();

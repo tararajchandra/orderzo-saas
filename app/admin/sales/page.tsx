@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useFinancialYear } from '@/contexts/FinancialYearContext';
 import { useRouter } from 'next/navigation';
 import { formatDate, formatDateTime } from '@/lib/utils';
 
@@ -33,6 +34,7 @@ export default function SaleBookPage() {
     const [sales, setSales] = useState<SaleEntry[]>([]);
     const [salesmen, setSalesmen] = useState<Salesman[]>([]);
     const [loading, setLoading] = useState(true);
+    const { selectedFY } = useFinancialYear();
     const [dateFilter, setDateFilter] = useState('today');
     const [paymentFilter, setPaymentFilter] = useState('all');
     const [sourceFilter, setSourceFilter] = useState('all'); // 'all', 'web', 'admin', or 'salesman_ID'
@@ -46,8 +48,8 @@ export default function SaleBookPage() {
             router.push('/admin');
             return;
         }
-        fetchData();
-    }, []);
+        if(selectedFY) fetchData();
+    }, [selectedFY]);
 
     const fetchData = async () => {
         try {
@@ -61,12 +63,12 @@ export default function SaleBookPage() {
             }
 
             // Fetch Orders
-            const ordersResponse = await fetch('/api/orders');
+            const ordersResponse = await fetch(`/api/orders?fy_id=${selectedFY?.id || ''}`);
             const ordersData = await ordersResponse.json();
 
             if (ordersData.success) {
                 // Fetch invoices
-                const invoicesResponse = await fetch('/api/invoices');
+                const invoicesResponse = await fetch(`/api/invoices?fy_id=${selectedFY?.id || ''}`);
                 const invoicesData = await invoicesResponse.json();
 
                 if (invoicesData.success) {

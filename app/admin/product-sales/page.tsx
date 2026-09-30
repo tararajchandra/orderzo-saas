@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useFinancialYear } from '@/contexts/FinancialYearContext';
 import { useRouter } from 'next/navigation';
 import { formatDate } from '@/lib/utils';
 
@@ -29,6 +30,7 @@ export default function ProductSalesReportPage() {
     const [orders, setOrders] = useState<any[]>([]);
     const [productSales, setProductSales] = useState<ProductSale[]>([]);
     const [loading, setLoading] = useState(true);
+    const { selectedFY } = useFinancialYear();
     const [dateFilter, setDateFilter] = useState('today');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
@@ -53,7 +55,7 @@ export default function ProductSalesReportPage() {
 
     const fetchProductSales = async () => {
         try {
-            const response = await fetch('/api/orders?include_items=true&limit=2000');
+            const response = await fetch(`/api/orders?include_items=true&limit=2000&fy_id=${selectedFY?.id || ''}`);
             const data = await response.json();
 
             if (data.success) {

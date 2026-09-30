@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useFinancialYear } from '@/contexts/FinancialYearContext';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -29,6 +30,7 @@ export default function QuickBillPage() {
     // Data
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const { selectedFY } = useFinancialYear();
     const [categories, setCategories] = useState<string[]>([]);
 
     // UI State

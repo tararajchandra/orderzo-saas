@@ -14,6 +14,10 @@ const KEY_MAPPING: Record<string, string> = {
     showLogo: 'show_logo',
     footerText: 'footer_text',
     totalTables: 'total_tables',
+    restaurantLat: 'restaurant_lat',
+    restaurantLng: 'restaurant_lng',
+    allowedRadius: 'allowed_radius',
+    customerRadius: 'customer_radius',
 };
 
 const REVERSE_MAPPING: Record<string, string> = Object.entries(KEY_MAPPING).reduce((acc, [k, v]) => {
@@ -49,6 +53,10 @@ export async function GET() {
             showLogo: true,
             footerText: 'Thank you for your business!',
             totalTables: '16',
+            restaurantLat: '22.5726',
+            restaurantLng: '88.3639',
+            allowedRadius: '50',
+            customerRadius: '100',
         };
 
         return NextResponse.json({

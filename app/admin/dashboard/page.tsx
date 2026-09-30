@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
+import { useFinancialYear } from '@/contexts/FinancialYearContext';
 
 export default function AdminDashboard() {
     const router = useRouter();
@@ -15,6 +16,7 @@ export default function AdminDashboard() {
     });
     const [recentOrders, setRecentOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { selectedFY } = useFinancialYear();
 
     useEffect(() => {
         const token = localStorage.getItem('adminToken');
@@ -22,12 +24,13 @@ export default function AdminDashboard() {
             router.push('/admin');
             return;
         }
-        fetchDashboardData();
-    }, []); // Empty dependency - only run on mount
+        if (selectedFY) fetchDashboardData();
+    }, [selectedFY]);
 
     const fetchDashboardData = async () => {
         try {
-            const response = await fetch('/api/orders', { cache: 'no-store' });
+            const url = selectedFY ? `/api/orders?fy_id=${selectedFY.id}` : '/api/orders';
+            const response = await fetch(url, { cache: 'no-store' });
             const data = await response.json();
 
             if (data.success) {
@@ -111,6 +114,18 @@ export default function AdminDashboard() {
                         <h3>Settings</h3>
                         <p className="text-muted">Printer & restaurant info</p>
                     </Link>
+                    <Link href="/admin/settings/financial-years" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📅</div>
+                        <h3 style={{ color: 'var(--text-primary)' }}>Financial Years</h3>
+                        <p style={{ color: 'var(--text-secondary)' }}>Manage FYs</p>
+                    </Link>
+                    <Link href="/admin/attendance" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>⏱️</div>
+                        <h3 style={{ color: 'var(--text-primary)' }}>Staff Attendance</h3>
+                        <p style={{ color: 'var(--text-secondary)' }}>View Reports</p>
+                    </Link>
+
+
                     <Link href="/admin/salesmen" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
                         <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>👨‍💼</div>
                         <h3>Salesmen</h3>

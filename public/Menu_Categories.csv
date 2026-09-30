@@ -1,0 +1,16 @@
+name,description,sort_order
+Beverage,Refreshing drinks,1
+Breakfast,Morning meals,2
+Veg Snacks,Vegetarian appetizers,3
+Non Veg Snacks,Non-vegetarian appetizers,4
+Soup,Hot soups,5
+Indian Main Course (Veg),Vegetarian main dishes,6
+Indian Main Course (Chicken),Chicken main dishes,7
+Mutton,Mutton dishes,8
+Fish,Fish dishes,9
+Egg,Egg dishes,10
+Chinese Main Course,Chinese dishes,11
+Rice / Noodles,Rice and noodles,12
+Accompaniment,Sides and salads,13
+Thali Delight,Complete meal platters,14
+Tandoori,Tandoor baked breads and starters,15

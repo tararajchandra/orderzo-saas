@@ -8,6 +8,7 @@ export async function GET(request: Request) {
         const startDate = searchParams.get('startDate');
         const endDate = searchParams.get('endDate');
         const category = searchParams.get('category');
+        const fy_id = searchParams.get('fy_id');
 
         let sql = `
             SELECT id, description, amount, category, expense_date AS date, payment_method, notes, created_at, updated_at
@@ -16,6 +17,12 @@ export async function GET(request: Request) {
         `;
         const params: any[] = [];
         let paramIndex = 1;
+
+        if (fy_id) {
+            sql += ` AND financial_year_id = $${paramIndex}`;
+            params.push(fy_id);
+            paramIndex++;
+        }
 
         if (startDate) {
             sql += ` AND expense_date >= $${paramIndex}`;

@@ -13,7 +13,8 @@ export async function GET(request: Request) {
         const orderType = searchParams.get('type');
         const paymentStatus = searchParams.get('payment_status');
         const dateParam = searchParams.get('date'); // 'today' or ISO date string
-        const since = searchParams.get('since'); // ISO timestamp for polling
+        const since = searchParams.get('since');
+        const fy_id = searchParams.get('fy_id'); // ISO timestamp for polling
         const includeItems = searchParams.get('include_items') === 'true';
         const limit = parseInt(searchParams.get('limit') || '500');
 
@@ -36,6 +37,12 @@ export async function GET(request: Request) {
         `;
         const params: any[] = [];
         let paramCount = 1;
+
+        if (fy_id) {
+            queryText += ` AND o.financial_year_id = $${paramCount}`;
+            params.push(fy_id);
+            paramCount++;
+        }
 
         if (userId) {
             queryText += ` AND o.user_id = $${paramCount}`;
@@ -141,9 +148,58 @@ export async function POST(request: Request) {
             }
         }
 
+        
+        // --- DINE-IN GEOFENCING LOGIC ---
+        if (order_type === 'dine_in' && !user_id) { // Not logged in means it's a customer scanning QR
+            if (!customer_lat || !customer_lng) {
+                return NextResponse.json({ success: false, error: 'GPS Location is required for table orders to prevent spam.' }, { status: 403 });
+            }
+
+            const settingsRes = await client.query(`
+                SELECT key, value FROM settings 
+                WHERE key IN ('restaurant_lat', 'restaurant_lng', 'customer_radius')
+            `);
+            
+            let rLat = 0, rLng = 0, cRadius = 100;
+            settingsRes.rows.forEach((s: any) => {
+                if (s.key === 'restaurant_lat') rLat = parseFloat(s.value);
+                if (s.key === 'restaurant_lng') rLng = parseFloat(s.value);
+                if (s.key === 'customer_radius') cRadius = parseFloat(s.value);
+            });
+
+            if (rLat !== 0 && rLng !== 0) {
+                // Haversine formula
+                const R = 6371e3;
+                const p1 = customer_lat * Math.PI / 180;
+                const p2 = rLat * Math.PI / 180;
+                const dp = (rLat - customer_lat) * Math.PI / 180;
+                const dl = (rLng - customer_lng) * Math.PI / 180;
+                const a = Math.sin(dp / 2) * Math.sin(dp / 2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                const distanceMeters = R * c;
+
+                if (distanceMeters > cRadius) {
+                    return NextResponse.json({ 
+                        success: false, 
+                        error: `You are too far from the restaurant (${Math.round(distanceMeters)}m). You must be within ${cRadius}m to place a table order.` 
+                    }, { status: 403 });
+                }
+            }
+        }
+        // --- END GEOFENCING ---
+        
         // START TRANSACTION
         await client.query('BEGIN');
         
+        // Get active financial year
+        const fyResult = await client.query('SELECT id, name FROM financial_years WHERE is_active = true');
+        let financial_year_id = null;
+        let fy_name = '';
+        if (fyResult.rows.length > 0) {
+            financial_year_id = fyResult.rows[0].id;
+            fy_name = fyResult.rows[0].name; // e.g., '2024-25'
+        }
+
         // Generate daily sequential order number
         const today = new Date();
         const datePrefix = today.toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD format
@@ -164,15 +220,15 @@ export async function POST(request: Request) {
             
             // Attempt to insert with geolocation and distance columns
             orderResult = await client.query(
-                `INSERT INTO orders (order_number, user_id, customer_name, customer_phone, customer_address, order_type, items, subtotal, tax, discount, delivery_location_id, delivery_charge, total_amount, payment_method, notes, table_number, order_status, payment_status, customer_lat, customer_lng, distance)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+                `INSERT INTO orders (order_number, user_id, customer_name, customer_phone, customer_address, order_type, items, subtotal, tax, discount, delivery_location_id, delivery_charge, total_amount, payment_method, notes, table_number, order_status, payment_status, customer_lat, customer_lng, distance, financial_year_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
            RETURNING *`,
                 [
                     orderNumber, user_id || null, customer_name || 'Walk-in Customer', customer_phone || 'N/A', customer_address || null,
                     order_type || 'delivery', JSON.stringify(items), subtotal, tax || 0, discount || 0,
                     delivery_location_id || null, delivery_charge || 0, total_amount, payment_method,
                     notes || null, table_number || null, order_status || 'pending', payment_status || 'pending',
-                    customer_lat || null, customer_lng || null, distance || null,
+                    customer_lat || null, customer_lng || null, distance || null, financial_year_id,
                 ]
             );
             
@@ -186,14 +242,14 @@ export async function POST(request: Request) {
                 await client.query('ROLLBACK TO SAVEPOINT order_insert_probe');
                 
                 orderResult = await client.query(
-                    `INSERT INTO orders (order_number, user_id, customer_name, customer_phone, customer_address, order_type, items, subtotal, tax, discount, delivery_location_id, delivery_charge, total_amount, payment_method, notes, table_number, order_status, payment_status)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+                    `INSERT INTO orders (order_number, user_id, customer_name, customer_phone, customer_address, order_type, items, subtotal, tax, discount, delivery_location_id, delivery_charge, total_amount, payment_method, notes, table_number, order_status, payment_status, financial_year_id)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
                RETURNING *`,
                     [
                         orderNumber, user_id || null, customer_name || 'Walk-in Customer', customer_phone || 'N/A', customer_address || null,
                         order_type || 'delivery', JSON.stringify(items), subtotal, tax || 0, discount || 0,
                         delivery_location_id || null, delivery_charge || 0, total_amount, payment_method,
-                        notes || null, table_number || null, order_status || 'pending', payment_status || 'pending',
+                        notes || null, table_number || null, order_status || 'pending', payment_status || 'pending', financial_year_id,
                     ]
                 );
             } else {
@@ -206,22 +262,33 @@ export async function POST(request: Request) {
         let invoiceNumber = null;
         
         if (payment_status === 'paid') {
-            const invoiceDateStr = new Date().toISOString().split('T')[0];
-            const invoiceDate = invoiceDateStr.replace(/-/g, '');
-
-            // Optimized invoice count query using date range for index usage
-            const invoiceCountResult = await client.query(
-                `SELECT COUNT(*) as count FROM invoices 
-                 WHERE generated_at >= CURRENT_DATE 
-                 AND generated_at < (CURRENT_DATE + INTERVAL '1 day')`
-            );
-            const invoiceCount = parseInt(invoiceCountResult.rows[0].count) + 1;
-            invoiceNumber = `INV-${invoiceDate}-${String(invoiceCount).padStart(4, '0')}`;
+            let invoiceCount = 1;
+            
+            if (financial_year_id && fy_name) {
+                const invoiceCountResult = await client.query(
+                    `SELECT COUNT(*) as count FROM invoices 
+                     WHERE financial_year_id = $1`, [financial_year_id]
+                );
+                invoiceCount = parseInt(invoiceCountResult.rows[0].count) + 1;
+                const shortFy = fy_name.replace('20', ''); // 2024-25 -> 24-25
+                invoiceNumber = `INV/${shortFy}/${String(invoiceCount).padStart(4, '0')}`;
+            } else {
+                // Fallback
+                const invoiceDateStr = new Date().toISOString().split('T')[0];
+                const invoiceDate = invoiceDateStr.replace(/-/g, '');
+                const invoiceCountResult = await client.query(
+                    `SELECT COUNT(*) as count FROM invoices 
+                     WHERE generated_at >= CURRENT_DATE 
+                     AND generated_at < (CURRENT_DATE + INTERVAL '1 day')`
+                );
+                invoiceCount = parseInt(invoiceCountResult.rows[0].count) + 1;
+                invoiceNumber = `INV-${invoiceDate}-${String(invoiceCount).padStart(4, '0')}`;
+            }
 
             await client.query(
-                `INSERT INTO invoices (order_id, invoice_number, subtotal, tax, discount, total)
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
-                [order.id, invoiceNumber, subtotal, tax || 0, discount || 0, total_amount]
+                `INSERT INTO invoices (order_id, invoice_number, subtotal, tax, discount, total, financial_year_id)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                [order.id, invoiceNumber, subtotal, tax || 0, discount || 0, total_amount, financial_year_id]
             );
         }
 

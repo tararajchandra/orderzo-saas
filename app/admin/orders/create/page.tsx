@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useFinancialYear } from '@/contexts/FinancialYearContext';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -39,6 +40,7 @@ export default function CreateOrderPage() {
     const [categories, setCategories] = useState<string[]>([]);
     const [deliveryLocations, setDeliveryLocations] = useState<DeliveryLocation[]>([]);
     const [loading, setLoading] = useState(true);
+    const { selectedFY } = useFinancialYear();
     const [settings, setSettings] = useState<any>(null); // Settings State
 
     // Filter UI
@@ -88,8 +90,8 @@ export default function CreateOrderPage() {
                 setLoading(false);
             }
         };
-        loadData();
-    }, []);
+        if(selectedFY) loadData();
+    }, [selectedFY]);
 
     const fetchSettings = async () => {
         try {

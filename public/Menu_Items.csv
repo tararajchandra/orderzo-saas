@@ -1,0 +1,137 @@
+name,description,category_name,price,gst_rate,available
+Package Drinking Water 1L,,Beverage,20,5,true
+Package Drinking Water 500ml,,Beverage,10,5,true
+Tea (Kulhad),,Beverage,10,5,true
+Special Tea (Kulhad),,Beverage,20,5,true
+Black Tea,,Beverage,20,5,true
+Lemon Tea,,Beverage,25,5,true
+Black Coffee,,Beverage,25,5,true
+Milk Coffee,,Beverage,40,5,true
+Cold Drinks 250ml,,Beverage,25,5,true
+Cold Drinks 500ml,,Beverage,35,5,true
+Fresh Lime Water,,Beverage,30,5,true
+Fresh Lime Soda,,Beverage,50,5,true
+Masala Cold Drinks,,Beverage,50,5,true
+Lassi Regular,,Beverage,60,5,true
+Lassi Special,,Beverage,120,5,true
+Cold Coffee,,Beverage,80,5,true
+Puri Sabzi 4pcs,,Breakfast,60,5,true
+Alu Paratha 1pc,,Breakfast,60,5,true
+Veg Sandwich,,Breakfast,80,5,true
+Chicken Sandwich,,Breakfast,120,5,true
+Grill Sandwich (Veg),,Breakfast,120,5,true
+Grill Sandwich (Chicken),,Breakfast,140,5,true
+Omelette,,Breakfast,40,5,true
+Veg Pakoda 6pcs,,Veg Snacks,140,5,true
+French Fry,,Veg Snacks,120,5,true
+Panner Pakora 6pcs,,Veg Snacks,200,5,true
+Chilli Panner Dry,,Veg Snacks,200,5,true
+Crispy Chilly Babycorn,,Veg Snacks,200,5,true
+Chilli Musroom Dry,,Veg Snacks,220,5,true
+Mushroom Pepper Salt,,Veg Snacks,200,5,true
+Chicken Pakoda 6pcs,,Non Veg Snacks,200,5,true
+Chicken Lollipop 6pcs,,Non Veg Snacks,200,5,true
+Chilli Chicken Dry,,Non Veg Snacks,200,5,true
+Crispy Chicken,,Non Veg Snacks,220,5,true
+Chicken 65,,Non Veg Snacks,200,5,true
+Chicken Oil Fry,,Non Veg Snacks,210,5,true
+Chilli Prawn Dry,,Non Veg Snacks,300,5,true
+Drums Of Heaven,,Non Veg Snacks,240,5,true
+Chicken Pepper Salt,,Non Veg Snacks,220,5,true
+Fish Finger 6pcs,,Non Veg Snacks,280,5,true
+Chilli Fish Dry,,Non Veg Snacks,300,5,true
+Sweet Corn Soup Veg,,Soup,120,5,true
+Sweet Corn Soup Chicken,,Soup,150,5,true
+Manchow Soup Veg,,Soup,120,5,true
+Manchow Soup Chicken,,Soup,160,5,true
+Hot & Sour Soup Veg,,Soup,120,5,true
+Hot & Sour Soup Chicken,,Soup,160,5,true
+Tadka Plain,,Indian Main Course (Veg),100,5,true
+Tadka Egg,,Indian Main Course (Veg),120,5,true
+Tadka Chicken,,Indian Main Course (Veg),150,5,true
+Dal Makhani,,Indian Main Course (Veg),140,5,true
+Yellow Dal Fry,,Indian Main Course (Veg),120,5,true
+Mix Veg,,Indian Main Course (Veg),180,5,true
+Chana Masala,,Indian Main Course (Veg),130,5,true
+Mushroom Masala,,Indian Main Course (Veg),220,5,true
+Panner Butter Masala,,Indian Main Course (Veg),220,5,true
+Kadai Panner,,Indian Main Course (Veg),250,5,true
+Panner Do Piyaza,,Indian Main Course (Veg),250,5,true
+Sahi Panner,,Indian Main Course (Veg),240,5,true
+Matar Panner,,Indian Main Course (Veg),250,5,true
+Chicken Kasha / Curry Full (8pcs),,Indian Main Course (Chicken),380,5,true
+Chicken Kasha / Curry Half (4pcs),,Indian Main Course (Chicken),200,5,true
+Chicken Bharta,,Indian Main Course (Chicken),210,5,true
+Kadhai Chicken Full (6pc),,Indian Main Course (Chicken),360,5,true
+Kadhai Chicken Half (4pc),,Indian Main Course (Chicken),250,5,true
+Chicken Do Piyaza Full (6pc),,Indian Main Course (Chicken),360,5,true
+Chicken Do Piyaza Half (4pc),,Indian Main Course (Chicken),250,5,true
+Chicken Tikka Masala (6pcs),,Indian Main Course (Chicken),280,5,true
+Chicken Tikka Rashmi Butter Masala (6pcs),,Indian Main Course (Chicken),280,5,true
+Champaran Chicken,,Indian Main Course (Chicken),370,5,true
+Butter Chicken Boneless (Mumbai Style),,Indian Main Course (Chicken),350,5,true
+Butter Chicken With Bone (Kolkata Style),,Indian Main Course (Chicken),330,5,true
+Mutton Kasha / Curry Full (8pcs),,Mutton,580,5,true
+Mutton Kasha / Curry Half (4pcs),,Mutton,310,5,true
+Kadhai Mutton Full (8pcs),,Mutton,620,5,true
+Kadhai Mutton Half (4pcs),,Mutton,330,5,true
+Mutton Do Piyaza Full (8pcs),,Mutton,620,5,true
+Mutton Do Piyaza Half (4pcs),,Mutton,330,5,true
+Champaran Mutton 8pcs,,Mutton,620,5,true
+Fish Fry (Ruhi/Katla) 1pc,,Fish,60,5,true
+Fish Curry (Ruhi/Katla) 1pc,,Fish,80,5,true
+Fish Curry (Ruhi/Katla) 2pc,,Fish,160,5,true
+Pomfret Fry / Masala,,Fish,200,5,true
+Vetki Fry 1pc,,Fish,100,5,true
+Vetki Kassa / Curry / Masala 2pcs,,Fish,210,5,true
+Omelette (Egg),,Egg,40,5,true
+Egg Bhurji,,Egg,50,5,true
+Omelette Curry / Masala,,Egg,80,5,true
+Egg Curry 2pcs,,Egg,80,5,true
+Egg Masala 2pcs,,Egg,80,5,true
+Chilly Chicken Boneless 6pcs,,Chinese Main Course,230,5,true
+Chicken Manchurian 6pcs,,Chinese Main Course,240,5,true
+Panner Manchurian 6pcs,,Chinese Main Course,200,5,true
+Garlic Chicken 6pcs,,Chinese Main Course,220,5,true
+Chicken Sweet & Sour,,Chinese Main Course,220,5,true
+Lemon Chicken,,Chinese Main Course,220,5,true
+Steam Rice,,Rice / Noodles,60,5,true
+Curd Rice,,Rice / Noodles,100,5,true
+Jeera Rice,,Rice / Noodles,90,5,true
+Peas Polao,,Rice / Noodles,100,5,true
+Basanti Polao,,Rice / Noodles,150,5,true
+Fried Rice (Veg),,Rice / Noodles,120,5,true
+Fried Rice (Chicken),,Rice / Noodles,140,5,true
+Fried Rice (Mix),,Rice / Noodles,160,5,true
+Noodles (Veg),,Rice / Noodles,120,5,true
+Noodles (Chicken),,Rice / Noodles,140,5,true
+Noodles (Mix),,Rice / Noodles,160,5,true
+Rosted Papad 1pc,,Accompaniment,25,5,true
+Masala Papad 1pc,,Accompaniment,40,5,true
+Green Salad,,Accompaniment,60,5,true
+Onion Salad,,Accompaniment,50,5,true
+Raita,,Accompaniment,80,5,true
+Veg Thali (2Sabzi+Dal+Curd+Papad),,Thali Delight,100,5,true
+Omlet Thali (Single Egg),,Thali Delight,125,5,true
+Fish Thali (1pc Fish),,Thali Delight,160,5,true
+Vetki Fish Thali (1pc),,Thali Delight,240,5,true
+Chicken Thali (2pcs),,Thali Delight,220,5,true
+Mutton Thali (2pcs),,Thali Delight,260,5,true
+Extra Rice,,Thali Delight,10,5,true
+Tawa Roti (Plain),,Tandoori,10,5,true
+Tawa Roti (Butter),,Tandoori,15,5,true
+Tandoori Roti (Plain),,Tandoori,20,5,true
+Tandoori Roti (Butter),,Tandoori,25,5,true
+Naan (Plain),,Tandoori,35,5,true
+Naan (Butter),,Tandoori,45,5,true
+Garlic Naan,,Tandoori,70,5,true
+Masala Kulcha,,Tandoori,70,5,true
+Lacha Paratha,,Tandoori,65,5,true
+Tandoori Chicken Full,,Tandoori,400,5,true
+Tandoori Chicken Half,,Tandoori,220,5,true
+Chicken Tikka 6pcs,,Tandoori,230,5,true
+Chicken Reshmi Kabab 6pcs,,Tandoori,250,5,true
+Chicken Malai Tikka 6pcs,,Tandoori,260,5,true
+Chicken Hariyali Kabab 6pcs,,Tandoori,250,5,true
+Fish Tikka 4pcs,,Tandoori,280,5,true
+Fish Malai Tikka 4pcs,,Tandoori,300,5,true

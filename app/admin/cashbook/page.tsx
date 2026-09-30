@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useFinancialYear } from '@/contexts/FinancialYearContext';
 import { useRouter } from 'next/navigation';
 import { formatDate, formatDateTime } from '@/lib/utils';
 
@@ -18,6 +19,7 @@ export default function CashBookPage() {
     const router = useRouter();
     const [transactions, setTransactions] = useState<CashTransaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const { selectedFY } = useFinancialYear();
     const [openingBalance, setOpeningBalance] = useState(0);
     const [dateFilter, setDateFilter] = useState('today');
     const [customStartDate, setCustomStartDate] = useState('');
@@ -47,11 +49,11 @@ export default function CashBookPage() {
     const fetchCashTransactions = async () => {
         try {
             // Fetch orders for cash sales
-            const ordersResponse = await fetch('/api/orders');
+            const ordersResponse = await fetch(`/api/orders?fy_id=${selectedFY?.id || ''}`);
             const ordersData = await ordersResponse.json();
 
             // Fetch expenses from database
-            const expensesResponse = await fetch('/api/expenses');
+            const expensesResponse = await fetch(`/api/expenses?fy_id=${selectedFY?.id || ''}`);
             const expensesData = await expensesResponse.json();
 
             if (ordersData.success) {

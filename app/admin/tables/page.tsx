@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useFinancialYear } from '@/contexts/FinancialYearContext';
 import { useRouter } from 'next/navigation';
 import { formatDateTime } from '@/lib/utils';
 import Link from 'next/link';
@@ -9,6 +10,7 @@ export default function AdminTablesPage() {
     const router = useRouter();
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { selectedFY } = useFinancialYear();
     const [settlingTable, setSettlingTable] = useState<string | null>(null);
     const [totalTables, setTotalTables] = useState(16);
     const [selectedTable, setSelectedTable] = useState<string | null>(null);

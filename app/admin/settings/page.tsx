@@ -105,7 +105,16 @@ export default function SettingsPage() {
         <main className="container" style={{ padding: '2rem 1.5rem' }}>
             <div className="fade-in">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                    <h1>Settings</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                        <h1>Settings</h1>
+                        <button 
+                            onClick={() => router.push('/admin/settings/financial-years')} 
+                            className="btn btn-secondary"
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}
+                        >
+                            📅 Manage Financial Years
+                        </button>
+                    </div>
                     <button onClick={() => router.push('/admin/dashboard')} className="btn btn-ghost">
                         ← Back to Dashboard
                     </button>

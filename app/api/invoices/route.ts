@@ -6,6 +6,7 @@ export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
         const orderId = searchParams.get('orderId');
+        const fy_id = searchParams.get('fy_id');
 
         let queryText = `
             SELECT i.*, o.customer_name, o.customer_phone, o.customer_address, 
@@ -17,10 +18,18 @@ export async function GET(request: Request) {
             WHERE 1=1
         `;
         const params: any[] = [];
+        let paramCount = 1;
+
+        if (fy_id) {
+            queryText += ` AND i.financial_year_id = $${paramCount}`;
+            params.push(fy_id);
+            paramCount++;
+        }
 
         if (orderId) {
-            queryText += ` AND i.order_id = $1`;
+            queryText += ` AND i.order_id = $${paramCount}`;
             params.push(orderId);
+            paramCount++;
         }
 
         queryText += ' ORDER BY i.generated_at DESC';

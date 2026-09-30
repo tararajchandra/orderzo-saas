@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useFinancialYear } from '@/contexts/FinancialYearContext';
 import { useRouter } from 'next/navigation';
 import { formatDate, formatDateTime } from '@/lib/utils';
 
@@ -25,6 +26,7 @@ interface OrderDetail {
 export default function GSTReportPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
+    const { selectedFY } = useFinancialYear();
     const [gstData, setGstData] = useState<GSTReportData[]>([]);
     const [orders, setOrders] = useState<OrderDetail[]>([]);
     const [dateFilter, setDateFilter] = useState('all');
@@ -45,7 +47,7 @@ export default function GSTReportPage() {
             setLoading(true);
 
             // Fetch orders with invoices
-            const ordersResponse = await fetch('/api/orders?include_items=true&limit=2000');
+            const ordersResponse = await fetch(`/api/orders?include_items=true&limit=2000&fy_id=${selectedFY?.id || ''}`);
             const ordersData = await ordersResponse.json();
 
             if (!ordersData.success) {
@@ -54,7 +56,7 @@ export default function GSTReportPage() {
             }
 
             // Fetch invoices
-            const invoicesResponse = await fetch('/api/invoices');
+            const invoicesResponse = await fetch(`/api/invoices?fy_id=${selectedFY?.id || ''}`);
             const invoicesData = await invoicesResponse.json();
 
             if (!invoicesData.success) {

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useCart } from '@/contexts/CartContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import FinancialYearSelector from './FinancialYearSelector';
 import Image from 'next/image';
 
 export default function Navbar() {
@@ -110,6 +111,7 @@ export default function Navbar() {
 
                     {isAuthenticated ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            {isAdmin && <FinancialYearSelector />}
                             <span className="text-muted" style={{ fontSize: '0.9rem' }}>
                                 {user?.name}
                             </span>

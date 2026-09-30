@@ -3,6 +3,7 @@ import "./globals.css";
 import { CartProvider } from "@/contexts/CartContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { FinancialYearProvider } from "@/contexts/FinancialYearContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -22,11 +23,13 @@ export default function RootLayout({
                 <ThemeProvider>
                     <AuthProvider>
                         <CartProvider>
-                            <Navbar />
-                            <div style={{ minHeight: 'calc(100vh - 200px)' }}>
-                                {children}
-                            </div>
-                            <Footer />
+                            <FinancialYearProvider>
+                                <Navbar />
+                                <div style={{ minHeight: 'calc(100vh - 200px)' }}>
+                                    {children}
+                                </div>
+                                <Footer />
+                            </FinancialYearProvider>
                         </CartProvider>
                     </AuthProvider>
                 </ThemeProvider>
