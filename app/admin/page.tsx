@@ -25,8 +25,56 @@ export default function AdminLoginPage() {
 
             const data = await response.json();
 
+            if (data.requireLocation) {
+                if (navigator.geolocation) {
+                    setError('Duty Check: Fetching your GPS location to verify attendance...');
+                    navigator.geolocation.getCurrentPosition(
+                        async (position) => {
+                            const { latitude, longitude } = position.coords;
+                            // Retry login with location
+                            try {
+                                const retryRes = await fetch('/api/auth/login', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ ...formData, lat: latitude, lng: longitude }),
+                                });
+                                const retryData = await retryRes.json();
+                                if (retryData.success) {
+                                    login(retryData.data.token, retryData.data.user);
+                                    if (retryData.data.user.role === 'admin' || retryData.data.user.role === 'cashier') {
+                                        router.push('/admin/dashboard');
+                                    } else if (retryData.data.user.role === 'salesman') {
+                                        router.push('/salesman');
+                                    } else if (retryData.data.user.role === 'delivery_boy') {
+                                        router.push('/delivery');
+                                    } else if (retryData.data.user.role === 'kitchen_staff') {
+                                        router.push('/kitchen');
+                                    } else {
+                                        setError('Access denied. Staff privileges required.');
+                                    }
+                                } else {
+                                    setError(retryData.error || 'Login failed');
+                                }
+                            } catch (err) {
+                                setError('An error occurred during location login.');
+                            } finally {
+                                setLoading(false);
+                            }
+                        },
+                        (err) => {
+                            setError('Location access denied. Please allow location access to login.');
+                            setLoading(false);
+                        },
+                        { enableHighAccuracy: true, timeout: 10000 }
+                    );
+                } else {
+                    setError('Geolocation is not supported by your browser.');
+                    setLoading(false);
+                }
+                return; // Stop current execution as it's handling async
+            }
+
             if (data.success) {
-                // Use the context login function
                 // Use the context login function
                 login(data.data.token, data.data.user);
 
@@ -36,6 +84,8 @@ export default function AdminLoginPage() {
                     router.push('/salesman');
                 } else if (data.data.user.role === 'delivery_boy') {
                     router.push('/delivery');
+                } else if (data.data.user.role === 'kitchen_staff') {
+                    router.push('/kitchen');
                 } else {
                     setError('Access denied. Staff privileges required.');
                 }

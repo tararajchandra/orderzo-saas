@@ -44,39 +44,43 @@ export async function POST(request: Request) {
         }
 
         // --- GEOFENCING & ATTENDANCE LOGIC FOR STAFF ---
-        if (user.role === 'salesman' || user.role === 'kitchen_staff') {
-            if (!lat || !lng) {
-                return NextResponse.json({ 
-                    success: false, 
-                    requireLocation: true, 
-                    error: 'GPS Location required for staff login. Please allow location access.' 
-                }, { status: 403 });
-            }
-
-            // Fetch settings
-            const settingsRes = await query(`
-                SELECT key, value FROM settings 
-                WHERE key IN ('restaurant_lat', 'restaurant_lng', 'allowed_radius')
-            `);
+        if (user.role === 'salesman' || user.role === 'kitchen_staff' || user.role === 'cashier') {
             
-            let rLat = 0, rLng = 0, radius = 50;
-            settingsRes.rows.forEach((s: any) => {
-                if (s.key === 'restaurant_lat') rLat = parseFloat(s.value);
-                if (s.key === 'restaurant_lng') rLng = parseFloat(s.value);
-                if (s.key === 'allowed_radius') radius = parseFloat(s.value);
-            });
-
-            if (rLat !== 0 && rLng !== 0) {
-                const distance = getDistanceInMeters(lat, lng, rLat, rLng);
-                if (distance > radius) {
+            // GPS check only for salesman and kitchen staff
+            if (user.role !== 'cashier') {
+                if (!lat || !lng) {
                     return NextResponse.json({ 
                         success: false, 
-                        error: `You are too far from the restaurant (${Math.round(distance)}m). You must be within ${radius}m to login.` 
+                        requireLocation: true, 
+                        error: 'GPS Location required for staff login. Please allow location access.' 
                     }, { status: 403 });
+                }
+
+                // Fetch settings
+                const settingsRes = await query(`
+                    SELECT key, value FROM settings 
+                    WHERE key IN ('restaurant_lat', 'restaurant_lng', 'allowed_radius')
+                `);
+                
+                let rLat = 0, rLng = 0, radius = 50;
+                settingsRes.rows.forEach((s: any) => {
+                    if (s.key === 'restaurant_lat') rLat = parseFloat(s.value);
+                    if (s.key === 'restaurant_lng') rLng = parseFloat(s.value);
+                    if (s.key === 'allowed_radius') radius = parseFloat(s.value);
+                });
+
+                if (rLat !== 0 && rLng !== 0) {
+                    const distance = getDistanceInMeters(lat, lng, rLat, rLng);
+                    if (distance > radius) {
+                        return NextResponse.json({ 
+                            success: false, 
+                            error: `You are too far from the restaurant (${Math.round(distance)}m). You must be within ${radius}m to login.` 
+                        }, { status: 403 });
+                    }
                 }
             }
 
-            // Record Check-in Attendance
+            // Record Check-in Attendance for all staff including cashier
             const today = new Date().toISOString().split('T')[0];
             await query(`
                 INSERT INTO attendance (user_id, user_role, date, check_in_time, status)
