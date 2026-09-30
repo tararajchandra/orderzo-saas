@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query, getClient } from '@/lib/db';
+import { logAction } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
