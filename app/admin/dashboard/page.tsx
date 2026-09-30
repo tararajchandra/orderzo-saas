@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
 import { useFinancialYear } from '@/contexts/FinancialYearContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AdminDashboard() {
     const router = useRouter();
@@ -17,6 +18,7 @@ export default function AdminDashboard() {
     const [recentOrders, setRecentOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const { selectedFY } = useFinancialYear();
+    const { isCashier } = useAuth();
 
     useEffect(() => {
         const token = localStorage.getItem('adminToken');
@@ -109,16 +111,20 @@ export default function AdminDashboard() {
                         <h3>Billing</h3>
                         <p className="text-muted">Invoices & reports</p>
                     </Link>
+                    { !isCashier && (
                     <Link href="/admin/settings" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
-                        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>⚙️</div>
-                        <h3>Settings</h3>
-                        <p className="text-muted">Printer & restaurant info</p>
-                    </Link>
+                                            <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>⚙️</div>
+                                            <h3>Settings</h3>
+                                            <p className="text-muted">Printer & restaurant info</p>
+                                        </Link>
+                ) }
+                    { !isCashier && (
                     <Link href="/admin/settings/financial-years" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
-                        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📅</div>
-                        <h3 style={{ color: 'var(--text-primary)' }}>Financial Years</h3>
-                        <p style={{ color: 'var(--text-secondary)' }}>Manage FYs</p>
-                    </Link>
+                                            <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📅</div>
+                                            <h3 style={{ color: 'var(--text-primary)' }}>Financial Years</h3>
+                                            <p style={{ color: 'var(--text-secondary)' }}>Manage FYs</p>
+                                        </Link>
+                ) }
                     <Link href="/admin/attendance" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
                         <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>⏱️</div>
                         <h3 style={{ color: 'var(--text-primary)' }}>Staff Attendance</h3>
@@ -132,26 +138,32 @@ export default function AdminDashboard() {
 
 
 
+                    { !isCashier && (
                     <Link href="/admin/salesmen" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
-                        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>👨‍💼</div>
-                        <h3>Salesmen</h3>
-                        <p className="text-muted">Manage sales staff</p>
-                    </Link>
+                                            <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>👨‍💼</div>
+                                            <h3>Salesmen</h3>
+                                            <p className="text-muted">Manage sales staff</p>
+                                        </Link>
+                ) }
+                    { !isCashier && (
                     <Link href="/admin/kitchen-staff" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
-                        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>👨‍🍳</div>
-                        <h3>Kitchen Staff</h3>
-                        <p className="text-muted">Manage chefs</p>
-                    </Link>
+                                            <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>👨‍🍳</div>
+                                            <h3>Kitchen Staff</h3>
+                                            <p className="text-muted">Manage chefs</p>
+                                        </Link>
+                ) }
                     <Link href="/admin/delivery-boys" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
                         <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🛵</div>
                         <h3>Delivery Boys</h3>
                         <p className="text-muted">Manage delivery staff</p>
                     </Link>
+                    { !isCashier && (
                     <Link href="/admin/delivery-locations" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
-                        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📍</div>
-                        <h3>Delivery Locations</h3>
-                        <p className="text-muted">Manage delivery zones</p>
-                    </Link>
+                                            <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📍</div>
+                                            <h3>Delivery Locations</h3>
+                                            <p className="text-muted">Manage delivery zones</p>
+                                        </Link>
+                ) }
                     <Link href="/admin/payouts" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
                         <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>💸</div>
                         <h3>Commissions</h3>

@@ -13,6 +13,7 @@
     "migrate": "node scripts/migrate-railway.js",
     "verify-migration": "node scripts/verify-migration.js",
     "create-admin": "node scripts/create-admin.js",
+    "create-cashier": "node scripts/create-cashier.js",
     "test-login": "node scripts/test-login.js",
     "check-users": "node scripts/check-users.js"
   },

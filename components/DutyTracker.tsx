@@ -27,7 +27,7 @@ export default function DutyTracker() {
     const outOfBoundsTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
-        if (user && (user.role === 'salesman' || user.role === 'kitchen_staff' || user.role === 'kitchen')) {
+        if (user && (user.role === 'salesman' || user.role === 'kitchen_staff' || user.role === 'kitchen' || user.role === 'cashier')) {
             fetchStatus();
         } else {
             setStatus('not_applicable');

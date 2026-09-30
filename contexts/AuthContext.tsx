@@ -7,7 +7,7 @@ interface User {
     id: number;
     name: string;
     email: string;
-    role: 'customer' | 'admin' | 'salesman' | 'delivery_boy';
+    role: 'customer' | 'admin' | 'salesman' | 'delivery_boy' | 'cashier';
     phone?: string;
     address?: string;
 }
@@ -22,6 +22,7 @@ interface AuthContextType {
     isAdmin: boolean;
     isSalesman: boolean;
     isDeliveryBoy: boolean;
+    isCashier: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('authToken', newToken);
         localStorage.setItem('authUser', JSON.stringify(newUser));
 
-        if (newUser.role === 'admin') {
+        if (newUser.role === 'admin' || newUser.role === 'cashier') {
             localStorage.setItem('adminToken', newToken);
             localStorage.setItem('adminUser', JSON.stringify(newUser));
         } else if (newUser.role === 'salesman') {
@@ -104,8 +105,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         } else if (user) {
             // Logged in
-            if (isAdminRoute && user.role !== 'admin') {
+            if (isAdminRoute && user.role !== 'admin' && user.role !== 'cashier') {
                 router.push('/');
+            }
+            if (isAdminRoute && user.role === 'cashier') {
+                const restrictedForCashier = ['/admin/settings', '/admin/kitchen-staff', '/admin/salesmen', '/admin/delivery-locations'];
+                if (restrictedForCashier.some(route => pathname.startsWith(route))) {
+                    router.push('/admin/dashboard');
+                }
             }
             if (isSalesmanRoute && user.role !== 'salesman' && user.role !== 'admin') {
                 router.push('/');
@@ -126,7 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isAuthenticated: !!user,
             isAdmin: user?.role === 'admin',
             isSalesman: user?.role === 'salesman',
-            isDeliveryBoy: user?.role === 'delivery_boy'
+            isDeliveryBoy: user?.role === 'delivery_boy',
+            isCashier: user?.role === 'cashier'
         }}>
             {children}
         </AuthContext.Provider>
