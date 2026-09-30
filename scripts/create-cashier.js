@@ -1,5 +1,7 @@
 const { Client } = require('pg');
 const bcrypt = require('bcryptjs');
+require('dotenv').config({ path: '.env.local' });
+require('dotenv').config();
 
 async function createCashierUser() {
     const connectionString = process.env.DATABASE_URL;
