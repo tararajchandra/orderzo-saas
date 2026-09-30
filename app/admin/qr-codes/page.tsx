@@ -51,7 +51,7 @@ export default function QRCodesPage() {
     }
 
     const handlePrintQR = (tableNo: number) => {
-        const orderUrl = `${appUrl}/?table=${tableNo}`;
+        const orderUrl = `${appUrl}/menu?table=${tableNo}`;
         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(orderUrl)}&margin=10`;
 
         const html = `

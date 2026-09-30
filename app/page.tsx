@@ -1,6 +1,10 @@
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
-export default function HomePage() {
+export default function HomePage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) {
+    if (searchParams?.table) {
+        redirect(`/menu?table=${searchParams.table}`);
+    }
     return (
         <main>
             {/* Hero Section */}
