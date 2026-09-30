@@ -11,7 +11,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: false, error: 'userId is required' }, { status: 400 });
         }
 
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
         const attendanceRes = await query(`
             SELECT * FROM attendance WHERE user_id = $1 AND date = $2
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, error: 'userId and action are required' }, { status: 400 });
         }
 
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
         const attendanceRes = await query(`SELECT * FROM attendance WHERE user_id = $1 AND date = $2`, [userId, today]);
 
         if (attendanceRes.rowCount === 0) {

@@ -81,12 +81,27 @@ export async function POST(request: Request) {
             }
 
             // Record Check-in Attendance for all staff including cashier
-            const today = new Date().toISOString().split('T')[0];
-            await query(`
-                INSERT INTO attendance (user_id, user_role, date, check_in_time, status)
-                VALUES ($1, $2, $3, CURRENT_TIMESTAMP, 'present')
-                ON CONFLICT (user_id, date) DO NOTHING
-            `, [user.id, user.role, today]);
+            // Use IST (Asia/Kolkata) timezone for the date
+            const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+            
+            // Check if there is an existing checked_out record for today
+            const checkRes = await query('SELECT status FROM attendance WHERE user_id = $1 AND date = $2', [user.id, today]);
+            if (checkRes.rowCount > 0 && checkRes.rows[0].status === 'checked_out') {
+                // If they checked out and log in again on the same day, we shouldn't reset it to present unless they explicitly check-in.
+                // But wait, if they log in again, maybe they meant to check in again? 
+                // Let's just update it to present!
+                await query(`
+                    UPDATE attendance 
+                    SET status = 'present', check_in_time = CURRENT_TIMESTAMP, check_out_time = NULL 
+                    WHERE user_id = $1 AND date = $2
+                `, [user.id, today]);
+            } else {
+                await query(`
+                    INSERT INTO attendance (user_id, user_role, date, check_in_time, status)
+                    VALUES ($1, $2, $3, CURRENT_TIMESTAMP, 'present')
+                    ON CONFLICT (user_id, date) DO NOTHING
+                `, [user.id, user.role, today]);
+            }
         }
         // --- END GEOFENCING ---
 
