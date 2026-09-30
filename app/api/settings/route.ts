@@ -1,6 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { logAction } from '@/lib/audit';
 
 const KEY_MAPPING: Record<string, string> = {
     restaurantName: 'restaurant_name',
@@ -95,6 +96,7 @@ export async function POST(request: Request) {
         }
 
         await Promise.all(updates);
+        await logAction(null, 'SETTINGS_UPDATED', 'settings', null, settings);
 
         return NextResponse.json({
             success: true,

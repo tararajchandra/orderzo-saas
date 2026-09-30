@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { logAction } from '@/lib/audit';
 
 export async function GET(request: Request) {
     try {
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
             
             await query(`INSERT INTO attendance_breaks (attendance_id, break_start) VALUES ($1, CURRENT_TIMESTAMP)`, [attendanceId]);
             await query(`UPDATE attendance SET status = 'on_break' WHERE id = $1`, [attendanceId]);
+            await logAction(userId, 'ATTENDANCE_BREAK_START', 'attendance', attendanceId.toString());
             
             return NextResponse.json({ success: true, message: 'Break started' });
         } 
@@ -88,6 +90,7 @@ export async function POST(request: Request) {
             }
             
             await query(`UPDATE attendance SET status = 'present' WHERE id = $1`, [attendanceId]);
+            await logAction(userId, 'ATTENDANCE_BREAK_END', 'attendance', attendanceId.toString());
             
             return NextResponse.json({ success: true, message: 'Break ended' });
         }
@@ -122,6 +125,7 @@ export async function POST(request: Request) {
                 WHERE id = $1
             `, [attendanceId]);
             
+            await logAction(userId, 'ATTENDANCE_CHECKOUT', 'attendance', attendanceId.toString(), { isAuto });
             return NextResponse.json({ success: true, message: isAuto ? 'Auto logged out due to geofence' : 'Checked out successfully' });
         }
 

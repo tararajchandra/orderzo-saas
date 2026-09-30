@@ -124,6 +124,12 @@ export default function AdminDashboard() {
                         <h3 style={{ color: 'var(--text-primary)' }}>Staff Attendance</h3>
                         <p style={{ color: 'var(--text-secondary)' }}>View Reports</p>
                     </Link>
+                    <Link href="/admin/audit-logs" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📋</div>
+                        <h3 style={{ color: 'var(--text-primary)' }}>Audit Trail</h3>
+                        <p style={{ color: 'var(--text-secondary)' }}>Activity Logs</p>
+                    </Link>
+
 
 
                     <Link href="/admin/salesmen" className="glass-card text-center" style={{ textDecoration: 'none', cursor: 'pointer', position: 'relative', zIndex: 1 }}>

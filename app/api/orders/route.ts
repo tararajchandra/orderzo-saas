@@ -294,6 +294,7 @@ export async function POST(request: Request) {
 
         // COMMIT TRANSACTION
         await client.query('COMMIT');
+        await logAction(user_id || null, 'ORDER_CREATED', 'order', orderNumber, { total_amount, order_type });
 
         return NextResponse.json({
             success: true,
