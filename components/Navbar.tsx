@@ -19,10 +19,20 @@ export default function Navbar() {
     const [isTableOrder, setIsTableOrder] = useState(false);
 
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            setIsTableOrder(!!localStorage.getItem('tableNumber'));
-        }
-    }, []);
+        const checkTable = () => {
+            if (typeof window !== 'undefined') {
+                const isTable = !!sessionStorage.getItem('table_number') || !!localStorage.getItem('tableNumber');
+                setIsTableOrder(isTable);
+                // Also check if URL has ?table=
+                if (window.location.search.includes('table=')) {
+                    setIsTableOrder(true);
+                }
+            }
+        };
+        checkTable();
+        // Check again after a small delay to allow page effects to run
+        setTimeout(checkTable, 500);
+    }, [pathname]);
 
     const isActive = (path: string) => pathname === path;
 
