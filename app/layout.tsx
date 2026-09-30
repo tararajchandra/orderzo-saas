@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FinancialYearProvider } from "@/contexts/FinancialYearContext";
 import Navbar from "@/components/Navbar";
+import CommandPalette from "@/components/CommandPalette";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
@@ -25,6 +26,7 @@ export default function RootLayout({
                         <CartProvider>
                             <FinancialYearProvider>
                                 <Navbar />
+                                <CommandPalette />
                                 <div style={{ minHeight: 'calc(100vh - 200px)' }}>
                                     {children}
                                 </div>
