@@ -56,7 +56,7 @@ export async function GET() {
             restaurantLat: '22.5726',
             restaurantLng: '88.3639',
             allowedRadius: '50',
-            customerRadius: '100',
+            customerRadius: '50',
         };
 
         return NextResponse.json({
