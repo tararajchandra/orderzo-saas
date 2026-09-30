@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (loading) return;
 
-        const publicRoutes = ['/', '/menu', '/login', '/signup', '/cart', '/auth/callback'];
+        const publicRoutes = ['/', '/menu', '/login', '/signup', '/cart', '/auth/callback', '/dine-in-checkout', '/orders'];
         const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith('/menu/');
         const isAdminRoute = pathname.startsWith('/admin');
         const isSalesmanRoute = pathname.startsWith('/salesman');
