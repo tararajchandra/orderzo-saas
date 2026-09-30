@@ -47,7 +47,7 @@ export default function AdminLoginPage() {
                                         router.push('/salesman');
                                     } else if (retryData.data.user.role === 'delivery_boy') {
                                         router.push('/delivery');
-                                    } else if (retryData.data.user.role === 'kitchen_staff') {
+                                    } else if (retryData.data.user.role === 'kitchen_staff' || retryData.data.user.role === 'kitchen') {
                                         router.push('/kitchen');
                                     } else {
                                         setError('Access denied. Staff privileges required.');
@@ -84,7 +84,7 @@ export default function AdminLoginPage() {
                     router.push('/salesman');
                 } else if (data.data.user.role === 'delivery_boy') {
                     router.push('/delivery');
-                } else if (data.data.user.role === 'kitchen_staff') {
+                } else if (data.data.user.role === 'kitchen_staff' || data.data.user.role === 'kitchen') {
                     router.push('/kitchen');
                 } else {
                     setError('Access denied. Staff privileges required.');

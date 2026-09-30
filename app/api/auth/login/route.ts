@@ -44,7 +44,7 @@ export async function POST(request: Request) {
         }
 
         // --- GEOFENCING & ATTENDANCE LOGIC FOR STAFF ---
-        if (user.role === 'salesman' || user.role === 'kitchen_staff' || user.role === 'cashier') {
+        if (user.role === 'salesman' || user.role === 'kitchen_staff' || user.role === 'kitchen' || user.role === 'cashier') {
             
             // GPS check only for salesman and kitchen staff
             if (user.role !== 'cashier') {
