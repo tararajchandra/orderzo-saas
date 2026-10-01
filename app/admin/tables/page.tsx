@@ -454,7 +454,7 @@ export default function AdminTablesPage() {
                           border: isOccupied
                             ? "none"
                             : `1px solid ${theme.border}`,
-                          color: "white",
+                          color: isOccupied ? "white" : "var(--text-primary)",
                           display: "flex",
                           flexDirection: "column",
                           justifyContent: "center",
@@ -524,7 +524,8 @@ export default function AdminTablesPage() {
             style={{
               width: "100%",
               maxWidth: "500px",
-              background: "#121212",
+              background: "var(--bg-secondary)",
+              color: "var(--text-primary)",
               border: "1px solid #333",
               borderRadius: "12px",
               maxHeight: "90vh",
@@ -574,7 +575,7 @@ export default function AdminTablesPage() {
                   style={{
                     marginBottom: "1rem",
                     padding: "0.75rem",
-                    background: "#1e1e1e",
+                    background: "var(--glass-bg)",
                     borderRadius: "8px",
                   }}
                 >
