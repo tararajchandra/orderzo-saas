@@ -9,33 +9,34 @@ import CommandPalette from "@/components/CommandPalette";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-    title: "OrderZo - Order Delicious Food Online",
-    description: "Experience the finest dining from the comfort of your home. Order from our extensive menu of authentic dishes.",
+  title: "OrderZo - Order Delicious Food Online",
+  description:
+    "Experience the finest dining from the comfort of your home. Order from our extensive menu of authentic dishes.",
 };
 
 export default function RootLayout({
-    children,
+  children,
 }: Readonly<{
-    children: React.ReactNode;
+  children: React.ReactNode;
 }>) {
-    return (
-        <html lang="en">
-            <body>
-                <ThemeProvider>
-                    <AuthProvider>
-                        <CartProvider>
-                            <FinancialYearProvider>
-                                <Navbar />
-                                <CommandPalette />
-                                <div style={{ minHeight: 'calc(100vh - 200px)' }}>
-                                    {children}
-                                </div>
-                                <Footer />
-                            </FinancialYearProvider>
-                        </CartProvider>
-                    </AuthProvider>
-                </ThemeProvider>
-            </body>
-        </html>
-    );
+  return (
+    <html lang="en">
+      <body>
+        <ThemeProvider>
+          <AuthProvider>
+            <CartProvider>
+              <FinancialYearProvider>
+                <Navbar />
+                <CommandPalette />
+                <div style={{ minHeight: "calc(100vh - 200px)" }}>
+                  {children}
+                </div>
+                <Footer />
+              </FinancialYearProvider>
+            </CartProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </body>
+    </html>
+  );
 }

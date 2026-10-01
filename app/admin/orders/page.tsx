@@ -359,7 +359,7 @@ export default function AdminOrdersPage() {
             <head>
                 <title>Receipt #${order.order_number || order.id}</title>
             <style>
-                @page { margin: 0; size: 80mm auto; }
+                @page { margin: 0;  }
                 body {
                     font-family: \'Courier New\', Courier, monospace;
                     width: 78mm;
@@ -591,7 +591,7 @@ export default function AdminOrdersPage() {
     const htmlContent =
       "<!DOCTYPE html><html><head><title>KOT - #" +
       (order.id || "") +
-      '</title><style>@page { margin: 0; size: 80mm auto; } body { font-family: \'Courier New\', Courier, monospace; width: 72mm; margin: 0 auto; padding: 10px; font-size: 16px; font-weight: bold; color: black; background: #fff; } .center { text-align: center; } .bold { font-weight: bold; } table { width: 100%; border-collapse: collapse; margin-top: 10px; } th { border-bottom: 1px dashed #000; padding-bottom: 5px; text-align: left; } .divider { border-top: 1px dashed #000; margin: 10px 0; }</style></head><body><div class="center bold" style="font-size: 24px;">K.O.T</div><div class="center divider"></div><div>Order No: ' +
+      '</title><style>@page { margin: 0;  } body { font-family: \'Courier New\', Courier, monospace; width: 72mm; margin: 0 auto; padding: 10px; font-size: 16px; font-weight: bold; color: black; background: #fff; } .center { text-align: center; } .bold { font-weight: bold; } table { width: 100%; border-collapse: collapse; margin-top: 10px; } th { border-bottom: 1px dashed #000; padding-bottom: 5px; text-align: left; } .divider { border-top: 1px dashed #000; margin: 10px 0; }</style></head><body><div class="center bold" style="font-size: 24px;">K.O.T</div><div class="center divider"></div><div>Order No: ' +
       (order.order_number || order.id || "N/A") +
       "</div><div>Type: " +
       (order.order_type || "").toUpperCase() +

@@ -224,7 +224,7 @@ export default function CreateOrderPage() {
             <head>
                 <title>Receipt #${order.id}</title>
                 <style>
-                    @page { margin: 0; size: 80mm auto; }
+                    @page { margin: 0;  }
                     body {
                         font-family: 'Courier New', Courier, monospace;
                         width: 72mm;

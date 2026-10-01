@@ -1,10 +1,14 @@
-import DutyTracker from '@/components/DutyTracker';
+import DutyTracker from "@/components/DutyTracker";
 
-export default function SalesmanLayout({ children }: { children: React.ReactNode }) {
-    return (
-        <>
-            <DutyTracker />
-            {children}
-        </>
-    );
+export default function SalesmanLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <>
+      <DutyTracker />
+      {children}
+    </>
+  );
 }
