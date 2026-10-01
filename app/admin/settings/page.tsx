@@ -48,6 +48,46 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const [parsedZones, setParsedZones] = useState<
+    { name: string; count: string }[]
+  >([{ name: "", count: "" }]);
+
+  // Parse zones on initial load
+  useEffect(() => {
+    if (
+      settings.tableZones &&
+      typeof settings.tableZones === "string" &&
+      settings.tableZones.trim() !== ""
+    ) {
+      try {
+        const z = settings.tableZones
+          .split(",")
+          .map((zone) => {
+            const parts = zone.split(":");
+            return {
+              name: parts[0]?.trim() || "",
+              count: parts[1]?.trim() || "",
+            };
+          })
+          .filter((z) => z.name !== "");
+        setParsedZones(z.length > 0 ? z : [{ name: "", count: "" }]);
+      } catch (e) {
+        setParsedZones([{ name: "", count: "" }]);
+      }
+    } else {
+      setParsedZones([{ name: "", count: "" }]);
+    }
+  }, [settings.tableZones]);
+
+  const updateZoneString = (newZones: { name: string; count: string }[]) => {
+    setParsedZones(newZones);
+    const str = newZones
+      .filter((z) => z.name.trim() !== "" && z.count.trim() !== "")
+      .map((z) => `${z.name.trim()}:${z.count.trim()}`)
+      .join(", ");
+    setSettings({ ...settings, tableZones: str });
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
     if (!token) {
