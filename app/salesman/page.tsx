@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatDateTime, getTableList } from "@/lib/utils";
+import { formatDateTime, getTableList, getGroupedTableList } from "@/lib/utils";
 import { ReceiptPrinter } from "@/lib/receipt-printer";
 
 interface MenuItem {
@@ -772,68 +772,79 @@ export default function SalesmanDashboard() {
       {viewMode === "tables" ? (
         // ACTIVE TABLES VIEW
         <>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
-              gap: "1rem",
-              marginBottom: "2rem",
-            }}
-          >
-            {getTableList(settings).map((tableNo) => {
-              const isOccupied = !!tableGroups[tableNo];
-
-              return (
-                <button
-                  key={tableNo}
-                  onClick={() => {
-                    if (isOccupied) {
-                      setSelectedTable(tableNo);
-                      setShowModal(true);
-                    } else {
-                      alert(`Table ${tableNo} is currently empty.`);
-                    }
-                  }}
+          <div>
+            {getGroupedTableList(settings).map((group) => (
+              <div key={group.zone} style={{ marginBottom: "2rem" }}>
+                <h3 style={{ marginBottom: "1rem", color: "var(--primary)" }}>
+                  {group.zone}
+                </h3>
+                <div
                   style={{
-                    height: "100px",
-                    borderRadius: "12px",
-                    border: "none",
-                    background: isOccupied ? "var(--error)" : "var(--success)",
-                    color: "white",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    cursor: "pointer",
-                    boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                    transition: "transform 0.2s",
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(auto-fill, minmax(100px, 1fr))",
+                    gap: "1rem",
                   }}
                 >
-                  <span
-                    style={{
-                      fontSize: "1.25rem",
-                      fontWeight: "bold",
-                      textAlign: "center",
-                    }}
-                  >
-                    {tableNo.replace("Table ", "")}
-                  </span>
-                  {isOccupied && (
-                    <span
-                      style={{
-                        fontSize: "0.8rem",
-                        marginTop: "0.5rem",
-                        background: "rgba(255,255,255,0.2)",
-                        padding: "2px 6px",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      ₹{tableGroups[tableNo].total.toFixed(0)}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+                  {group.tables.map((tableNo) => {
+                    const isOccupied = !!tableGroups[tableNo];
+
+                    return (
+                      <button
+                        key={tableNo}
+                        onClick={() => {
+                          if (isOccupied) {
+                            setSelectedTable(tableNo);
+                            setShowModal(true);
+                          } else {
+                            alert(`Table ${tableNo} is currently empty.`);
+                          }
+                        }}
+                        style={{
+                          height: "100px",
+                          borderRadius: "12px",
+                          border: "none",
+                          background: isOccupied
+                            ? "var(--error)"
+                            : "var(--success)",
+                          color: "white",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          cursor: "pointer",
+                          boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                          transition: "transform 0.2s",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: "1.25rem",
+                            fontWeight: "bold",
+                            textAlign: "center",
+                          }}
+                        >
+                          {tableNo.replace("Table ", "")}
+                        </span>
+                        {isOccupied && (
+                          <span
+                            style={{
+                              fontSize: "0.8rem",
+                              marginTop: "0.5rem",
+                              background: "rgba(255,255,255,0.2)",
+                              padding: "2px 6px",
+                              borderRadius: "4px",
+                            }}
+                          >
+                            ₹{tableGroups[tableNo].total.toFixed(0)}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </>
       ) : viewMode === "list" ? (
@@ -1261,10 +1272,14 @@ export default function SalesmanDashboard() {
                       <option value="" disabled>
                         Select Table
                       </option>
-                      {getTableList(settings).map((num) => (
-                        <option key={num} value={num}>
-                          {num.includes(" ") ? num : `Table ${num}`}
-                        </option>
+                      {getGroupedTableList(settings).map((group) => (
+                        <optgroup key={group.zone} label={group.zone}>
+                          {group.tables.map((num) => (
+                            <option key={num} value={num}>
+                              {num.replace(group.zone + " ", "")}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                   )}

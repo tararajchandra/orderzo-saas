@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useFinancialYear } from "@/contexts/FinancialYearContext";
 import { useRouter } from "next/navigation";
-import { formatDateTime, getTableList } from "@/lib/utils";
+import { formatDateTime, getTableList, getGroupedTableList } from "@/lib/utils";
 import Link from "next/link";
 
 export default function AdminTablesPage() {
@@ -381,75 +381,85 @@ export default function AdminTablesPage() {
           </Link>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
-            gap: "1rem",
-            marginBottom: "2rem",
-          }}
-        >
-          {tablesList.map((tableNo) => {
-            const isOccupied = !!tableGroups[tableNo];
-
-            return (
-              <button
-                key={tableNo}
-                onClick={() => {
-                  if (isOccupied) {
-                    setSelectedTable(tableNo);
-                    setShowModal(true);
-                  } else {
-                    // Empty table clicked
-                    alert(`Table ${tableNo} is currently empty.`);
-                  }
-                }}
+        <div>
+          {getGroupedTableList(settings).map((group) => (
+            <div key={group.zone} style={{ marginBottom: "2rem" }}>
+              <h3 style={{ marginBottom: "1rem", color: "var(--primary)" }}>
+                {group.zone}
+              </h3>
+              <div
                 style={{
-                  height: "100px",
-                  borderRadius: "12px",
-                  border: "none",
-                  background: isOccupied ? "var(--error)" : "var(--success)",
-                  color: "white",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  cursor: "pointer",
-                  boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                  transition: "transform 0.2s",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+                  gap: "1rem",
                 }}
-                onMouseOver={(e) =>
-                  (e.currentTarget.style.transform = "scale(1.05)")
-                }
-                onMouseOut={(e) =>
-                  (e.currentTarget.style.transform = "scale(1)")
-                }
               >
-                <span
-                  style={{
-                    fontSize: "1.25rem",
-                    fontWeight: "bold",
-                    textAlign: "center",
-                  }}
-                >
-                  {tableNo.replace("Table ", "")}
-                </span>
-                {isOccupied && (
-                  <span
-                    style={{
-                      fontSize: "0.8rem",
-                      marginTop: "0.5rem",
-                      background: "rgba(255,255,255,0.2)",
-                      padding: "2px 6px",
-                      borderRadius: "4px",
-                    }}
-                  >
-                    ₹{tableGroups[tableNo].total.toFixed(0)}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+                {group.tables.map((tableNo) => {
+                  const isOccupied = !!tableGroups[tableNo];
+
+                  return (
+                    <button
+                      key={tableNo}
+                      onClick={() => {
+                        if (isOccupied) {
+                          setSelectedTable(tableNo);
+                          setShowModal(true);
+                        } else {
+                          // Empty table clicked
+                          alert(`Table ${tableNo} is currently empty.`);
+                        }
+                      }}
+                      style={{
+                        height: "100px",
+                        borderRadius: "12px",
+                        border: "none",
+                        background: isOccupied
+                          ? "var(--error)"
+                          : "var(--success)",
+                        color: "white",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        cursor: "pointer",
+                        boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                        transition: "transform 0.2s",
+                      }}
+                      onMouseOver={(e) =>
+                        (e.currentTarget.style.transform = "scale(1.05)")
+                      }
+                      onMouseOut={(e) =>
+                        (e.currentTarget.style.transform = "scale(1)")
+                      }
+                    >
+                      <span
+                        style={{
+                          fontSize: "1.25rem",
+                          fontWeight: "bold",
+                          textAlign: "center",
+                        }}
+                      >
+                        {tableNo.replace("Table ", "")}
+                      </span>
+                      {isOccupied && (
+                        <span
+                          style={{
+                            fontSize: "0.8rem",
+                            marginTop: "0.5rem",
+                            background: "rgba(255,255,255,0.2)",
+                            padding: "2px 6px",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          ₹{tableGroups[tableNo].total.toFixed(0)}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
