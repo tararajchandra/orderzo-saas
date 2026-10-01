@@ -49,7 +49,7 @@ export default function LoginPage() {
 
             if (data.success) {
                 login(data.data.token, data.data.user);
-                if (data.data.user.role === 'admin') {
+                if (data.data.user.role === 'admin' || data.data.user.role === 'cashier') {
                     router.push('/admin/dashboard');
                 } else if (data.data.user.role === 'salesman') {
                     router.push('/salesman');
