@@ -6,6 +6,40 @@ import { useRouter } from "next/navigation";
 import { formatDateTime, getTableList, getGroupedTableList } from "@/lib/utils";
 import Link from "next/link";
 
+// Zone Color Palette
+const ZONE_COLORS = [
+  {
+    empty: "var(--glass-bg)",
+    occupied: "#3b82f6",
+    border: "rgba(59, 130, 246, 0.5)",
+  }, // Blue
+  {
+    empty: "var(--glass-bg)",
+    occupied: "#a855f7",
+    border: "rgba(168, 85, 247, 0.5)",
+  }, // Purple
+  {
+    empty: "var(--glass-bg)",
+    occupied: "#f97316",
+    border: "rgba(249, 115, 22, 0.5)",
+  }, // Orange
+  {
+    empty: "var(--glass-bg)",
+    occupied: "#14b8a6",
+    border: "rgba(20, 184, 166, 0.5)",
+  }, // Teal
+  {
+    empty: "var(--glass-bg)",
+    occupied: "#ec4899",
+    border: "rgba(236, 72, 153, 0.5)",
+  }, // Pink
+  {
+    empty: "var(--glass-bg)",
+    occupied: "#eab308",
+    border: "rgba(234, 179, 8, 0.5)",
+  }, // Yellow
+];
+
 export default function AdminTablesPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<any[]>([]);
@@ -382,84 +416,89 @@ export default function AdminTablesPage() {
         </div>
 
         <div>
-          {getGroupedTableList(settings).map((group) => (
-            <div key={group.zone} style={{ marginBottom: "2rem" }}>
-              <h3 style={{ marginBottom: "1rem", color: "var(--primary)" }}>
-                {group.zone}
-              </h3>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
-                  gap: "1rem",
-                }}
-              >
-                {group.tables.map((tableNo) => {
-                  const isOccupied = !!tableGroups[tableNo];
+          {getGroupedTableList(settings).map((group, groupIdx) => {
+            const theme = ZONE_COLORS[groupIdx % ZONE_COLORS.length];
+            return (
+              <div key={group.zone} style={{ marginBottom: "2rem" }}>
+                <h3 style={{ marginBottom: "1rem", color: "var(--primary)" }}>
+                  {group.zone}
+                </h3>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(auto-fill, minmax(100px, 1fr))",
+                    gap: "1rem",
+                  }}
+                >
+                  {group.tables.map((tableNo) => {
+                    const isOccupied = !!tableGroups[tableNo];
 
-                  return (
-                    <button
-                      key={tableNo}
-                      onClick={() => {
-                        if (isOccupied) {
-                          setSelectedTable(tableNo);
-                          setShowModal(true);
-                        } else {
-                          // Empty table clicked
-                          alert(`Table ${tableNo} is currently empty.`);
-                        }
-                      }}
-                      style={{
-                        height: "100px",
-                        borderRadius: "12px",
-                        border: "none",
-                        background: isOccupied
-                          ? "var(--error)"
-                          : "var(--success)",
-                        color: "white",
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        cursor: "pointer",
-                        boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                        transition: "transform 0.2s",
-                      }}
-                      onMouseOver={(e) =>
-                        (e.currentTarget.style.transform = "scale(1.05)")
-                      }
-                      onMouseOut={(e) =>
-                        (e.currentTarget.style.transform = "scale(1)")
-                      }
-                    >
-                      <span
-                        style={{
-                          fontSize: "1.25rem",
-                          fontWeight: "bold",
-                          textAlign: "center",
+                    return (
+                      <button
+                        key={tableNo}
+                        onClick={() => {
+                          if (isOccupied) {
+                            setSelectedTable(tableNo);
+                            setShowModal(true);
+                          } else {
+                            // Empty table clicked
+                            alert(`Table ${tableNo} is currently empty.`);
+                          }
                         }}
+                        style={{
+                          height: "100px",
+                          borderRadius: "12px",
+                          border: "none",
+                          background: isOccupied ? theme.occupied : theme.empty,
+                          border: isOccupied
+                            ? "none"
+                            : `1px solid ${theme.border}`,
+                          color: "white",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          cursor: "pointer",
+                          boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                          transition: "transform 0.2s",
+                        }}
+                        onMouseOver={(e) =>
+                          (e.currentTarget.style.transform = "scale(1.05)")
+                        }
+                        onMouseOut={(e) =>
+                          (e.currentTarget.style.transform = "scale(1)")
+                        }
                       >
-                        {tableNo.replace("Table ", "")}
-                      </span>
-                      {isOccupied && (
                         <span
                           style={{
-                            fontSize: "0.8rem",
-                            marginTop: "0.5rem",
-                            background: "rgba(255,255,255,0.2)",
-                            padding: "2px 6px",
-                            borderRadius: "4px",
+                            fontSize: "1.25rem",
+                            fontWeight: "bold",
+                            textAlign: "center",
                           }}
                         >
-                          ₹{tableGroups[tableNo].total.toFixed(0)}
+                          {tableNo.replace("Table ", "")}
                         </span>
-                      )}
-                    </button>
-                  );
-                })}
+                        {isOccupied && (
+                          <span
+                            style={{
+                              fontSize: "0.8rem",
+                              marginTop: "0.5rem",
+                              background: "rgba(255,255,255,0.2)",
+                              padding: "2px 6px",
+                              borderRadius: "4px",
+                            }}
+                          >
+                            ₹{tableGroups[tableNo].total.toFixed(0)}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
