@@ -89,20 +89,16 @@ export async function POST(request: Request) {
     // If 'query' is just `pool.query`, BEGIN might not work as expected if we don't hold the client.
     // But for settings, simple individual updates are probably fine or we can just run multiple upserts.
 
-    const updates = [];
+    // Using sequential await to avoid Postgres connection pool exhaustion (EMAXCONNSESSION)
     for (const [key, value] of Object.entries(settings)) {
       const dbKey = KEY_MAPPING[key];
       if (dbKey) {
-        updates.push(
-          query(
-            "INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2",
-            [dbKey, String(value)],
-          ),
+        await query(
+          "INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2",
+          [dbKey, String(value)],
         );
       }
     }
-
-    await Promise.all(updates);
     await logAction(null, "SETTINGS_UPDATED", "settings", null, settings);
 
     return NextResponse.json({
@@ -112,7 +108,12 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error updating settings:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to update settings" },
+      {
+        success: false,
+        error:
+          "Failed to update settings: " +
+          (error instanceof Error ? error.message : String(error)),
+      },
       { status: 500 },
     );
   }
