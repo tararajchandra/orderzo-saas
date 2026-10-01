@@ -494,7 +494,11 @@ export default function CreateOrderPage() {
           await handlePrintBill(printableOrder);
         }
 
-        alert(`Order Created! Invoice: ${data.data.invoice_number}`);
+        alert(
+          data.data.invoice_number
+            ? `Order Created! Invoice: ${data.data.invoice_number}`
+            : "Order Created Successfully!",
+        );
         router.push("/admin/orders");
       } else {
         alert(`Failed: ${data.error}`);
