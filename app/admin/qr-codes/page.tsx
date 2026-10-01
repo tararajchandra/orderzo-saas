@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getTableList } from "@/lib/utils";
 
 export default function QRCodesPage() {
   const router = useRouter();
