@@ -127,7 +127,10 @@ export default function SettingsPage() {
         localStorage.setItem("printerSettings", JSON.stringify(settings));
         setTimeout(() => setSaved(false), 3000);
       } else {
-        alert("Failed to save settings");
+        const errorData = await response.json();
+        alert(
+          "Failed to save settings: " + (errorData.error || "Unknown error"),
+        );
       }
     } catch (error) {
       console.error("Error saving settings:", error);
