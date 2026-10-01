@@ -726,7 +726,7 @@ export default function SalesmanDashboard() {
           <div
             style={{
               display: "flex",
-              background: "var(--glass-bg)",
+              background: "#1e1e1e",
               borderRadius: "8px",
               padding: "4px",
             }}
@@ -1480,11 +1480,13 @@ export default function SalesmanDashboard() {
           }}
         >
           <div
-            className="glass-card fade-in"
+            className="fade-in"
             style={{
               width: "100%",
               maxWidth: "500px",
-              background: "var(--bg-color)",
+              background: "#121212",
+              border: "1px solid #333",
+              borderRadius: "12px",
               maxHeight: "90vh",
               display: "flex",
               flexDirection: "column",
@@ -1500,7 +1502,13 @@ export default function SalesmanDashboard() {
                 paddingBottom: "1rem",
               }}
             >
-              <h2 style={{ margin: 0, color: "var(--primary)" }}>
+              <h2
+                style={{
+                  margin: 0,
+                  color: "var(--primary)",
+                  fontSize: "1.25rem",
+                }}
+              >
                 Table {selectedTable}
               </h2>
               <button
@@ -1526,7 +1534,7 @@ export default function SalesmanDashboard() {
                   style={{
                     marginBottom: "1rem",
                     padding: "0.75rem",
-                    background: "var(--glass-bg)",
+                    background: "#1e1e1e",
                     borderRadius: "8px",
                   }}
                 >
@@ -1537,12 +1545,14 @@ export default function SalesmanDashboard() {
                       marginBottom: "0.5rem",
                     }}
                   >
-                    <strong>Order #{o.order_number || o.id}</strong>
+                    <strong style={{ fontSize: "0.85rem" }}>
+                      Order #{o.order_number || o.id}
+                    </strong>
                     <span className="badge badge-info">{o.order_status}</span>
                   </div>
                   <div
                     className="text-muted"
-                    style={{ fontSize: "0.75rem", marginBottom: "0.5rem" }}
+                    style={{ fontSize: "0.65rem", marginBottom: "0.25rem" }}
                   >
                     {formatDateTime(o.created_at)}
                   </div>
@@ -1557,11 +1567,11 @@ export default function SalesmanDashboard() {
                     return items.length > 0 ? (
                       <div
                         style={{
-                          margin: "0.75rem 0",
+                          margin: "0.5rem 0",
                           padding: "0.5rem 0",
                           borderTop: "1px solid rgba(255,255,255,0.1)",
                           borderBottom: "1px solid rgba(255,255,255,0.1)",
-                          fontSize: "0.875rem",
+                          fontSize: "0.75rem",
                         }}
                       >
                         {items.map((item: any, i: number) => (
@@ -1593,7 +1603,9 @@ export default function SalesmanDashboard() {
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
-                      fontWeight: 500,
+                      fontWeight: 600,
+                      fontSize: "0.85rem",
+                      marginTop: "0.25rem",
                     }}
                   >
                     <span>Amount:</span>
@@ -1618,12 +1630,12 @@ export default function SalesmanDashboard() {
                   marginBottom: "1.5rem",
                 }}
               >
-                <span style={{ fontSize: "1.25rem", fontWeight: 600 }}>
+                <span style={{ fontSize: "1rem", fontWeight: 600 }}>
                   Master Bill
                 </span>
                 <span
                   style={{
-                    fontSize: "1.75rem",
+                    fontSize: "1.25rem",
                     fontWeight: 700,
                     color: "var(--primary)",
                   }}
