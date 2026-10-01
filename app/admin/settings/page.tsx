@@ -291,6 +291,50 @@ export default function SettingsPage() {
               <div
                 style={{
                   display: "grid",
+                  gridTemplateColumns: "1fr",
+                  gap: "1rem",
+                }}
+              >
+                <div className="form-group">
+                  <label
+                    className="label"
+                    style={{
+                      display: "block",
+                      marginBottom: "0.5rem",
+                      color: "var(--text-secondary)",
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Table Zones (Optional)
+                    <span
+                      className="text-muted"
+                      style={{
+                        display: "block",
+                        fontSize: "0.75rem",
+                        fontWeight: "normal",
+                        marginTop: "4px",
+                      }}
+                    >
+                      Format: ZoneName:Count (e.g. Cafe:10, Lounge:5, Couple:3).
+                      Leave empty to use simple table numbers.
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.tableZones || ""}
+                    onChange={(e) =>
+                      setSettings({ ...settings, tableZones: e.target.value })
+                    }
+                    className="input"
+                    placeholder="Cafe:10, Lounge:5, Couple:3"
+                  />
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
                   gridTemplateColumns: "1fr 1fr",
                   gap: "1rem",
                 }}
