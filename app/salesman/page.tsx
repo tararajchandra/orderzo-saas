@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, getTableList } from "@/lib/utils";
 import { ReceiptPrinter } from "@/lib/receipt-printer";
 
 interface MenuItem {
@@ -780,10 +780,7 @@ export default function SalesmanDashboard() {
               marginBottom: "2rem",
             }}
           >
-            {Array.from(
-              { length: parseInt(settings?.totalTables || "16", 10) },
-              (_, i) => (i + 1).toString(),
-            ).map((tableNo) => {
+            {getTableList(settings).map((tableNo) => {
               const isOccupied = !!tableGroups[tableNo];
 
               return (
@@ -812,8 +809,14 @@ export default function SalesmanDashboard() {
                     transition: "transform 0.2s",
                   }}
                 >
-                  <span style={{ fontSize: "1.5rem", fontWeight: "bold" }}>
-                    T-{tableNo}
+                  <span
+                    style={{
+                      fontSize: "1.25rem",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                    }}
+                  >
+                    {tableNo.replace("Table ", "")}
                   </span>
                   {isOccupied && (
                     <span
@@ -1258,12 +1261,9 @@ export default function SalesmanDashboard() {
                       <option value="" disabled>
                         Select Table
                       </option>
-                      {Array.from(
-                        { length: parseInt(settings?.totalTables || "16", 10) },
-                        (_, i) => (i + 1).toString(),
-                      ).map((num) => (
+                      {getTableList(settings).map((num) => (
                         <option key={num} value={num}>
-                          Table {num}
+                          {num.includes(" ") ? num : `Table ${num}`}
                         </option>
                       ))}
                     </select>

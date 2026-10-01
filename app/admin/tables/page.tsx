@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useFinancialYear } from "@/contexts/FinancialYearContext";
 import { useRouter } from "next/navigation";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, getTableList } from "@/lib/utils";
 import Link from "next/link";
 
 export default function AdminTablesPage() {
@@ -359,9 +359,7 @@ export default function AdminTablesPage() {
   }
 
   // Generate table array [1, 2, 3, ..., totalTables]
-  const tablesList = Array.from({ length: totalTables }, (_, i) =>
-    (i + 1).toString(),
-  );
+  const tablesList = getTableList(settings);
 
   return (
     <main className="container" style={{ padding: "2rem 1.5rem" }}>
@@ -427,8 +425,14 @@ export default function AdminTablesPage() {
                   (e.currentTarget.style.transform = "scale(1)")
                 }
               >
-                <span style={{ fontSize: "1.5rem", fontWeight: "bold" }}>
-                  T-{tableNo}
+                <span
+                  style={{
+                    fontSize: "1.25rem",
+                    fontWeight: "bold",
+                    textAlign: "center",
+                  }}
+                >
+                  {tableNo.replace("Table ", "")}
                 </span>
                 {isOccupied && (
                   <span
