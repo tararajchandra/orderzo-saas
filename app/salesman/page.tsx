@@ -172,64 +172,68 @@ export default function SalesmanDashboard() {
   };
 
   const handlePrintBill = (tableNo: string) => {
-        if (!settings) {
-            alert('Settings not loaded yet.');
-            return;
-        }
-        
-        const group = tableGroups[tableNo];
-        if (!group) return;
+    if (!settings) {
+      alert("Settings not loaded yet.");
+      return;
+    }
 
-        const isThermal = settings.printerType === 'thermal';
-        const paperWidth = settings.paperWidth === '58mm' ? '58mm' : '80mm';
-        const fontSize = settings.paperWidth === '58mm' ? '12px' : '14px';
+    const group = tableGroups[tableNo];
+    if (!group) return;
 
-        // Combine items from all orders
-        let combinedItems: any[] = [];
-        let totalSubtotal = 0;
-        let totalTax = 0;
-        let totalDiscount = 0;
-        let grandTotal = group.total;
-        
-        group.orders.forEach((o: any) => {
-            let parsedItems = [];
-            try {
-                parsedItems = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []);
-            } catch(e) {}
-            
-            combinedItems = [...combinedItems, ...parsedItems];
-            totalSubtotal += parseFloat(o.subtotal || 0);
-            totalTax += parseFloat(o.tax || 0);
-            totalDiscount += parseFloat(o.discount || 0);
+    const isThermal = settings.printerType === "thermal";
+    const paperWidth = settings.paperWidth === "58mm" ? "58mm" : "80mm";
+    const fontSize = settings.paperWidth === "58mm" ? "12px" : "14px";
+
+    // Combine items from all orders
+    let combinedItems: any[] = [];
+    let totalSubtotal = 0;
+    let totalTax = 0;
+    let totalDiscount = 0;
+    let grandTotal = group.total;
+
+    group.orders.forEach((o: any) => {
+      let parsedItems = [];
+      try {
+        parsedItems =
+          typeof o.items === "string" ? JSON.parse(o.items) : o.items || [];
+      } catch (e) {}
+
+      combinedItems = [...combinedItems, ...parsedItems];
+      totalSubtotal += parseFloat(o.subtotal || 0);
+      totalTax += parseFloat(o.tax || 0);
+      totalDiscount += parseFloat(o.discount || 0);
+    });
+
+    // Combine same items if they appear across multiple orders
+    const mergedItemsMap = new Map();
+    combinedItems.forEach((item) => {
+      const key = item.menuItem.id;
+      if (mergedItemsMap.has(key)) {
+        const existing = mergedItemsMap.get(key);
+        mergedItemsMap.set(key, {
+          ...existing,
+          quantity: existing.quantity + item.quantity,
         });
+      } else {
+        mergedItemsMap.set(key, item);
+      }
+    });
+    const finalItems = Array.from(mergedItemsMap.values());
 
-        // Combine same items if they appear across multiple orders
-        const mergedItemsMap = new Map();
-        combinedItems.forEach(item => {
-            const key = item.menuItem.id;
-            if (mergedItemsMap.has(key)) {
-                const existing = mergedItemsMap.get(key);
-                mergedItemsMap.set(key, { ...existing, quantity: existing.quantity + item.quantity });
-            } else {
-                mergedItemsMap.set(key, item);
-            }
-        });
-        const finalItems = Array.from(mergedItemsMap.values());
+    const orderDate = formatDateTime(new Date().toISOString());
 
-        const orderDate = formatDateTime(new Date().toISOString());
-
-        const html = `
+    const html = `
             <!DOCTYPE html>
             <html>
             <head>
                 <title>Print Master Bill - Table ${tableNo}</title>
                 <style>
                     body {
-                        font-family: ${isThermal ? 'monospace' : 'Arial, sans-serif'};
-                        font-size: ${isThermal ? fontSize : '14px'};
+                        font-family: ${isThermal ? "monospace" : "Arial, sans-serif"};
+                        font-size: ${isThermal ? fontSize : "14px"};
                         margin: 0;
-                        padding: ${isThermal ? '0' : '20px'};
-                        width: ${isThermal ? paperWidth : '100%'};
+                        padding: ${isThermal ? "0" : "20px"};
+                        width: ${isThermal ? paperWidth : "100%"};
                         color: #000;
                     }
                     .text-center { text-align: center; }
@@ -241,17 +245,17 @@ export default function SalesmanDashboard() {
                     .border-top { border-top: 1px dashed #000; }
                     .border-bottom { border-bottom: 1px dashed #000; }
                     @media print {
-                        body { width: ${isThermal ? paperWidth : '100%'}; }
+                        body { width: ${isThermal ? paperWidth : "100%"}; }
                         @page { margin: 0; }
                     }
                 </style>
             </head>
             <body>
                 <div class="text-center">
-                    <h2 style="margin:0;font-size:${isThermal ? '18px' : '24px'}">${settings.restaurantName}</h2>
+                    <h2 style="margin:0;font-size:${isThermal ? "18px" : "24px"}">${settings.restaurantName}</h2>
                     <p style="margin:2px 0;">${settings.restaurantAddress}</p>
                     <p style="margin:2px 0;">Phone: ${settings.restaurantPhone}</p>
-                    ${settings.gstNumber ? `<p style="margin:2px 0;">GSTIN: ${settings.gstNumber}</p>` : ''}
+                    ${settings.gstNumber ? `<p style="margin:2px 0;">GSTIN: ${settings.gstNumber}</p>` : ""}
                     <div style="margin:10px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; padding:5px 0;">
                         <span class="bold">MASTER BILL (Dine-in)</span>
                     </div>
@@ -260,7 +264,7 @@ export default function SalesmanDashboard() {
                 <div>
                     <div class="bold" style="font-size: 18px; margin-bottom: 5px;">Table No: ${tableNo}</div>
                     <div>Date: ${orderDate}</div>
-                    <div>Orders: ${group.orders.map((o:any) => '#' + (o.order_number || o.id)).join(', ')}</div>
+                    <div>Orders: ${group.orders.map((o: any) => "#" + (o.order_number || o.id)).join(", ")}</div>
                 </div>
 
                 <table>
@@ -273,14 +277,18 @@ export default function SalesmanDashboard() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${finalItems.map((item: any) => `
+                        ${finalItems
+                          .map(
+                            (item: any) => `
                         <tr>
                             <td>${item.menuItem.name}</td>
                             <td class="text-center">${item.quantity}</td>
                             <td class="text-right">${Number(item.menuItem.price).toFixed(2)}</td>
                             <td class="text-right">${(Number(item.menuItem.price) * item.quantity).toFixed(2)}</td>
                         </tr>
-                        `).join('')}
+                        `,
+                          )
+                          .join("")}
                     </tbody>
                 </table>
 
@@ -290,19 +298,23 @@ export default function SalesmanDashboard() {
                             <td>Subtotal</td>
                             <td class="text-right">${totalSubtotal.toFixed(2)}</td>
                         </tr>
-                        ${totalTax > 0 ? `
+                        ${
+                          totalTax > 0
+                            ? `
                         <tr>
                             <td>Taxes</td>
                             <td class="text-right">${totalTax.toFixed(2)}</td>
-                        </tr>` : ''}
+                        </tr>`
+                            : ""
+                        }
                     </table>
                 </div>
 
                 <div style="margin-top: 10px; padding: 10px 0;" class="border-top border-bottom bold">
                     <table style="margin-top: 0;">
                         <tr>
-                            <td style="font-size: ${isThermal ? '16px' : '18px'}">GRAND TOTAL</td>
-                            <td class="text-right" style="font-size: ${isThermal ? '16px' : '18px'}">Rs. ${grandTotal.toFixed(2)}</td>
+                            <td style="font-size: ${isThermal ? "16px" : "18px"}">GRAND TOTAL</td>
+                            <td class="text-right" style="font-size: ${isThermal ? "16px" : "18px"}">Rs. ${grandTotal.toFixed(2)}</td>
                         </tr>
                     </table>
                 </div>
@@ -318,12 +330,12 @@ export default function SalesmanDashboard() {
             </html>
         `;
 
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-            printWindow.document.write(html);
-            printWindow.document.close();
-        }
-    };
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
+  };
 
   const handleSettleTable = async (
     tableNo: string,
@@ -1450,87 +1462,244 @@ export default function SalesmanDashboard() {
           </div>
         </>
       )}
-    
-        {showModal && selectedTable && tableGroups[selectedTable] && (
-          <div style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.5)', zIndex: 1000,
-              display: 'flex', justifyContent: 'center', alignItems: 'center',
-              padding: '1rem'
-          }}>
-              <div className="glass-card fade-in" style={{ 
-                  width: '100%', maxWidth: '500px', 
-                  background: 'var(--bg-color)',
-                  maxHeight: '90vh', display: 'flex', flexDirection: 'column'
-              }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-                      <h2 style={{ margin: 0, color: 'var(--primary)' }}>Table {selectedTable}</h2>
-                      <button onClick={() => setShowModal(false)} className="btn btn-ghost" style={{ padding: '0.5rem' }}>❌</button>
-                  </div>
-                  
-                  <div style={{ overflowY: 'auto', flex: 1, paddingRight: '0.5rem', marginBottom: '1rem' }}>
-                      {tableGroups[selectedTable].orders.map((o: any, idx: number) => (
-                          <div key={o.id} style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--glass-bg)', borderRadius: '8px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                  <strong>Order #{o.order_number || o.id}</strong>
-                                  <span className="badge badge-info">{o.order_status}</span>
-                              </div>
-                              <div className="text-muted" style={{ fontSize: '0.75rem', marginBottom: '0.5rem' }}>
-                                  {formatDateTime(o.created_at)}
-                              </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500 }}>
-                                  <span>Amount:</span>
-                                  <span>₹{parseFloat(o.total_amount).toFixed(2)}</span>
-                              </div>
-                          </div>
-                      ))}
-                  </div>
-                  
-                  <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginTop: 'auto' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                          <span style={{ fontSize: '1.25rem', fontWeight: 600 }}>Master Bill</span>
-                          <span style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--primary)' }}>
-                              ₹{tableGroups[selectedTable].total.toFixed(2)}
-                          </span>
-                      </div>
 
-                      <button 
-                          onClick={() => handlePrintBill(selectedTable)}
-                          className="btn btn-ghost"
-                          style={{ width: '100%', marginBottom: '1rem', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}
+      {showModal && selectedTable && tableGroups[selectedTable] && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.5)",
+            zIndex: 1000,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "1rem",
+          }}
+        >
+          <div
+            className="glass-card fade-in"
+            style={{
+              width: "100%",
+              maxWidth: "500px",
+              background: "var(--bg-color)",
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "1rem",
+                borderBottom: "1px solid var(--border-color)",
+                paddingBottom: "1rem",
+              }}
+            >
+              <h2 style={{ margin: 0, color: "var(--primary)" }}>
+                Table {selectedTable}
+              </h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="btn btn-ghost"
+                style={{ padding: "0.5rem" }}
+              >
+                ❌
+              </button>
+            </div>
+
+            <div
+              style={{
+                overflowY: "auto",
+                flex: 1,
+                paddingRight: "0.5rem",
+                marginBottom: "1rem",
+              }}
+            >
+              {tableGroups[selectedTable].orders.map((o: any, idx: number) => (
+                <div
+                  key={o.id}
+                  style={{
+                    marginBottom: "1rem",
+                    padding: "0.75rem",
+                    background: "var(--glass-bg)",
+                    borderRadius: "8px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    <strong>Order #{o.order_number || o.id}</strong>
+                    <span className="badge badge-info">{o.order_status}</span>
+                  </div>
+                  <div
+                    className="text-muted"
+                    style={{ fontSize: "0.75rem", marginBottom: "0.5rem" }}
+                  >
+                    {formatDateTime(o.created_at)}
+                  </div>
+                  {(() => {
+                    let items = [];
+                    try {
+                      items =
+                        typeof o.items === "string"
+                          ? JSON.parse(o.items)
+                          : o.items || [];
+                    } catch (e) {}
+                    return items.length > 0 ? (
+                      <div
+                        style={{
+                          margin: "0.75rem 0",
+                          padding: "0.5rem 0",
+                          borderTop: "1px solid rgba(255,255,255,0.1)",
+                          borderBottom: "1px solid rgba(255,255,255,0.1)",
+                          fontSize: "0.875rem",
+                        }}
                       >
-                          🖨️ Print Master Bill
-                      </button>
-                      
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                          <button 
-                              onClick={() => {
-                                  handleSettleTable(selectedTable, 'cash', tableGroups[selectedTable].orders);
-                                  setShowModal(false);
-                              }}
-                              disabled={settlingTable === selectedTable}
-                              className="btn btn-primary"
-                              style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}
+                        {items.map((item: any, i: number) => (
+                          <div
+                            key={i}
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              marginBottom: "0.25rem",
+                            }}
                           >
-                              {settlingTable === selectedTable ? '...' : '💵 Settle Cash'}
-                          </button>
-                          <button 
-                              onClick={() => {
-                                  handleSettleTable(selectedTable, 'upi', tableGroups[selectedTable].orders);
-                                  setShowModal(false);
-                              }}
-                              disabled={settlingTable === selectedTable}
-                              className="btn btn-secondary"
-                              style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', background: '#3b82f6', color: 'white', border: 'none' }}
-                          >
-                              {settlingTable === selectedTable ? '...' : '📱 Settle UPI'}
-                          </button>
+                            <span style={{ color: "var(--text-secondary)" }}>
+                              {item.quantity}x {item.menuItem?.name || "Item"}
+                            </span>
+                            <span style={{ color: "var(--text-secondary)" }}>
+                              ₹
+                              {(
+                                item.quantity *
+                                parseFloat(item.menuItem?.price || 0)
+                              ).toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                  </div>
-              </div>
-          </div>
-        )}
+                    ) : null;
+                  })()}
 
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontWeight: 500,
+                    }}
+                  >
+                    <span>Amount:</span>
+                    <span>₹{parseFloat(o.total_amount).toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                borderTop: "1px solid var(--border-color)",
+                paddingTop: "1rem",
+                marginTop: "auto",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "1.5rem",
+                }}
+              >
+                <span style={{ fontSize: "1.25rem", fontWeight: 600 }}>
+                  Master Bill
+                </span>
+                <span
+                  style={{
+                    fontSize: "1.75rem",
+                    fontWeight: 700,
+                    color: "var(--primary)",
+                  }}
+                >
+                  ₹{tableGroups[selectedTable].total.toFixed(2)}
+                </span>
+              </div>
+
+              <button
+                onClick={() => handlePrintBill(selectedTable)}
+                className="btn btn-ghost"
+                style={{
+                  width: "100%",
+                  marginBottom: "1rem",
+                  border: "1px solid var(--border-color)",
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                🖨️ Print Master Bill
+              </button>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "1rem",
+                }}
+              >
+                <button
+                  onClick={() => {
+                    handleSettleTable(
+                      selectedTable,
+                      "cash",
+                      tableGroups[selectedTable].orders,
+                    );
+                    setShowModal(false);
+                  }}
+                  disabled={settlingTable === selectedTable}
+                  className="btn btn-primary"
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: "0.5rem",
+                  }}
+                >
+                  {settlingTable === selectedTable ? "..." : "💵 Settle Cash"}
+                </button>
+                <button
+                  onClick={() => {
+                    handleSettleTable(
+                      selectedTable,
+                      "upi",
+                      tableGroups[selectedTable].orders,
+                    );
+                    setShowModal(false);
+                  }}
+                  disabled={settlingTable === selectedTable}
+                  className="btn btn-secondary"
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: "0.5rem",
+                    background: "#3b82f6",
+                    color: "white",
+                    border: "none",
+                  }}
+                >
+                  {settlingTable === selectedTable ? "..." : "📱 Settle UPI"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
