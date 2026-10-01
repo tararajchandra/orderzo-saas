@@ -293,6 +293,137 @@ export default function SettingsPage() {
                   display: "grid",
                   gridTemplateColumns: "1fr",
                   gap: "1rem",
+                  marginTop: "1rem",
+                }}
+              >
+                <div
+                  className="form-group glass-card"
+                  style={{
+                    padding: "1.5rem",
+                    borderRadius: "12px",
+                    border: "1px solid var(--glass-border)",
+                    background: "var(--glass-bg)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    <label
+                      className="label"
+                      style={{
+                        margin: 0,
+                        color: "var(--primary)",
+                        fontSize: "1.1rem",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Table Zones Configuration
+                    </label>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        updateZoneString([
+                          ...parsedZones,
+                          { name: "", count: "" },
+                        ]);
+                      }}
+                      style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem" }}
+                    >
+                      + Add Zone
+                    </button>
+                  </div>
+                  <span
+                    className="text-muted"
+                    style={{
+                      display: "block",
+                      fontSize: "0.85rem",
+                      marginBottom: "1.5rem",
+                    }}
+                  >
+                    Create dedicated areas (e.g. Cafe, Lounge) and assign the
+                    number of tables for each. Leave empty if you only want
+                    simple numerical tables.
+                  </span>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "1rem",
+                    }}
+                  >
+                    {parsedZones.map((z, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: "flex",
+                          gap: "1rem",
+                          alignItems: "center",
+                          background: "rgba(0,0,0,0.2)",
+                          padding: "12px",
+                          borderRadius: "8px",
+                        }}
+                      >
+                        <input
+                          type="text"
+                          value={z.name}
+                          onChange={(e) => {
+                            const newZ = [...parsedZones];
+                            newZ[idx].name = e.target.value;
+                            updateZoneString(newZ);
+                          }}
+                          className="input"
+                          placeholder="Zone Name (e.g. Cafe)"
+                          style={{ flex: 2 }}
+                        />
+                        <input
+                          type="number"
+                          value={z.count}
+                          onChange={(e) => {
+                            const newZ = [...parsedZones];
+                            newZ[idx].count = e.target.value;
+                            updateZoneString(newZ);
+                          }}
+                          className="input"
+                          placeholder="No. of Tables"
+                          min="1"
+                          style={{ flex: 1 }}
+                        />
+                        <button
+                          className="btn btn-ghost"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const newZ = parsedZones.filter(
+                              (_, i) => i !== idx,
+                            );
+                            updateZoneString(
+                              newZ.length > 0
+                                ? newZ
+                                : [{ name: "", count: "" }],
+                            );
+                          }}
+                          style={{ color: "var(--error)", padding: "0.5rem" }}
+                          title="Remove Zone"
+                        >
+                          ✖
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr",
+                  gap: "1rem",
                 }}
               >
                 <div className="form-group">
