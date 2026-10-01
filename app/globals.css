@@ -762,6 +762,13 @@ select.input {
   padding-right: 2.5rem;
 }
 
+select.input optgroup {
+  background: var(--bg-secondary);
+  color: var(--primary);
+  font-weight: bold;
+  font-style: normal;
+}
+
 select.input option {
   background: var(--bg-secondary);
   color: var(--text-primary);
@@ -769,17 +776,38 @@ select.input option {
 }
 
 /* Ensure dropdown options are visible in both themes */
-[data-theme="dark"] select.input option {
+[data-theme="dark"] select.input optgroup {
+  background: var(--bg-secondary);
+  color: var(--primary);
+  font-weight: bold;
+  font-style: normal;
+}
+
+select.input option {
   background: hsl(240, 12%, 12%);
   color: hsl(0, 0%, 95%);
 }
 
-[data-theme="light"] select.input option {
+[data-theme="light"] select.input optgroup {
+  background: var(--bg-secondary);
+  color: var(--primary);
+  font-weight: bold;
+  font-style: normal;
+}
+
+select.input option {
   background: hsl(0, 0%, 100%);
   color: hsl(240, 15%, 15%);
 }
 
-[data-theme="nature"] select.input option {
+[data-theme="nature"] select.input optgroup {
+  background: var(--bg-secondary);
+  color: var(--primary);
+  font-weight: bold;
+  font-style: normal;
+}
+
+select.input option {
   background: hsl(150, 12%, 12%);
   color: hsl(40, 20%, 95%);
 }
