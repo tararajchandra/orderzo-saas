@@ -32,6 +32,7 @@ export default function QRCodesPage() {
         if (data.data.totalTables) {
           setTotalTables(parseInt(data.data.totalTables, 10));
         }
+        setSettings(data.data);
         if (data.data.restaurantName) {
           setRestaurantName(data.data.restaurantName);
         }
