@@ -1,60 +1,68 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function QRCodesPage() {
-    const router = useRouter();
-    const [totalTables, setTotalTables] = useState(16);
-    const [restaurantName, setRestaurantName] = useState('OrderZo');
-    const [appUrl, setAppUrl] = useState('');
-    const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const [totalTables, setTotalTables] = useState(16);
+  const [settings, setSettings] = useState<any>(null);
+  const [restaurantName, setRestaurantName] = useState("OrderZo");
+  const [appUrl, setAppUrl] = useState("");
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const token = localStorage.getItem('adminToken');
-        if (!token) {
-            router.push('/admin');
-            return;
-        }
-        
-        // Get base URL for QR codes
-        setAppUrl(window.location.origin);
-        fetchSettings();
-    }, []);
-
-    const fetchSettings = async () => {
-        try {
-            const response = await fetch('/api/settings');
-            const data = await response.json();
-            if (data.success) {
-                if (data.data.totalTables) {
-                    setTotalTables(parseInt(data.data.totalTables, 10));
-                }
-                if (data.data.restaurantName) {
-                    setRestaurantName(data.data.restaurantName);
-                }
-            }
-        } catch (error) {
-            console.error('Error fetching settings:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    if (loading) {
-        return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
-                <div className="spinner"></div>
-            </div>
-        );
+  useEffect(() => {
+    const token = localStorage.getItem("adminToken");
+    if (!token) {
+      router.push("/admin");
+      return;
     }
 
-    const handlePrintQR = (tableNo: number) => {
-        const orderUrl = `${appUrl}/menu?table=${tableNo}`;
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(orderUrl)}&margin=10`;
+    // Get base URL for QR codes
+    setAppUrl(window.location.origin);
+    fetchSettings();
+  }, []);
 
-        const html = `
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch("/api/settings");
+      const data = await response.json();
+      if (data.success) {
+        if (data.data.totalTables) {
+          setTotalTables(parseInt(data.data.totalTables, 10));
+        }
+        if (data.data.restaurantName) {
+          setRestaurantName(data.data.restaurantName);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "80vh",
+        }}
+      >
+        <div className="spinner"></div>
+      </div>
+    );
+  }
+
+  const handlePrintQR = (tableNo: number) => {
+    const orderUrl = `${appUrl}/menu?table=${tableNo}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(orderUrl)}&margin=10`;
+
+    const html = `
             <!DOCTYPE html>
             <html>
             <head>
@@ -154,53 +162,86 @@ export default function QRCodesPage() {
             </html>
         `;
 
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-            printWindow.document.write(html);
-            printWindow.document.close();
-        }
-    };
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
+  };
 
-    const tablesList = Array.from({ length: totalTables }, (_, i) => i + 1);
+  const tablesList = settings
+    ? getTableList(settings)
+    : Array.from({ length: totalTables }, (_, i) => `Table ${i + 1}`);
 
-    return (
-        <main className="container" style={{ padding: '2rem 1.5rem' }}>
-            <div className="fade-in">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                    <div>
-                        <h1 style={{ marginBottom: '0.5rem' }}>Table QR Codes</h1>
-                        <p className="text-muted">Generate and print QR codes for tables</p>
-                    </div>
-                    <Link href="/admin/dashboard" className="btn btn-ghost">
-                        ← Back to Dashboard
-                    </Link>
-                </div>
+  return (
+    <main className="container" style={{ padding: "2rem 1.5rem" }}>
+      <div className="fade-in">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "2rem",
+          }}
+        >
+          <div>
+            <h1 style={{ marginBottom: "0.5rem" }}>Table QR Codes</h1>
+            <p className="text-muted">Generate and print QR codes for tables</p>
+          </div>
+          <Link href="/admin/dashboard" className="btn btn-ghost">
+            ← Back to Dashboard
+          </Link>
+        </div>
 
-                <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
-                    gap: '1.5rem'
-                }}>
-                    {tablesList.map(tableNo => {
-                        const orderUrl = `${appUrl}/?table=${tableNo}`;
-                        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(orderUrl)}`;
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+            gap: "1.5rem",
+          }}
+        >
+          {tablesList.map((tableNo) => {
+            const orderUrl = `${appUrl}/?table=${tableNo}`;
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(orderUrl)}`;
 
-                        return (
-                            <div key={tableNo} className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                                <h3>Table {tableNo}</h3>
-                                <img src={qrUrl} alt={`QR Code Table ${tableNo}`} style={{ borderRadius: '8px', background: 'white', padding: '10px' }} />
-                                <button 
-                                    onClick={() => handlePrintQR(tableNo)}
-                                    className="btn btn-primary"
-                                    style={{ width: '100%' }}
-                                >
-                                    🖨️ Print QR
-                                </button>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-        </main>
-    );
+            return (
+              <div
+                key={tableNo}
+                className="glass-card"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "1rem",
+                }}
+              >
+                <h3>
+                  {String(tableNo).startsWith("Table") ||
+                  String(tableNo).includes(" ")
+                    ? tableNo
+                    : `Table ${tableNo}`}
+                </h3>
+                <img
+                  src={qrUrl}
+                  alt={`QR Code ${tableNo}`}
+                  style={{
+                    borderRadius: "8px",
+                    background: "white",
+                    padding: "10px",
+                  }}
+                />
+                <button
+                  onClick={() => handlePrintQR(tableNo)}
+                  className="btn btn-primary"
+                  style={{ width: "100%" }}
+                >
+                  🖨️ Print QR
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </main>
+  );
 }
