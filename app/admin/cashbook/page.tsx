@@ -553,8 +553,8 @@ export default function CashBookPage() {
           </div>
         </div>
 
-        {/* Transactions Table */}
-        <div className="glass-card">
+        {/* Transactions Table - Screen Only */}
+        <div className="glass-card screen-only">
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
@@ -647,6 +647,45 @@ export default function CashBookPage() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* Print Only Format for Thermal Printer */}
+        <div className="print-only thermal-report-print">
+          <h1>Cash Book</h1>
+          <div className="item-row">
+            <span>Opening Balance</span>
+            <span className="label">₹{openingBalance.toFixed(2)}</span>
+          </div>
+          <div className="item-row">
+            <span>Cash In</span>
+            <span className="label">₹{summary.cashIn.toFixed(2)}</span>
+          </div>
+          <div className="item-row">
+            <span>Cash Out</span>
+            <span className="label">₹{summary.cashOut.toFixed(2)}</span>
+          </div>
+          <div className="divider"></div>
+          <div className="item-row">
+            <span className="label" style={{ fontSize: "14px" }}>Closing Balance</span>
+            <span className="label" style={{ fontSize: "14px" }}>₹{summary.closingBalance.toFixed(2)}</span>
+          </div>
+          <div className="divider"></div>
+          
+          <h3 style={{marginTop: "10px", marginBottom: "5px", textAlign: "left"}}>Transactions</h3>
+          {filteredTransactions.map((txn) => (
+             <div key={txn.id} className="block-row">
+                <div className="item-row">
+                   <span style={{ fontSize: "10px" }}>{new Date(txn.date).toLocaleDateString("en-IN", {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}</span>
+                   <span className="label">{txn.type === "in" ? '+' : '-'}₹{txn.amount.toFixed(2)}</span>
+                </div>
+                <div className="item-row">
+                   <span style={{ maxWidth: "70%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{txn.description}</span>
+                   <span style={{ fontSize: "10px" }}>Bal: ₹{txn.balance.toFixed(2)}</span>
+                </div>
+             </div>
+          ))}
+          <div className="divider"></div>
+          <div className="text-center">End of Report</div>
         </div>
       </div>
     </main>

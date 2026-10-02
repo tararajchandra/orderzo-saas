@@ -438,8 +438,8 @@ export default function SaleBookPage() {
           </div>
         </div>
 
-        {/* Sales Table */}
-        <div className="glass-card">
+        {/* Sales Table - Screen Only */}
+        <div className="glass-card screen-only">
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
@@ -582,6 +582,33 @@ export default function SaleBookPage() {
               </tbody>
             </table>
           </div>
+        </div>
+        
+        {/* Print Only Format for Thermal Printer */}
+        <div className="print-only thermal-report-print">
+          <h1>Sale Book</h1>
+          <div className="text-center">Total Sales: ₹{totals.all.toFixed(2)}</div>
+          <div className="text-center">{filteredSales.length} transactions</div>
+          <div className="divider"></div>
+          
+          {filteredSales.map((sale) => (
+             <div key={sale.id} className="block-row">
+                <div className="item-row">
+                   <span className="label">Inv: {sale.invoice_number}</span>
+                   <span className="val">{new Date(sale.created_at).toLocaleTimeString("en-IN", {hour: '2-digit', minute:'2-digit'})}</span>
+                </div>
+                <div className="item-row">
+                   <span>{sale.customer_name}</span>
+                   <span>{sale.payment_method.toUpperCase()}</span>
+                </div>
+                <div className="item-row">
+                   <span style={{ fontSize: "10px" }}>{sale.order_type}</span>
+                   <span className="label">₹{parseFloat(sale.total_amount.toString()).toFixed(2)}</span>
+                </div>
+             </div>
+          ))}
+          <div className="divider"></div>
+          <div className="text-center">End of Report</div>
         </div>
       </div>
     </main>

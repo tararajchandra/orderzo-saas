@@ -453,8 +453,8 @@ export default function ProductSalesReportPage() {
           </div>
         </div>
 
-        {/* Product Sales Table */}
-        <div className="glass-card">
+        {/* Product Sales Table - Screen Only */}
+        <div className="glass-card screen-only">
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
@@ -545,6 +545,35 @@ export default function ProductSalesReportPage() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* Print Only Format for Thermal Printer */}
+        <div className="print-only thermal-report-print">
+          <h1>Product Sales</h1>
+          <div className="item-row">
+            <span>Total Quantity Sold</span>
+            <span className="label">{totals.totalQuantity}</span>
+          </div>
+          <div className="item-row">
+            <span>Total Revenue</span>
+            <span className="label">₹{totals.totalRevenue.toFixed(2)}</span>
+          </div>
+          <div className="divider"></div>
+          
+          <div className="item-row" style={{ borderBottom: '1px solid #000', paddingBottom: '3px', marginBottom: '5px' }}>
+            <span className="label">Item</span>
+            <span className="label">Qty × Price</span>
+            <span className="label">Total</span>
+          </div>
+          {filteredProducts.map((product) => (
+             <div key={product.productId} className="item-row" style={{ borderBottom: '1px dashed #ccc', paddingBottom: '2px', marginBottom: '2px' }}>
+                <span style={{ maxWidth: "45%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{product.productName}</span>
+                <span style={{ fontSize: "10px" }}>{product.totalQuantity} × ₹{parseFloat(product.avgPrice.toString()).toFixed(2)}</span>
+                <span className="label">₹{parseFloat(product.totalRevenue.toString()).toFixed(2)}</span>
+             </div>
+          ))}
+          <div className="divider"></div>
+          <div className="text-center">End of Report</div>
         </div>
       </div>
     </main>
