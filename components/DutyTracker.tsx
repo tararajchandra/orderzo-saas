@@ -199,7 +199,7 @@ export default function DutyTracker() {
   }
 
   return (
-    <div style={{ position: "sticky", top: 0, zIndex: 100 }}>
+    <div className="no-print" style={{ position: "sticky", top: 0, zIndex: 100 }}>
       {warning && (
         <div
           style={{

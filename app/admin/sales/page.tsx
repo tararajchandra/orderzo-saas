@@ -412,7 +412,7 @@ export default function SaleBookPage() {
         </div>
 
         {/* Summary */}
-        <div className="grid grid-4" style={{ marginBottom: "2rem" }}>
+        <div className="grid grid-4 screen-only" style={{ marginBottom: "2rem" }}>
           <div className="glass-card">
             <div
               className="text-muted"

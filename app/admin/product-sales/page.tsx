@@ -385,6 +385,7 @@ export default function ProductSalesReportPage() {
 
         {/* Summary Cards */}
         <div
+          className="screen-only"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",

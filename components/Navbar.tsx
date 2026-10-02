@@ -51,7 +51,7 @@ export default function Navbar() {
     }
 
     return (
-        <nav className="navbar">
+        <nav className="navbar no-print">
             <div className="container navbar-content">
                 <Link href="/" className="navbar-logo" style={{ display: 'flex', alignItems: 'center' }}>
                     <Image 
