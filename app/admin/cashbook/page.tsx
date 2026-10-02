@@ -280,12 +280,15 @@ export default function CashBookPage() {
           }}
         >
           <h1>💰 Cash Book</h1>
-          <div style={{ display: "flex", gap: "1rem" }}>
+          <div style={{ display: "flex", gap: "1rem" }} className="no-print">
             <button
               onClick={() => setShowExpenseForm(!showExpenseForm)}
               className="btn btn-primary"
             >
               + Add Entry
+            </button>
+            <button onClick={() => window.print()} className="btn btn-primary">
+              🖨️ Print
             </button>
             <button onClick={exportToCSV} className="btn btn-primary">
               📥 Export CSV
@@ -301,7 +304,7 @@ export default function CashBookPage() {
 
         {/* Expense Form */}
         {showExpenseForm && (
-          <div className="glass-card" style={{ marginBottom: "2rem" }}>
+          <div className="glass-card no-print" style={{ marginBottom: "2rem" }}>
             <h3 style={{ marginBottom: "1rem" }}>
               Add Cash Entry (Expense / Purchase)
             </h3>
@@ -392,7 +395,7 @@ export default function CashBookPage() {
         )}
 
         {/* Filters */}
-        <div className="glass-card" style={{ marginBottom: "2rem" }}>
+        <div className="glass-card no-print" style={{ marginBottom: "2rem" }}>
           <div
             style={{
               display: "grid",
@@ -487,7 +490,7 @@ export default function CashBookPage() {
             </div>
             <button
               onClick={handleSetOpeningBalance}
-              className="btn btn-ghost"
+              className="btn btn-ghost no-print"
               style={{
                 marginTop: "0.5rem",
                 padding: "0.25rem 0.5rem",

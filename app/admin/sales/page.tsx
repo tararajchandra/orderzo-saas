@@ -239,7 +239,10 @@ export default function SaleBookPage() {
           }}
         >
           <h1>📊 Sale Book</h1>
-          <div style={{ display: "flex", gap: "1rem" }}>
+          <div style={{ display: "flex", gap: "1rem" }} className="no-print">
+            <button onClick={() => window.print()} className="btn btn-primary">
+              🖨️ Print
+            </button>
             <button onClick={exportToCSV} className="btn btn-primary">
               📥 Export CSV
             </button>
@@ -253,7 +256,7 @@ export default function SaleBookPage() {
         </div>
 
         {/* Filters */}
-        <div className="glass-card" style={{ marginBottom: "2rem" }}>
+        <div className="glass-card no-print" style={{ marginBottom: "2rem" }}>
           <div
             style={{
               display: "grid",
