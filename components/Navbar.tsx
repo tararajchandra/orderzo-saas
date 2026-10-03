@@ -38,7 +38,7 @@ export default function Navbar() {
 
     const handleAdminClick = (e: React.MouseEvent) => {
         e.preventDefault();
-        if (isAdmin) {
+        if (isAdmin || user?.role === 'cashier') {
             router.push('/admin/dashboard');
         } else {
             router.push('/admin');
@@ -129,12 +129,12 @@ export default function Navbar() {
 
                     {isAuthenticated ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            {isAdmin && <FinancialYearSelector />}
-                            <span className="text-muted" style={{ fontSize: '0.9rem' }}>
-                                {user?.name}
+                            {(isAdmin || user?.role === 'cashier') && <FinancialYearSelector />}
+                            <span className="text-muted" style={{ fontSize: '0.9rem', textTransform: 'capitalize' }}>
+                                {user?.role === 'cashier' ? 'Cashier' : user?.name}
                             </span>
 
-                            {isAdmin && (
+                            {(isAdmin || user?.role === 'cashier') && (
                                 <button
                                     onClick={handleAdminClick}
                                     className="btn btn-primary"
