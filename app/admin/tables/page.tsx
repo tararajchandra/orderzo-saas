@@ -64,6 +64,10 @@ export default function AdminTablesPage() {
   } | null>(null);
   const longPressTimer = React.useRef<NodeJS.Timeout | null>(null);
 
+  // Note Modal State
+  const [noteModal, setNoteModal] = useState<{ tableNo: string } | null>(null);
+  const [noteText, setNoteText] = useState("");
+
   // Close context menu on any click
   const handleClick = () => setContextMenu(null);
   React.useEffect(() => {
@@ -223,6 +227,97 @@ export default function AdminTablesPage() {
       alert("An error occurred while settling the table.");
     } finally {
       setSettlingTable(null);
+    }
+  };
+
+  // Print all KOTs for a table (one popup window per order)
+  const handlePrintAllKOTs = (tableNo: string) => {
+    const group = tableGroups[tableNo];
+    if (!group || group.orders.length === 0) return;
+
+    group.orders.forEach((order: any) => {
+      const items = (() => {
+        try {
+          return typeof order.items === "string"
+            ? JSON.parse(order.items)
+            : order.items || [];
+        } catch {
+          return [];
+        }
+      })();
+
+      const itemsHtml = items
+        .map(
+          (item: any) =>
+            `<tr>
+              <td style="padding:4px 0;">${item.menuItem?.name || "Item"}</td>
+              <td style="text-align:center;padding:4px 0;">${item.quantity}</td>
+            </tr>`,
+        )
+        .join("");
+
+      const noteLine = order.notes
+        ? `<div style="margin-top:8px;"><strong>Notes:</strong> ${order.notes}</div>`
+        : "";
+
+      const html = `<!DOCTYPE html><html><head><title>KOT - #${order.order_number || order.id}</title>
+        <style>
+          @page { margin: 0; }
+          body { font-family: 'Courier New', Courier, monospace; width: 72mm; margin: 0 auto; padding: 10px; font-size: 16px; font-weight: bold; color: #000; background: #fff; }
+          .center { text-align: center; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th { border-bottom: 1px dashed #000; padding-bottom: 5px; text-align: left; }
+          .divider { border-top: 1px dashed #000; margin: 10px 0; }
+        </style>
+      </head><body>
+        <div class="center" style="font-size:24px;font-weight:bold;">K.O.T</div>
+        <div class="center divider"></div>
+        <div>Order No: ${order.order_number || order.id || "N/A"}</div>
+        <div>Table: ${order.table_number || tableNo}</div>
+        <div>Date: ${new Date().toLocaleString()}</div>
+        <table>
+          <thead><tr><th>Item</th><th style="text-align:center;">Qty</th></tr></thead>
+          <tbody>${itemsHtml}</tbody>
+        </table>
+        <div class="divider"></div>
+        ${noteLine}
+        <div style="height:10px;"></div>
+        <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/script>
+      </body></html>`;
+
+      const win = window.open("", "_blank", "width=400,height=600");
+      if (win) {
+        win.document.write(html);
+        win.document.close();
+      }
+    });
+  };
+
+  // Save a kitchen note for a table (updates the latest order's notes field)
+  const handleSaveNote = async (tableNo: string, note: string) => {
+    const group = tableGroups[tableNo];
+    if (!group || group.orders.length === 0) return;
+
+    const targetOrder = [...group.orders].sort(
+      (a: any, b: any) => b.id - a.id,
+    )[0];
+
+    try {
+      const res = await fetch(`/api/orders/${targetOrder.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: note }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Note saved for Table ${tableNo}`);
+        fetchActiveTableOrders(true);
+      } else {
+        alert("Failed to save note.");
+      }
+    } catch (err) {
+      console.error("Error saving note:", err);
+      alert("Error saving note.");
     }
   };
 
@@ -622,6 +717,120 @@ export default function AdminTablesPage() {
           >
             🧾 Print Master Bill
           </button>
+
+          {/* Print All KOTs */}
+          <button
+            onClick={() => {
+              if (!contextMenu.isOccupied) return;
+              setContextMenu(null);
+              handlePrintAllKOTs(contextMenu.tableNo);
+            }}
+            style={{
+              display: "flex", alignItems: "center", gap: "0.6rem",
+              width: "100%", padding: "0.6rem 1rem",
+              background: "none", border: "none",
+              cursor: contextMenu.isOccupied ? "pointer" : "not-allowed",
+              color: contextMenu.isOccupied ? "var(--text-primary)" : "var(--text-muted)",
+              opacity: contextMenu.isOccupied ? 1 : 0.4,
+              fontSize: "0.95rem", textAlign: "left",
+            }}
+            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+          >
+            🖨️ Print All KOTs
+          </button>
+
+          {/* Add Note to Table */}
+          <button
+            onClick={() => {
+              if (!contextMenu.isOccupied) return;
+              const tableNo = contextMenu.tableNo;
+              const currentNote = tableGroups[tableNo]?.orders?.[0]?.notes || "";
+              setNoteText(currentNote);
+              setNoteModal({ tableNo });
+              setContextMenu(null);
+            }}
+            style={{
+              display: "flex", alignItems: "center", gap: "0.6rem",
+              width: "100%", padding: "0.6rem 1rem",
+              background: "none", border: "none",
+              cursor: contextMenu.isOccupied ? "pointer" : "not-allowed",
+              color: contextMenu.isOccupied ? "var(--text-primary)" : "var(--text-muted)",
+              opacity: contextMenu.isOccupied ? 1 : 0.4,
+              fontSize: "0.95rem", textAlign: "left",
+            }}
+            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+          >
+            ✏️ Add Note
+          </button>
+        </div>
+      )}
+
+      {/* Note Modal */}
+      {noteModal && (
+        <div
+          onClick={() => setNoteModal(null)}
+          style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.5)", zIndex: 99998,
+            display: "flex", justifyContent: "center", alignItems: "center",
+            padding: "1rem",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="fade-in"
+            style={{
+              width: "100%", maxWidth: "400px",
+              background: "var(--bg-secondary)",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border-color)",
+              borderRadius: "12px",
+              padding: "1.5rem",
+            }}
+          >
+            <h3 style={{ margin: "0 0 0.25rem 0", color: "var(--primary)" }}>
+              ✏️ Add Note
+            </h3>
+            <p style={{ margin: "0 0 1rem 0", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+              Table {noteModal.tableNo} — Note will appear on KOT
+            </p>
+            <textarea
+              autoFocus
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              placeholder="e.g. No spice, Allergy: nuts, Extra napkins..."
+              rows={4}
+              style={{
+                width: "100%", padding: "0.75rem",
+                borderRadius: "8px", border: "1px solid var(--border-color)",
+                background: "var(--glass-bg)", color: "var(--text-primary)",
+                fontSize: "0.95rem", resize: "vertical",
+                boxSizing: "border-box",
+              }}
+            />
+            <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
+              <button
+                onClick={() => setNoteModal(null)}
+                className="btn btn-ghost"
+                style={{ flex: 1, border: "1px solid var(--border-color)" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  await handleSaveNote(noteModal.tableNo, noteText);
+                  setNoteModal(null);
+                  setNoteText("");
+                }}
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+              >
+                Save Note
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
