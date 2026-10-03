@@ -671,8 +671,14 @@ export default function SalesmanDashboard() {
         return;
       }
 
+      // Check for already-paired device first (avoids picker dialog every time)
       // @ts-ignore
-      const device = await navigator.usb.requestDevice({ filters: [] });
+      const pairedDevices = await navigator.usb.getDevices();
+      // @ts-ignore
+      const device = pairedDevices.length > 0
+        ? pairedDevices[0]
+        // @ts-ignore
+        : await navigator.usb.requestDevice({ filters: [] });
       await device.open();
       await device.selectConfiguration(1);
       await device.claimInterface(0);

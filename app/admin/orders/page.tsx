@@ -450,8 +450,14 @@ export default function AdminOrdersPage() {
         return;
       }
 
+      // Check for already-paired device first (avoids picker dialog every time)
       // @ts-ignore
-      const device = await navigator.usb.requestDevice({ filters: [] });
+      const pairedDevices1 = await navigator.usb.getDevices();
+      // @ts-ignore
+      const device = pairedDevices1.length > 0
+        ? pairedDevices1[0]
+        // @ts-ignore
+        : await navigator.usb.requestDevice({ filters: [] });
       await device.open();
       await device.selectConfiguration(1);
       await device.claimInterface(0);
@@ -630,8 +636,14 @@ export default function AdminOrdersPage() {
         return;
       }
 
+      // Check for already-paired device first (avoids picker dialog every time)
       // @ts-ignore
-      const device = await navigator.usb.requestDevice({ filters: [] });
+      const pairedDevices2 = await navigator.usb.getDevices();
+      // @ts-ignore
+      const device = pairedDevices2.length > 0
+        ? pairedDevices2[0]
+        // @ts-ignore
+        : await navigator.usb.requestDevice({ filters: [] });
       await device.open();
       await device.selectConfiguration(1);
       await device.claimInterface(0);
