@@ -71,6 +71,17 @@ export default function CreateOrderPage() {
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tableParam = params.get("table");
+      if (tableParam) {
+        setOrderType("dine_in");
+        setTableNumber(tableParam);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     const loadData = async () => {
       try {
         // Fetch Settings
