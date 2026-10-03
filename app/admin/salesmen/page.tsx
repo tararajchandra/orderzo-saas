@@ -65,7 +65,7 @@ export default function SalesmenPage() {
           }}
         >
           <div>
-            <h1>Salesmen Management</h1>
+            <h1>Staff Management</h1>
             <Link
               href="/admin/dashboard"
               className="text-muted"
@@ -75,7 +75,7 @@ export default function SalesmenPage() {
             </Link>
           </div>
           <Link href="/admin/salesmen/new" className="btn btn-primary">
-            + Add New Salesman
+            + Add New Staff
           </Link>
         </div>
 
@@ -86,6 +86,7 @@ export default function SalesmenPage() {
                 <th style={{ padding: "1rem", textAlign: "left" }}>Name</th>
                 <th style={{ padding: "1rem", textAlign: "left" }}>Email</th>
                 <th style={{ padding: "1rem", textAlign: "left" }}>Phone</th>
+                <th style={{ padding: "1rem", textAlign: "left" }}>Role</th>
                 <th style={{ padding: "1rem", textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
@@ -105,6 +106,7 @@ export default function SalesmenPage() {
                     <td style={{ padding: "1rem" }}>{salesman.name}</td>
                     <td style={{ padding: "1rem" }}>{salesman.email}</td>
                     <td style={{ padding: "1rem" }}>{salesman.phone || "-"}</td>
+                    <td style={{ padding: "1rem", textTransform: "capitalize" }}>{salesman.role}</td>
                     <td style={{ padding: "1rem", textAlign: "right" }}>
                       <div
                         style={{

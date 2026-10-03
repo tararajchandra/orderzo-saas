@@ -11,6 +11,7 @@ export default function NewSalesmanPage() {
     email: "",
     password: "",
     phone: "",
+    role: "salesman",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -44,7 +45,7 @@ export default function NewSalesmanPage() {
     <main className="container" style={{ padding: "2rem 1.5rem" }}>
       <div className="fade-in" style={{ maxWidth: "600px", margin: "0 auto" }}>
         <div style={{ marginBottom: "2rem" }}>
-          <h1>Add New Salesman</h1>
+          <h1>Add New Staff</h1>
           <Link
             href="/admin/salesmen"
             className="text-muted"
@@ -100,6 +101,23 @@ export default function NewSalesmanPage() {
 
             <div>
               <label className="mb-1" style={{ display: "block" }}>
+                Role *
+              </label>
+              <select
+                className="input"
+                value={formData.role}
+                onChange={(e) =>
+                  setFormData({ ...formData, role: e.target.value })
+                }
+                required
+              >
+                <option value="salesman">Salesman (POS User)</option>
+                <option value="cashier">Cashier (Admin Dashboard Access)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1" style={{ display: "block" }}>
                 Password *
               </label>
               <input
@@ -129,7 +147,7 @@ export default function NewSalesmanPage() {
             </div>
 
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? "Creating..." : "Create Salesman"}
+              {saving ? "Creating..." : "Create Staff"}
             </button>
           </form>
         </div>

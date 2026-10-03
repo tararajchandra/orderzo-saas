@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 export async function GET() {
     try {
         const result = await query(
-            "SELECT id, name, email, phone, role, created_at FROM users WHERE role = 'salesman' ORDER BY created_at DESC"
+            "SELECT id, name, email, phone, role, created_at FROM users WHERE role IN ('salesman', 'cashier') ORDER BY created_at DESC"
         );
         return NextResponse.json({ success: true, data: result.rows });
     } catch (error) {
@@ -18,11 +18,13 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { name, email, password, phone } = body;
+        const { name, email, password, phone, role } = body;
 
         if (!name || !email || !password) {
             return NextResponse.json({ success: false, error: 'Name, email, and password are required' }, { status: 400 });
         }
+
+        const assignRole = role === 'cashier' ? 'cashier' : 'salesman';
 
         // Check if email exists
         const check = await query("SELECT id FROM users WHERE email = $1", [email]);
@@ -35,9 +37,9 @@ export async function POST(request: Request) {
 
         const result = await query(
             `INSERT INTO users (name, email, password_hash, phone, role) 
-             VALUES ($1, $2, $3, $4, 'salesman') 
+             VALUES ($1, $2, $3, $4, $5) 
              RETURNING id, name, email, phone, role`,
-            [name, email, hash, phone || null]
+            [name, email, hash, phone || null, assignRole]
         );
 
         return NextResponse.json({ success: true, data: result.rows[0] });
