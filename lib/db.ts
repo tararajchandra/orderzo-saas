@@ -11,6 +11,9 @@ console.log('  DB_PASSWORD:', process.env.DB_PASSWORD ? 'SET' : 'NOT SET');
 
 // Create a connection pool
 // Use DATABASE_URL if available (for Coolify/Railway), otherwise use individual env vars
+const isProduction = process.env.NODE_ENV === 'production';
+const hasSupabase = process.env.DATABASE_URL?.includes('supabase');
+
 const pool = process.env.DATABASE_URL
     ? new Pool({
         connectionString: process.env.DATABASE_URL,
@@ -18,6 +21,7 @@ const pool = process.env.DATABASE_URL
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 60000,
         statement_timeout: 120000,
+        ssl: (isProduction || hasSupabase) ? { rejectUnauthorized: false } : undefined
     })
     : new Pool({
         host: process.env.DB_HOST || 'localhost',
