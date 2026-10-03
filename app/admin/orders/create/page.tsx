@@ -56,7 +56,7 @@ export default function CreateOrderPage() {
   const [printingOrderId, setPrintingOrderId] = useState<number | null>(null);
 
   const [orderType, setOrderType] = useState<
-    "takeaway" | "delivery" | "dine-in"
+    "takeaway" | "delivery" | "dine_in"
   >("takeaway");
   const [tableNumber, setTableNumber] = useState("");
   const [customerName, setCustomerName] = useState("");
@@ -435,7 +435,7 @@ export default function CreateOrderPage() {
     shouldPrint: boolean = false,
   ) => {
     // Validation
-    if (orderType === "dine-in" && !tableNumber)
+    if (orderType === "dine_in" && !tableNumber)
       return alert("Please provide Table Number for Dine-in");
     if (orderType === "delivery") {
       if (!customerName || !customerPhone)
@@ -462,7 +462,7 @@ export default function CreateOrderPage() {
         total_amount: grandTotal,
         payment_method: paymentMethod,
         notes: notes || null,
-        table_number: orderType === "dine-in" ? tableNumber : null,
+        table_number: orderType === "dine_in" ? tableNumber : null,
         order_status: status,
       };
 
@@ -660,7 +660,7 @@ export default function CreateOrderPage() {
                 marginBottom: "1rem",
               }}
             >
-              {(["dine-in", "takeaway", "delivery"] as const).map((type) => (
+              {(["dine_in", "takeaway", "delivery"] as const).map((type) => (
                 <button
                   key={type}
                   onClick={() => setOrderType(type)}
@@ -671,13 +671,13 @@ export default function CreateOrderPage() {
                     textTransform: "capitalize",
                   }}
                 >
-                  {type}
+                  {type.replace('_', '-')}
                 </button>
               ))}
             </div>
 
             {/* Contextual Inputs */}
-            {orderType === "dine-in" && (
+            {orderType === "dine_in" && (
               <div style={{ marginBottom: "1rem" }}>
                 <select
                   className="input"
