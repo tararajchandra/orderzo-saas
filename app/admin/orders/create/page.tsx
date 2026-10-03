@@ -448,6 +448,7 @@ export default function CreateOrderPage() {
     setSubmitting(true);
     try {
       const orderData = {
+        user_id: user?.id,
         customer_name: customerName,
         customer_phone: customerPhone,
         customer_address: orderType === "delivery" ? customerAddress : null,
