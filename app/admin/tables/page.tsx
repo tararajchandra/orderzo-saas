@@ -287,15 +287,14 @@ export default function AdminTablesPage() {
     }
   };
 
-  // Print all KOTs for a table sequentially
-  const handlePrintAllKOTs = async (tableNo: string) => {
+  // Print only the latest KOT for a table
+  const handlePrintLatestKOT = async (tableNo: string) => {
     const group = tableGroups[tableNo];
     if (!group || group.orders.length === 0) return;
-    for (const order of group.orders) {
-      await handlePrintKOT(order);
-      // add a small delay between prints to allow printer buffer to process
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
+    
+    // Get the most recent order (highest ID)
+    const latestOrder = [...group.orders].sort((a: any, b: any) => b.id - a.id)[0];
+    await handlePrintKOT(latestOrder);
   };
 
   // Save a kitchen note for a table (updates the latest order's notes field)
@@ -719,7 +718,7 @@ export default function AdminTablesPage() {
             onClick={() => {
               if (!contextMenu.isOccupied) return;
               setContextMenu(null);
-              handlePrintAllKOTs(contextMenu.tableNo);
+              handlePrintLatestKOT(contextMenu.tableNo);
             }}
             style={{
               display: "flex", alignItems: "center", gap: "0.6rem",
@@ -733,7 +732,7 @@ export default function AdminTablesPage() {
             onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
             onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
           >
-            🖨️ Print All KOTs
+            🖨️ Print KOT
           </button>
 
           {/* Add Note to Table */}
