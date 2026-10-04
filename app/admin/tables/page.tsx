@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useFinancialYear } from "@/contexts/FinancialYearContext";
 import { useRouter } from "next/navigation";
+import { ReceiptPrinter } from "@/lib/receipt-printer";
 import { formatDateTime, getTableList, getGroupedTableList } from "@/lib/utils";
 import Link from "next/link";
 
@@ -48,11 +49,13 @@ export default function AdminTablesPage() {
   const [settlingTable, setSettlingTable] = useState<string | null>(null);
   const [totalTables, setTotalTables] = useState(16);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [editingTableItems, setEditingTableItems] = useState<{tableNo: string, masterOrderId: number, otherOrderIds: number[], items: any[]} | null>(null);
 
   // Modal state for showing table details
   const [showModal, setShowModal] = useState(false);
 
   // For printing
+  const [printingOrderId, setPrintingOrderId] = useState<number | null>(null);
   const [settings, setSettings] = useState<any>(null);
 
   // Context Menu State
@@ -63,6 +66,10 @@ export default function AdminTablesPage() {
     isOccupied: boolean;
   } | null>(null);
   const longPressTimer = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Note Modal State
+  const [noteModal, setNoteModal] = useState<{ tableNo: string } | null>(null);
+  const [noteText, setNoteText] = useState("");
 
   // Close context menu on any click
   const handleClick = () => setContextMenu(null);
@@ -140,6 +147,98 @@ export default function AdminTablesPage() {
     }
     return acc;
   }, {});
+
+
+  const handleEditTableItems = (tableNo: string) => {
+    const group = tableGroups[tableNo];
+    if (!group || group.orders.length === 0) return;
+
+    // Sort by oldest first so we keep the first order id as the master
+    const sortedOrders = [...group.orders].sort((a: any, b: any) => a.id - b.id);
+    const masterOrder = sortedOrders[0];
+    const otherOrders = sortedOrders.slice(1);
+
+    // Combine all items
+    let combinedItems: any[] = [];
+    sortedOrders.forEach((o: any) => {
+      let parsedItems = [];
+      try {
+        parsedItems = typeof o.items === "string" ? JSON.parse(o.items) : o.items || [];
+      } catch (e) {}
+      combinedItems = [...combinedItems, ...parsedItems];
+    });
+
+    // Merge same items
+    const mergedItemsMap = new Map();
+    combinedItems.forEach((item) => {
+      const key = item.menuItem.id;
+      if (mergedItemsMap.has(key)) {
+        const existing = mergedItemsMap.get(key);
+        mergedItemsMap.set(key, { ...existing, quantity: existing.quantity + item.quantity });
+      } else {
+        mergedItemsMap.set(key, item);
+      }
+    });
+    const finalItems = Array.from(mergedItemsMap.values());
+
+    setEditingTableItems({
+      tableNo,
+      masterOrderId: masterOrder.id,
+      otherOrderIds: otherOrders.map((o: any) => o.id),
+      items: finalItems
+    });
+  };
+
+  const handleSaveTableItems = async () => {
+    if (!editingTableItems) return;
+
+    // Calculate new totals
+    let totalSubtotal = 0;
+    let totalTax = 0;
+    
+    editingTableItems.items.forEach((item: any) => {
+      const itemTotal = Number(item.menuItem.price) * item.quantity;
+      totalSubtotal += itemTotal;
+      
+      if (settings?.gstType === "regular") {
+        const gstRate = (item.menuItem.gst_rate || 5) / 100;
+        totalTax += itemTotal * gstRate;
+      }
+    });
+
+    // For a table, discount is usually applied at settle time. Let's assume 0 for now unless we fetched it.
+    // To be safe, we'll just set subtotal and tax, and total_amount.
+    const finalTotal = totalSubtotal + totalTax;
+
+    try {
+      // 1. Update Master Order
+      await fetch(`/api/orders/${editingTableItems.masterOrderId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: editingTableItems.items,
+          subtotal: totalSubtotal,
+          tax: totalTax,
+          total_amount: finalTotal,
+        }),
+      });
+
+      // 2. Delete other orders
+      if (editingTableItems.otherOrderIds.length > 0) {
+        const deletePromises = editingTableItems.otherOrderIds.map((id: number) =>
+          fetch(`/api/orders/${id}`, { method: "DELETE" }),
+        );
+        await Promise.all(deletePromises);
+      }
+
+      alert(`Items for Table ${editingTableItems.tableNo} updated successfully!`);
+      setEditingTableItems(null);
+      fetchActiveTableOrders();
+    } catch (error) {
+      console.error("Error updating table items:", error);
+      alert("An error occurred while updating the table items.");
+    }
+  };
 
   const handleSettleTable = async (tableNo: string, paymentMethod: string) => {
     const confirmSettle = confirm(
@@ -224,6 +323,90 @@ export default function AdminTablesPage() {
     } finally {
       setSettlingTable(null);
     }
+  };
+
+  const printKOTFallback = (order: any) => {
+    const printWindow = window.open("", "_blank", "width=400,height=600");
+    if (!printWindow) {
+      alert("Please allow popups to print the KOT.");
+      return;
+    }
+    const itemsHtml = (Array.isArray(order.items) ? order.items : (typeof order.items === "string" ? JSON.parse(order.items) : [])).map((item: any) => {
+      return '<tr><td style="padding: 4px 0;">' + item.menuItem.name + '</td><td style="text-align: center; padding: 4px 0;">' + item.quantity + "</td></tr>";
+    }).join("");
+    const htmlContent = "<!DOCTYPE html><html><head><title>KOT - #" + (order.order_number || order.id || "") + "</title><style>@page { margin: 0; } body { font-family: 'Courier New', Courier, monospace; width: 72mm; margin: 0 auto; padding: 10px; font-size: 16px; font-weight: bold; color: black; background: #fff; } .center { text-align: center; } .bold { font-weight: bold; } table { width: 100%; border-collapse: collapse; margin-top: 10px; } th { border-bottom: 1px dashed #000; padding-bottom: 5px; text-align: left; } .divider { border-top: 1px dashed #000; margin: 10px 0; }</style></head><body><div class=\"center bold\" style=\"font-size: 24px;\">K.O.T</div><div class=\"center divider\"></div><div>Order No: " + (order.order_number || order.id || "N/A") + "</div><div>Type: " + (order.order_type || "").toUpperCase() + "</div>" + (order.table_number ? "<div>Table: " + order.table_number + "</div>" : "") + "<div>Date: " + new Date().toLocaleString() + "</div><table><thead><tr><th>Item</th><th style=\"text-align: center;\">Qty</th></tr></thead><tbody>" + itemsHtml + "</tbody></table><div class=\"divider\"></div>" + (order.notes ? "<div><strong>Notes:</strong> " + order.notes + "</div>" : "") + "<div style=\"height: 10px;\"></div></body></html>";
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    setTimeout(() => { printWindow.focus(); printWindow.print(); printWindow.onafterprint = () => { printWindow.close(); }; }, 500);
+  };
+
+  const handlePrintKOT = async (order: any) => {
+    setPrintingOrderId(order.id);
+    try {
+      // @ts-ignore
+      if (!navigator.usb) { printKOTFallback(order); return; }
+      // @ts-ignore
+      const pairedDevices = await navigator.usb.getDevices();
+      // @ts-ignore
+      const device = pairedDevices.length > 0 ? pairedDevices[0] : await navigator.usb.requestDevice({ filters: [] });
+      await device.open(); await device.selectConfiguration(1); await device.claimInterface(0);
+      const printer = new ReceiptPrinter();
+      printer.alignCenter(); printer.setSize(2, 2); printer.bold(true).textLine("K.O.T").bold(false);
+      printer.setSize(1, 1); printer.feed(1); printer.alignLeft();
+      printer.textLine("Order No: " + (order.order_number || order.id || "N/A"));
+      printer.textLine("Type: " + (order.order_type || "").toUpperCase());
+      if (order.table_number) printer.textLine("Table: " + order.table_number);
+      printer.textLine("Date: " + new Date().toLocaleString());
+      printer.line("-"); printer.textLine("ITEM                       QTY"); printer.line("-");
+      const items = Array.isArray(order.items) ? order.items : (typeof order.items === "string" ? JSON.parse(order.items) : []);
+      items.forEach((item: any) => {
+        const name = item.menuItem.name.substring(0, 24).padEnd(24, " ");
+        const qty = String(item.quantity).padStart(5, " ");
+        printer.setSize(1, 2); printer.bold(true); printer.textLine(name + " " + qty); printer.bold(false);
+      });
+      printer.setSize(1, 1); printer.line("-");
+      if (order.notes) { printer.feed(1); printer.textLine("Notes: " + order.notes); }
+      printer.feed(3); printer.cut();
+      const data = printer.getData();
+      // @ts-ignore
+      await device.transferOut(1, data);
+      // @ts-ignore
+      await device.close();
+    } catch (error: any) {
+      console.warn("USB KOT Print failed, falling back:", error);
+      printKOTFallback(order);
+    } finally {
+      setPrintingOrderId(null);
+    }
+  };
+
+  // Print only the latest KOT for a table
+  const handlePrintLatestKOT = async (tableNo: string) => {
+    const group = tableGroups[tableNo];
+    if (!group || group.orders.length === 0) return;
+    
+    // Get the most recent order (highest ID)
+    const latestOrder = [...group.orders].sort((a: any, b: any) => b.id - a.id)[0];
+    await handlePrintKOT(latestOrder);
+  };
+
+  // Save a kitchen note for a table (updates the latest order's notes field)
+  const handleSaveNote = async (tableNo: string, note: string) => {
+    const group = tableGroups[tableNo];
+    if (!group || group.orders.length === 0) return;
+    const targetOrder = [...group.orders].sort((a: any, b: any) => b.id - a.id)[0];
+    try {
+      const res = await fetch(`/api/orders/${targetOrder.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: note }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Note saved for Table ${tableNo}`);
+        fetchActiveTableOrders(true);
+      } else { alert("Failed to save note."); }
+    } catch (err) { console.error("Error saving note:", err); alert("Error saving note."); }
   };
 
   // Print Bill functionality - combining all orders for the table
@@ -546,7 +729,7 @@ export default function AdminTablesPage() {
             top: contextMenu.y,
             left: contextMenu.x,
             zIndex: 99999,
-            background: "var(--card-bg, #1e1e2e)",
+            background: "var(--bg-secondary)",
             backdropFilter: "blur(20px)",
             border: "1px solid var(--border-color)",
             borderRadius: "12px",
@@ -572,7 +755,7 @@ export default function AdminTablesPage() {
               background: "none", border: "none", cursor: "pointer",
               color: "var(--text-primary)", fontSize: "0.95rem", textAlign: "left",
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--border-color)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
           >
             ➕ New Order
@@ -595,10 +778,33 @@ export default function AdminTablesPage() {
               opacity: contextMenu.isOccupied ? 1 : 0.4,
               fontSize: "0.95rem", textAlign: "left",
             }}
-            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "var(--border-color)"; }}
             onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
           >
             🔀 Settle Table
+          </button>
+
+
+          {/* Edit Items */}
+          <button
+            onClick={() => {
+              if (!contextMenu.isOccupied) return;
+              setContextMenu(null);
+              handleEditTableItems(contextMenu.tableNo);
+            }}
+            style={{
+              display: "flex", alignItems: "center", gap: "0.6rem",
+              width: "100%", padding: "0.6rem 1rem",
+              background: "none", border: "none",
+              cursor: contextMenu.isOccupied ? "pointer" : "not-allowed",
+              color: contextMenu.isOccupied ? "var(--text-primary)" : "var(--text-muted)",
+              opacity: contextMenu.isOccupied ? 1 : 0.4,
+              fontSize: "0.95rem", textAlign: "left",
+            }}
+            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "var(--border-color)"; }}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+          >
+            ✏️ Edit Items
           </button>
 
           {/* Print Bill — only occupied */}
@@ -617,11 +823,125 @@ export default function AdminTablesPage() {
               opacity: contextMenu.isOccupied ? 1 : 0.4,
               fontSize: "0.95rem", textAlign: "left",
             }}
-            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "var(--border-color)"; }}
             onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
           >
             🧾 Print Master Bill
           </button>
+
+          {/* Print All KOTs */}
+          <button
+            onClick={() => {
+              if (!contextMenu.isOccupied) return;
+              setContextMenu(null);
+              handlePrintLatestKOT(contextMenu.tableNo);
+            }}
+            style={{
+              display: "flex", alignItems: "center", gap: "0.6rem",
+              width: "100%", padding: "0.6rem 1rem",
+              background: "none", border: "none",
+              cursor: contextMenu.isOccupied ? "pointer" : "not-allowed",
+              color: contextMenu.isOccupied ? "var(--text-primary)" : "var(--text-muted)",
+              opacity: contextMenu.isOccupied ? 1 : 0.4,
+              fontSize: "0.95rem", textAlign: "left",
+            }}
+            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+          >
+            🖨️ Print KOT
+          </button>
+
+          {/* Add Note to Table */}
+          <button
+            onClick={() => {
+              if (!contextMenu.isOccupied) return;
+              const tableNo = contextMenu.tableNo;
+              const currentNote = tableGroups[tableNo]?.orders?.[0]?.notes || "";
+              setNoteText(currentNote);
+              setNoteModal({ tableNo });
+              setContextMenu(null);
+            }}
+            style={{
+              display: "flex", alignItems: "center", gap: "0.6rem",
+              width: "100%", padding: "0.6rem 1rem",
+              background: "none", border: "none",
+              cursor: contextMenu.isOccupied ? "pointer" : "not-allowed",
+              color: contextMenu.isOccupied ? "var(--text-primary)" : "var(--text-muted)",
+              opacity: contextMenu.isOccupied ? 1 : 0.4,
+              fontSize: "0.95rem", textAlign: "left",
+            }}
+            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+          >
+            ✏️ Add Note
+          </button>
+        </div>
+      )}
+
+      {/* Note Modal */}
+      {noteModal && (
+        <div
+          onClick={() => setNoteModal(null)}
+          style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.5)", zIndex: 99998,
+            display: "flex", justifyContent: "center", alignItems: "center",
+            padding: "1rem",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="fade-in"
+            style={{
+              width: "100%", maxWidth: "400px",
+              background: "var(--bg-secondary)",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border-color)",
+              borderRadius: "12px",
+              padding: "1.5rem",
+            }}
+          >
+            <h3 style={{ margin: "0 0 0.25rem 0", color: "var(--primary)" }}>
+              ✏️ Add Note
+            </h3>
+            <p style={{ margin: "0 0 1rem 0", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+              Table {noteModal.tableNo} — Note will appear on KOT
+            </p>
+            <textarea
+              autoFocus
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              placeholder="e.g. No spice, Allergy: nuts, Extra napkins..."
+              rows={4}
+              style={{
+                width: "100%", padding: "0.75rem",
+                borderRadius: "8px", border: "1px solid var(--border-color)",
+                background: "var(--glass-bg)", color: "var(--text-primary)",
+                fontSize: "0.95rem", resize: "vertical",
+                boxSizing: "border-box",
+              }}
+            />
+            <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
+              <button
+                onClick={() => setNoteModal(null)}
+                className="btn btn-ghost"
+                style={{ flex: 1, border: "1px solid var(--border-color)" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  await handleSaveNote(noteModal.tableNo, noteText);
+                  setNoteModal(null);
+                  setNoteText("");
+                }}
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+              >
+                Save Note
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -709,9 +1029,20 @@ export default function AdminTablesPage() {
                       marginBottom: "0.5rem",
                     }}
                   >
-                    <strong style={{ fontSize: "0.85rem" }}>
-                      Order #{o.order_number || o.id}
-                    </strong>
+                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                      <strong style={{ fontSize: "0.85rem" }}>
+                        Order #{o.order_number || o.id}
+                      </strong>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handlePrintKOT(o); }}
+                        className="btn btn-ghost btn-sm"
+                        style={{ padding: "2px 6px", fontSize: "0.75rem", background: "rgba(255,255,255,0.1)", borderRadius: "4px", color: "var(--text-primary)", border: "1px solid rgba(255,255,255,0.2)" }}
+                        title="Print KOT"
+                        disabled={printingOrderId === o.id}
+                      >
+                        {printingOrderId === o.id ? "🖨️..." : "🖨️ KOT"}
+                      </button>
+                    </div>
                     <span className="badge badge-info">{o.order_status}</span>
                   </div>
                   <div

@@ -509,7 +509,7 @@ p {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(15, 15, 20, 0.8);
+  background: var(--glass-bg);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-color);
   padding: var(--spacing-xs) 0; /* Reduced padding */
