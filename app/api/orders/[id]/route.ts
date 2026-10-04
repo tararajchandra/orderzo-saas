@@ -188,7 +188,7 @@ export async function PUT(
     } catch (error) {
         console.error('Error updating order:', error);
         return NextResponse.json(
-            { success: false, error: 'Failed to update order' },
+            { success: false, error: 'Failed to update order: ' + (error.message || error) },
             { status: 500 }
         );
     }
