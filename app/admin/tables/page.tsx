@@ -636,7 +636,7 @@ export default function AdminTablesPage() {
             top: contextMenu.y,
             left: contextMenu.x,
             zIndex: 99999,
-            background: "var(--card-bg, #1e1e2e)",
+            background: "var(--bg-secondary)",
             backdropFilter: "blur(20px)",
             border: "1px solid var(--border-color)",
             borderRadius: "12px",
@@ -662,7 +662,7 @@ export default function AdminTablesPage() {
               background: "none", border: "none", cursor: "pointer",
               color: "var(--text-primary)", fontSize: "0.95rem", textAlign: "left",
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--border-color)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
           >
             ➕ New Order
@@ -685,7 +685,7 @@ export default function AdminTablesPage() {
               opacity: contextMenu.isOccupied ? 1 : 0.4,
               fontSize: "0.95rem", textAlign: "left",
             }}
-            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "var(--border-color)"; }}
             onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
           >
             🔀 Settle Table
@@ -707,7 +707,7 @@ export default function AdminTablesPage() {
               opacity: contextMenu.isOccupied ? 1 : 0.4,
               fontSize: "0.95rem", textAlign: "left",
             }}
-            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "var(--border-color)"; }}
             onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
           >
             🧾 Print Master Bill
