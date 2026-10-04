@@ -1187,6 +1187,24 @@ export default function AdminTablesPage() {
                 >
                   {settlingTable === selectedTable ? "..." : "📱 Settle UPI"}
                 </button>
+                  <button
+                    onClick={() => {
+                      setSplitPaymentModal({ tableNo: selectedTable, total: tableGroups[selectedTable].total });
+                      setSplitAmounts({ cash: tableGroups[selectedTable].total, upi: 0, card: 0 });
+                    }}
+                    disabled={settlingTable === selectedTable}
+                    className="btn btn-warning"
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      gap: "0.5rem",
+                      gridColumn: "1 / -1",
+                      marginTop: "0.5rem"
+                    }}
+                  >
+                    ✂️ Split Payment
+                  </button>
+
               </div>
             </div>
           </div>
