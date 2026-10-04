@@ -125,9 +125,9 @@ export async function PUT(
                 table_number,
                 notes,
                 order_type,
-                split_cash,
-                split_upi,
-                split_card,
+                split_cash !== undefined ? split_cash : null,
+                split_upi !== undefined ? split_upi : null,
+                split_card !== undefined ? split_card : null,
                 params.id
             ]
         );
