@@ -205,13 +205,18 @@ export async function POST(request: Request) {
         const today = new Date();
         const datePrefix = today.toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD format
 
-        // Optimized count query using date range for better index usage
-        const orderCountResult = await client.query(
-            `SELECT COUNT(*) as count FROM orders 
-             WHERE created_at >= CURRENT_DATE 
-             AND created_at < (CURRENT_DATE + INTERVAL '1 day')`
+        // Optimized max query using date range for better index usage
+        const maxOrderResult = await client.query(
+            `SELECT MAX(order_number) as max_val FROM orders 
+             WHERE order_number LIKE $1`,
+            [`${datePrefix}-%`]
         );
-        const orderCount = parseInt(orderCountResult.rows[0].count) + 1;
+        let orderCount = 1;
+        if (maxOrderResult.rows[0].max_val) {
+            const maxOrder = maxOrderResult.rows[0].max_val;
+            const lastNum = parseInt(maxOrder.split('-')[1]);
+            orderCount = lastNum + 1;
+        }
         const orderNumber = `${datePrefix}-${String(orderCount).padStart(3, '0')}`; // Format: YYYYMMDD-XXX
 
         let orderResult;
@@ -266,24 +271,35 @@ export async function POST(request: Request) {
             let invoiceCount = 1;
             
             if (financial_year_id && fy_name) {
-                const invoiceCountResult = await client.query(
-                    `SELECT COUNT(*) as count FROM invoices 
-                     WHERE financial_year_id = $1`, [financial_year_id]
-                );
-                invoiceCount = parseInt(invoiceCountResult.rows[0].count) + 1;
                 const shortFy = fy_name.replace('20', ''); // 2024-25 -> 24-25
-                invoiceNumber = `INV/${shortFy}/${String(invoiceCount).padStart(4, '0')}`;
+                const prefix = `INV/${shortFy}/`;
+                const invoiceMaxResult = await client.query(
+                    `SELECT MAX(invoice_number) as max_val FROM invoices 
+                     WHERE invoice_number LIKE $1`, [`${prefix}%`]
+                );
+                
+                if (invoiceMaxResult.rows[0].max_val) {
+                    const maxInv = invoiceMaxResult.rows[0].max_val;
+                    const lastNum = parseInt(maxInv.split('/').pop() || '0');
+                    invoiceCount = lastNum + 1;
+                }
+                invoiceNumber = `${prefix}${String(invoiceCount).padStart(4, '0')}`;
             } else {
                 // Fallback
                 const invoiceDateStr = new Date().toISOString().split('T')[0];
                 const invoiceDate = invoiceDateStr.replace(/-/g, '');
-                const invoiceCountResult = await client.query(
-                    `SELECT COUNT(*) as count FROM invoices 
-                     WHERE generated_at >= CURRENT_DATE 
-                     AND generated_at < (CURRENT_DATE + INTERVAL '1 day')`
+                const prefix = `INV-${invoiceDate}-`;
+                const invoiceMaxResult = await client.query(
+                    `SELECT MAX(invoice_number) as max_val FROM invoices 
+                     WHERE invoice_number LIKE $1`, [`${prefix}%`]
                 );
-                invoiceCount = parseInt(invoiceCountResult.rows[0].count) + 1;
-                invoiceNumber = `INV-${invoiceDate}-${String(invoiceCount).padStart(4, '0')}`;
+                
+                if (invoiceMaxResult.rows[0].max_val) {
+                    const maxInv = invoiceMaxResult.rows[0].max_val;
+                    const lastNum = parseInt(maxInv.split('-').pop() || '0');
+                    invoiceCount = lastNum + 1;
+                }
+                invoiceNumber = `${prefix}${String(invoiceCount).padStart(4, '0')}`;
             }
 
             await client.query(
