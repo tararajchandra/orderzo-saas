@@ -13,6 +13,7 @@ export default function AdminOrdersPage() {
   const [filter, setFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("today");
   const [printingOrderId, setPrintingOrderId] = useState<number | null>(null);
+  const [editingOrderItems, setEditingOrderItems] = useState<any | null>(null);
 
   const [deliveryBoys, setDeliveryBoys] = useState<any[]>([]);
   const [salesmen, setSalesmen] = useState<any[]>([]);

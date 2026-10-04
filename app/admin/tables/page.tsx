@@ -49,6 +49,7 @@ export default function AdminTablesPage() {
   const [settlingTable, setSettlingTable] = useState<string | null>(null);
   const [totalTables, setTotalTables] = useState(16);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [editingTableItems, setEditingTableItems] = useState<{tableNo: string, masterOrderId: number, otherOrderIds: number[], items: any[]} | null>(null);
 
   // Modal state for showing table details
   const [showModal, setShowModal] = useState(false);
@@ -146,6 +147,98 @@ export default function AdminTablesPage() {
     }
     return acc;
   }, {});
+
+
+  const handleEditTableItems = (tableNo: string) => {
+    const group = tableGroups[tableNo];
+    if (!group || group.orders.length === 0) return;
+
+    // Sort by oldest first so we keep the first order id as the master
+    const sortedOrders = [...group.orders].sort((a: any, b: any) => a.id - b.id);
+    const masterOrder = sortedOrders[0];
+    const otherOrders = sortedOrders.slice(1);
+
+    // Combine all items
+    let combinedItems: any[] = [];
+    sortedOrders.forEach((o: any) => {
+      let parsedItems = [];
+      try {
+        parsedItems = typeof o.items === "string" ? JSON.parse(o.items) : o.items || [];
+      } catch (e) {}
+      combinedItems = [...combinedItems, ...parsedItems];
+    });
+
+    // Merge same items
+    const mergedItemsMap = new Map();
+    combinedItems.forEach((item) => {
+      const key = item.menuItem.id;
+      if (mergedItemsMap.has(key)) {
+        const existing = mergedItemsMap.get(key);
+        mergedItemsMap.set(key, { ...existing, quantity: existing.quantity + item.quantity });
+      } else {
+        mergedItemsMap.set(key, item);
+      }
+    });
+    const finalItems = Array.from(mergedItemsMap.values());
+
+    setEditingTableItems({
+      tableNo,
+      masterOrderId: masterOrder.id,
+      otherOrderIds: otherOrders.map((o: any) => o.id),
+      items: finalItems
+    });
+  };
+
+  const handleSaveTableItems = async () => {
+    if (!editingTableItems) return;
+
+    // Calculate new totals
+    let totalSubtotal = 0;
+    let totalTax = 0;
+    
+    editingTableItems.items.forEach((item: any) => {
+      const itemTotal = Number(item.menuItem.price) * item.quantity;
+      totalSubtotal += itemTotal;
+      
+      if (settings?.gstType === "regular") {
+        const gstRate = (item.menuItem.gst_rate || 5) / 100;
+        totalTax += itemTotal * gstRate;
+      }
+    });
+
+    // For a table, discount is usually applied at settle time. Let's assume 0 for now unless we fetched it.
+    // To be safe, we'll just set subtotal and tax, and total_amount.
+    const finalTotal = totalSubtotal + totalTax;
+
+    try {
+      // 1. Update Master Order
+      await fetch(`/api/orders/${editingTableItems.masterOrderId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: editingTableItems.items,
+          subtotal: totalSubtotal,
+          tax: totalTax,
+          total_amount: finalTotal,
+        }),
+      });
+
+      // 2. Delete other orders
+      if (editingTableItems.otherOrderIds.length > 0) {
+        const deletePromises = editingTableItems.otherOrderIds.map((id: number) =>
+          fetch(`/api/orders/${id}`, { method: "DELETE" }),
+        );
+        await Promise.all(deletePromises);
+      }
+
+      alert(`Items for Table ${editingTableItems.tableNo} updated successfully!`);
+      setEditingTableItems(null);
+      fetchActiveTableOrders();
+    } catch (error) {
+      console.error("Error updating table items:", error);
+      alert("An error occurred while updating the table items.");
+    }
+  };
 
   const handleSettleTable = async (tableNo: string, paymentMethod: string) => {
     const confirmSettle = confirm(
@@ -689,6 +782,29 @@ export default function AdminTablesPage() {
             onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
           >
             🔀 Settle Table
+          </button>
+
+
+          {/* Edit Items */}
+          <button
+            onClick={() => {
+              if (!contextMenu.isOccupied) return;
+              setContextMenu(null);
+              handleEditTableItems(contextMenu.tableNo);
+            }}
+            style={{
+              display: "flex", alignItems: "center", gap: "0.6rem",
+              width: "100%", padding: "0.6rem 1rem",
+              background: "none", border: "none",
+              cursor: contextMenu.isOccupied ? "pointer" : "not-allowed",
+              color: contextMenu.isOccupied ? "var(--text-primary)" : "var(--text-muted)",
+              opacity: contextMenu.isOccupied ? 1 : 0.4,
+              fontSize: "0.95rem", textAlign: "left",
+            }}
+            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "var(--border-color)"; }}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+          >
+            ✏️ Edit Items
           </button>
 
           {/* Print Bill — only occupied */}
