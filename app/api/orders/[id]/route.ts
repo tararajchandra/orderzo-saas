@@ -54,7 +54,10 @@ export async function PUT(
             payment_method,
             table_number,
             notes,
-            order_type
+            order_type,
+            split_cash,
+            split_upi,
+            split_card
         } = body;
 
         let driverCommission = null;
@@ -100,8 +103,11 @@ export async function PUT(
            table_number = COALESCE($13, table_number),
            notes = COALESCE($14, notes),
            order_type = COALESCE($15, order_type),
+           split_cash = COALESCE($16, split_cash),
+           split_upi = COALESCE($17, split_upi),
+           split_card = COALESCE($18, split_card),
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $16
+       WHERE id = $19
        RETURNING *`,
             [
                 order_status,
@@ -119,6 +125,9 @@ export async function PUT(
                 table_number,
                 notes,
                 order_type,
+                split_cash,
+                split_upi,
+                split_card,
                 params.id
             ]
         );

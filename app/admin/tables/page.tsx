@@ -46,6 +46,8 @@ export default function AdminTablesPage() {
   const [loading, setLoading] = useState(true);
   const { selectedFY } = useFinancialYear();
   const [settlingTable, setSettlingTable] = useState<string | null>(null);
+  const [splitPaymentModal, setSplitPaymentModal] = useState<{tableNo: string, total: number} | null>(null);
+  const [splitAmounts, setSplitAmounts] = useState({ cash: 0, upi: 0, card: 0 });
   const [totalTables, setTotalTables] = useState(16);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [editingTableItems, setEditingTableItems] = useState<{tableNo: string, masterOrderId: number, otherOrderIds: number[], items: any[]} | null>(null);
@@ -238,7 +240,7 @@ export default function AdminTablesPage() {
     }
   };
 
-  const handleSettleTable = async (tableNo: string, paymentMethod: string) => {
+  const handleSettleTable = async (tableNo: string, paymentMethod: string, splits?: any) => {
     const confirmSettle = confirm(
       `Are you sure you want to settle all pending orders for Table ${tableNo} with ${paymentMethod.toUpperCase()}?`,
     );
@@ -295,6 +297,9 @@ export default function AdminTablesPage() {
         body: JSON.stringify({
           payment_status: "paid",
           payment_method: paymentMethod,
+          split_cash: splits?.cash || 0,
+          split_upi: splits?.upi || 0,
+          split_card: splits?.card || 0,
           order_status: "delivered",
           items: finalItems,
           subtotal: totalSubtotal,
@@ -1254,6 +1259,77 @@ export default function AdminTablesPage() {
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setEditingTableItems(null)}>Cancel</button>
               <button className="btn btn-primary" onClick={handleSaveTableItems}>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Split Payment Modal */}
+      {splitPaymentModal && (
+        <div className="modal-overlay" onClick={() => setSplitPaymentModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Split Payment - Table {splitPaymentModal.tableNo}</h2>
+            </div>
+            <div className="modal-body">
+              <div style={{ marginBottom: '1rem', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                Total Bill: ₹{splitPaymentModal.total.toFixed(2)}
+              </div>
+              
+              <div style={{ marginBottom: '1rem' }}>
+                <label>Cash Amount (₹)</label>
+                <input 
+                  type="number" 
+                  className="input" 
+                  value={splitAmounts.cash}
+                  onChange={(e) => setSplitAmounts({...splitAmounts, cash: parseFloat(e.target.value) || 0})}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label>UPI Amount (₹)</label>
+                <input 
+                  type="number" 
+                  className="input" 
+                  value={splitAmounts.upi}
+                  onChange={(e) => setSplitAmounts({...splitAmounts, upi: parseFloat(e.target.value) || 0})}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label>Card Amount (₹)</label>
+                <input 
+                  type="number" 
+                  className="input" 
+                  value={splitAmounts.card}
+                  onChange={(e) => setSplitAmounts({...splitAmounts, card: parseFloat(e.target.value) || 0})}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              
+              <div style={{ 
+                marginTop: '1rem', 
+                padding: '1rem', 
+                background: (splitAmounts.cash + splitAmounts.upi + splitAmounts.card) === splitPaymentModal.total ? 'var(--success)' : 'var(--danger)',
+                color: 'white',
+                borderRadius: '8px'
+              }}>
+                Sum: ₹{(splitAmounts.cash + splitAmounts.upi + splitAmounts.card).toFixed(2)}
+                { (splitAmounts.cash + splitAmounts.upi + splitAmounts.card) !== splitPaymentModal.total && " (Must equal Total Bill)" }
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setSplitPaymentModal(null)}>Cancel</button>
+              <button 
+                className="btn btn-primary" 
+                disabled={(splitAmounts.cash + splitAmounts.upi + splitAmounts.card) !== splitPaymentModal.total}
+                onClick={() => {
+                  setSplitPaymentModal(null);
+                  handleSettleTable(splitPaymentModal.tableNo, "split", splitAmounts);
+                }}
+              >
+                Confirm Settle
+              </button>
             </div>
           </div>
         </div>

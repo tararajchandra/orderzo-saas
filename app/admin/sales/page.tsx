@@ -143,7 +143,7 @@ export default function SaleBookPage() {
 
     const matchesDate = saleDate >= start && saleDate <= end;
     const matchesPayment =
-      paymentFilter === "all" || sale.payment_method === paymentFilter;
+      paymentFilter === "all" || sale.payment_method === paymentFilter || (sale.payment_method === "split" && Number(sale[`split_${paymentFilter}`] || 0) > 0);
     const matchesSearch =
       searchQuery === "" ||
       sale.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -177,7 +177,13 @@ export default function SaleBookPage() {
     filteredSales.forEach((sale) => {
       const amount = parseFloat(sale.total_amount.toString());
       totals.all += amount;
-      totals[sale.payment_method] = (totals[sale.payment_method] || 0) + amount;
+      if (sale.payment_method === 'split') {
+        totals['cash'] = (totals['cash'] || 0) + Number(sale.split_cash || 0);
+        totals['upi'] = (totals['upi'] || 0) + Number(sale.split_upi || 0);
+        totals['card'] = (totals['card'] || 0) + Number(sale.split_card || 0);
+      } else {
+        totals[sale.payment_method] = (totals[sale.payment_method] || 0) + amount;
+      }
     });
 
     return totals;
@@ -539,7 +545,7 @@ export default function SaleBookPage() {
                           style={{
                             textTransform: "uppercase",
                             background:
-                              sale.payment_method === "cash"
+                              (sale.payment_method === "cash" || sale.payment_method === "split")
                                 ? "var(--success)"
                                 : sale.payment_method === "upi"
                                   ? "var(--info)"
@@ -549,7 +555,7 @@ export default function SaleBookPage() {
                             color: "white",
                           }}
                         >
-                          {sale.payment_method === "cash"
+                          {(sale.payment_method === "cash" || sale.payment_method === "split")
                             ? "💵 Cash"
                             : sale.payment_method === "upi"
                               ? "📱 UPI"
@@ -557,7 +563,7 @@ export default function SaleBookPage() {
                                 ? "💳 Card"
                                 : sale.payment_method === "online"
                                   ? "🌐 Online"
-                                  : sale.payment_method || "Cash"}
+                                  : sale.payment_method === "split" ? "Split" : (sale.payment_method || "Cash")}
                         </span>
                       </td>
                       <td
