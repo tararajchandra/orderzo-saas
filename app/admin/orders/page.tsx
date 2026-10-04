@@ -301,6 +301,52 @@ export default function AdminOrdersPage() {
     }
   };
 
+  
+  const handleSaveEditedItems = async () => {
+    if (!editingOrderItems) return;
+    
+    let newSubtotal = 0;
+    let newTax = 0;
+    
+    editingOrderItems.items.forEach((item: any) => {
+      const itemTotal = Number(item.menuItem.price) * item.quantity;
+      newSubtotal += itemTotal;
+      
+      if (settings?.gstType === "regular") {
+        const gstRate = (item.menuItem.gst_rate || 5) / 100;
+        newTax += itemTotal * gstRate;
+      }
+    });
+
+    const currentDeliveryCharge = parseFloat(editingOrderItems.delivery_charge || 0);
+    const currentDiscount = parseFloat(editingOrderItems.discount || 0);
+    
+    const newTotalAmount = newSubtotal + newTax + currentDeliveryCharge - currentDiscount;
+
+    try {
+      const response = await fetch(`/api/orders/${editingOrderItems.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: editingOrderItems.items,
+          subtotal: newSubtotal,
+          tax: newTax,
+          total_amount: newTotalAmount,
+        }),
+      });
+
+      if (response.ok) {
+        setEditingOrderItems(null);
+        fetchOrders();
+      } else {
+        alert("Failed to update items");
+      }
+    } catch (error) {
+      console.error("Error updating items:", error);
+      alert("Error updating items");
+    }
+  };
+
   const updateDiscount = async (orderId: number, discount: number) => {
     try {
       const order = orders.find((o) => o.id === orderId);
