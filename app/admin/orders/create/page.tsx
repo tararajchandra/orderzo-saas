@@ -66,6 +66,7 @@ export default function CreateOrderPage() {
     null,
   );
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [splitAmounts, setSplitAmounts] = useState({ cash: 0, upi: 0, card: 0 });
   const [discount, setDiscount] = useState(0);
   const [manualDeliveryCharge, setManualDeliveryCharge] = useState(0);
   const [notes, setNotes] = useState("");
@@ -473,6 +474,9 @@ export default function CreateOrderPage() {
         delivery_charge: getDeliveryCharge(),
         total_amount: grandTotal,
         payment_method: paymentMethod,
+          split_cash: paymentMethod === "split" ? splitAmounts.cash : 0,
+          split_upi: paymentMethod === "split" ? splitAmounts.upi : 0,
+          split_card: paymentMethod === "split" ? splitAmounts.card : 0,
         notes: notes || null,
         table_number: orderType === "dine_in" ? tableNumber : null,
         order_status: status,
@@ -836,15 +840,62 @@ export default function CreateOrderPage() {
                 />
               </div>
 
-              <select
-                className="input mb-3"
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-              >
-                <option value="cash">Cash</option>
-                <option value="card">Card</option>
-                <option value="upi">UPI</option>
-              </select>
+              
+                <select
+                  className="input mb-3"
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                >
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                  <option value="upi">UPI</option>
+                  <option value="split">Split Payment</option>
+                </select>
+
+                {paymentMethod === "split" && (
+                  <div style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <label style={{ fontSize: '0.875rem' }}>Cash Amount</label>
+                      <input 
+                        type="number" 
+                        className="input" 
+                        value={splitAmounts.cash}
+                        onChange={(e) => setSplitAmounts({...splitAmounts, cash: parseFloat(e.target.value) || 0})}
+                      />
+                    </div>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <label style={{ fontSize: '0.875rem' }}>UPI Amount</label>
+                      <input 
+                        type="number" 
+                        className="input" 
+                        value={splitAmounts.upi}
+                        onChange={(e) => setSplitAmounts({...splitAmounts, upi: parseFloat(e.target.value) || 0})}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.875rem' }}>Card Amount</label>
+                      <input 
+                        type="number" 
+                        className="input" 
+                        value={splitAmounts.card}
+                        onChange={(e) => setSplitAmounts({...splitAmounts, card: parseFloat(e.target.value) || 0})}
+                      />
+                    </div>
+                    <div style={{ 
+                      marginTop: '0.5rem', 
+                      padding: '0.5rem', 
+                      background: (splitAmounts.cash + splitAmounts.upi + splitAmounts.card) === grandTotal ? 'var(--success)' : 'var(--danger)',
+                      color: 'white',
+                      borderRadius: '4px',
+                      fontSize: '0.875rem',
+                      textAlign: 'center'
+                    }}>
+                      Sum: ₹{(splitAmounts.cash + splitAmounts.upi + splitAmounts.card).toFixed(2)}
+                      { (splitAmounts.cash + splitAmounts.upi + splitAmounts.card) !== grandTotal && " (Must equal Total)" }
+                    </div>
+                  </div>
+                )}
+
 
               {/* Subtotal and Discount */}
               <div
