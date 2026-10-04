@@ -1289,6 +1289,7 @@ export default function AdminOrdersPage() {
                     <option value="upi">UPI</option>
                     <option value="card">Card</option>
                     <option value="online">Online</option>
+                      <option value="split">Split Payment</option>
                   </select>
                 </div>
 
