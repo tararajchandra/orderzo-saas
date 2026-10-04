@@ -984,6 +984,24 @@ export default function AdminOrdersPage() {
                     >
                       📄 View Invoice
                     </button>
+                    {order.order_status !== "cancelled" && (
+                      <button
+                        onClick={() => {
+                          const orderCopy = JSON.parse(JSON.stringify(order));
+                          if (typeof orderCopy.items === "string") {
+                            try { orderCopy.items = JSON.parse(orderCopy.items); } catch(e) { orderCopy.items = []; }
+                          }
+                          setEditingOrderItems(orderCopy);
+                        }}
+                        className="btn btn-outline"
+                        style={{
+                          padding: "0.375rem 0.75rem",
+                          fontSize: "0.875rem",
+                        }}
+                      >
+                        ✏️ Edit Items
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1354,6 +1372,77 @@ export default function AdminOrdersPage() {
           )}
         </div>
       </div>
+
+      {/* Edit Items Modal */}
+      {editingOrderItems && (
+        <div className="modal-overlay" onClick={() => setEditingOrderItems(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Edit Items - Order #{editingOrderItems.order_number || editingOrderItems.id}</h2>
+            </div>
+            <div className="modal-body">
+              {editingOrderItems.items.map((item: any, idx: number) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', padding: '1rem', background: 'var(--glass-bg)', borderRadius: '8px' }}>
+                  <div>
+                    <div style={{ fontWeight: 'bold' }}>{item.menuItem.name}</div>
+                    <div className="text-muted">₹{Number(item.menuItem.price).toFixed(2)} x {item.quantity} = ₹{(Number(item.menuItem.price) * item.quantity).toFixed(2)}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <button 
+                      className="btn btn-ghost" 
+                      style={{ padding: '0.25rem 0.5rem', minWidth: '32px' }}
+                      onClick={() => {
+                        const newItems = [...editingOrderItems.items];
+                        if (newItems[idx].quantity > 1) {
+                          newItems[idx].quantity -= 1;
+                        } else {
+                          newItems.splice(idx, 1);
+                        }
+                        setEditingOrderItems({ ...editingOrderItems, items: newItems });
+                      }}
+                    >
+                      -
+                    </button>
+                    <span style={{ minWidth: '20px', textAlign: 'center' }}>{item.quantity}</span>
+                    <button 
+                      className="btn btn-ghost"
+                      style={{ padding: '0.25rem 0.5rem', minWidth: '32px' }}
+                      onClick={() => {
+                        const newItems = [...editingOrderItems.items];
+                        newItems[idx].quantity += 1;
+                        setEditingOrderItems({ ...editingOrderItems, items: newItems });
+                      }}
+                    >
+                      +
+                    </button>
+                    <button 
+                      className="btn btn-error"
+                      style={{ padding: '0.25rem 0.5rem', marginLeft: '0.5rem' }}
+                      onClick={() => {
+                        const newItems = [...editingOrderItems.items];
+                        newItems.splice(idx, 1);
+                        setEditingOrderItems({ ...editingOrderItems, items: newItems });
+                      }}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              ))}
+              
+              {editingOrderItems.items.length === 0 && (
+                <div className="text-center text-muted" style={{ padding: '2rem' }}>
+                  No items left in order. (Saving will clear the items, consider cancelling the order instead).
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setEditingOrderItems(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSaveEditedItems}>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
