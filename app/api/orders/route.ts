@@ -27,6 +27,7 @@ export async function GET(request: Request) {
                 o.customer_name, o.customer_phone, o.customer_address,
                 o.order_type, o.table_number,
                 o.subtotal, o.tax, o.discount, o.delivery_charge, o.total_amount,
+                o.split_cash, o.split_upi, o.split_card,
                 o.payment_method, o.payment_status, o.order_status,
                 o.delivery_boy_id, o.driver_commission,
                 o.notes, o.created_at, o.updated_at,

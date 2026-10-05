@@ -73,7 +73,7 @@ export default function CashBookPage() {
             date: order.created_at,
             description: `Sale - ${order.customer_name} (${order.invoice_number || `Order #${order.id}`})`,
             type: "in" as const,
-            amount: parseFloat(order.total_amount),
+            amount: order.payment_method === "split" ? parseFloat(order.split_cash || 0) : parseFloat(order.total_amount),
             category: "Sales",
           }));
 
