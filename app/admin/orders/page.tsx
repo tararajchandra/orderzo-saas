@@ -14,6 +14,8 @@ export default function AdminOrdersPage() {
   const [dateFilter, setDateFilter] = useState("today");
   const [printingOrderId, setPrintingOrderId] = useState<number | null>(null);
   const [editingOrderItems, setEditingOrderItems] = useState<any | null>(null);
+  const [splitPaymentModal, setSplitPaymentModal] = useState<{orderId: number, total: number} | null>(null);
+  const [splitAmounts, setSplitAmounts] = useState({ cash: 0, upi: 0, card: 0 });
 
   const [deliveryBoys, setDeliveryBoys] = useState<any[]>([]);
   const [salesmen, setSalesmen] = useState<any[]>([]);
@@ -272,6 +274,35 @@ export default function AdminOrdersPage() {
       alert(
         "An error occurred while updating payment. Check console for details.",
       );
+    }
+  };
+
+  const handleSplitPaymentUpdate = async (orderId: number, splits: any) => {
+    try {
+      console.log("Updating split payment method:", orderId, splits);
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          payment_method: "split",
+          split_cash: splits.cash || 0,
+          split_upi: splits.upi || 0,
+          split_card: splits.card || 0
+        }),
+      });
+
+      const data = await response.json();
+      console.log("Update response:", data);
+
+      if (data.success) {
+        fetchOrders();
+        alert("Split payment updated successfully");
+      } else {
+        alert(`Failed to update split payment: ${data.error}`);
+      }
+    } catch (error) {
+      console.error("Error updating split payment:", error);
+      alert("An error occurred while updating split payment.");
     }
   };
 
@@ -1279,9 +1310,14 @@ export default function AdminOrdersPage() {
                   </label>
                   <select
                     value={order.payment_method || "cash"}
-                    onChange={(e) =>
-                      updatePaymentMethod(order.id, e.target.value)
-                    }
+                    onChange={(e) => {
+                      if (e.target.value === "split") {
+                        setSplitAmounts({ cash: 0, upi: 0, card: 0 });
+                        setSplitPaymentModal({ orderId: order.id, total: Number(order.total_amount) });
+                      } else {
+                        updatePaymentMethod(order.id, e.target.value);
+                      }
+                    }}
                     className="input"
                     style={{ textTransform: "capitalize" }}
                   >
@@ -1474,6 +1510,77 @@ export default function AdminOrdersPage() {
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setEditingOrderItems(null)}>Cancel</button>
               <button className="btn btn-primary" onClick={handleSaveEditedItems}>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Split Payment Modal */}
+      {splitPaymentModal && (
+        <div className="modal-overlay" onClick={() => setSplitPaymentModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Split Payment - Order #{splitPaymentModal.orderId}</h2>
+            </div>
+            <div className="modal-body">
+              <div style={{ marginBottom: '1rem', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                Total Bill: ₹{splitPaymentModal.total.toFixed(2)}
+              </div>
+              
+              <div style={{ marginBottom: '1rem' }}>
+                <label>Cash Amount (₹)</label>
+                <input 
+                  type="number" 
+                  className="input" 
+                  value={splitAmounts.cash}
+                  onChange={(e) => setSplitAmounts({...splitAmounts, cash: parseFloat(e.target.value) || 0})}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label>UPI Amount (₹)</label>
+                <input 
+                  type="number" 
+                  className="input" 
+                  value={splitAmounts.upi}
+                  onChange={(e) => setSplitAmounts({...splitAmounts, upi: parseFloat(e.target.value) || 0})}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label>Card Amount (₹)</label>
+                <input 
+                  type="number" 
+                  className="input" 
+                  value={splitAmounts.card}
+                  onChange={(e) => setSplitAmounts({...splitAmounts, card: parseFloat(e.target.value) || 0})}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              
+              <div style={{ 
+                marginTop: '1rem', 
+                padding: '1rem', 
+                background: (splitAmounts.cash + splitAmounts.upi + splitAmounts.card) === splitPaymentModal.total ? 'var(--success)' : 'var(--danger)',
+                color: 'white',
+                borderRadius: '8px'
+              }}>
+                Sum: ₹{(splitAmounts.cash + splitAmounts.upi + splitAmounts.card).toFixed(2)}
+                { (splitAmounts.cash + splitAmounts.upi + splitAmounts.card) !== splitPaymentModal.total && " (Must equal Total Bill)" }
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setSplitPaymentModal(null)}>Cancel</button>
+              <button 
+                className="btn btn-primary" 
+                disabled={(splitAmounts.cash + splitAmounts.upi + splitAmounts.card) !== splitPaymentModal.total}
+                onClick={() => {
+                  setSplitPaymentModal(null);
+                  handleSplitPaymentUpdate(splitPaymentModal.orderId, splitAmounts);
+                }}
+              >
+                Confirm Split Payment
+              </button>
             </div>
           </div>
         </div>
