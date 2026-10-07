@@ -574,6 +574,7 @@ export default function QuickBillPage() {
     try {
       // Create completed order
       const orderPayload: any = {
+        user_id: user?.id || null,
         customer_name: customerName || "Walk-in Customer",
         customer_phone: customerPhone || "N/A",
         items: cart,
@@ -587,6 +588,7 @@ export default function QuickBillPage() {
         discount: discount,
         delivery_charge: manualDeliveryCharge,
         prefix: "POS",
+        created_at: new Date().toISOString(),
       };
 
       if (!navigator.onLine) {

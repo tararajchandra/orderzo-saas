@@ -165,25 +165,47 @@ export default function AdminOrdersPage() {
   };
 
   const fetchOrders = async (isPolling = false) => {
-    // If device is offline, load from cache immediately with 0 delay
+    // 1. Always load pending offline orders from IndexedDB first
+    let pendingOffline: any[] = [];
+    try {
+      const offlineList = await getOfflineOrders();
+      pendingOffline = offlineList
+        .filter((o) => o.body && (o.method === "POST" || o.method === "PUT"))
+        .map((o) => {
+          const b = o.body;
+          return {
+            ...b,
+            id: b.id || b.order_number || o.id,
+            order_number: b.order_number || b.id || `OFF-${o.id}`,
+            created_at: b.created_at || new Date(o.timestamp).toISOString(),
+            is_offline: true,
+          };
+        });
+    } catch (e) {
+      console.warn("Error reading pending offline orders:", e);
+    }
+
+    // 2. If device is offline, load from cache immediately with 0 delay
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       try {
         const cached = localStorage.getItem("cached_admin_orders");
         let localList: any[] = cached ? JSON.parse(cached) : [];
-        const offlineList = await getOfflineOrders();
-        const pendingOffline = offlineList
-          .filter((o) => o.body && o.method === "POST")
-          .map((o) => ({
-            ...o.body,
-            id: o.body.order_number || o.id,
-            order_number: o.body.order_number || o.id,
-            created_at: new Date(o.timestamp).toISOString(),
-            is_offline: true,
-          }));
-        const map = new Map();
-        localList.forEach((item) => map.set(item.order_number || item.id, item));
-        pendingOffline.forEach((item) => map.set(item.order_number || item.id, item));
-        setOrders(Array.from(map.values()));
+        const map = new Map<string, any>();
+        // Add pending offline orders first
+        pendingOffline.forEach((item) =>
+          map.set(String(item.order_number || item.id), item)
+        );
+        // Add local cached items if not already present
+        localList.forEach((item) => {
+          const key = String(item.order_number || item.id);
+          if (!map.has(key)) map.set(key, item);
+        });
+        const merged = Array.from(map.values()).sort(
+          (a: any, b: any) =>
+            new Date(b.created_at || 0).getTime() -
+            new Date(a.created_at || 0).getTime()
+        );
+        setOrders(merged);
       } catch (e) {
         console.error("Error reading offline orders:", e);
       } finally {
@@ -192,6 +214,7 @@ export default function AdminOrdersPage() {
       return;
     }
 
+    // 3. Online mode: fetch from server, but ALWAYS merge pending offline orders
     try {
       let url = "/api/orders?include_items=true&date=today&limit=200";
 
@@ -209,14 +232,16 @@ export default function AdminOrdersPage() {
 
       const data = await response.json();
       if (data.success) {
-        const newOrders = data.data;
+        const newOrders: any[] = data.data;
 
         if (isPolling && lastFetchTimeRef.current) {
           if (newOrders.length > 0) {
             setOrders((prev) => {
-              const existingIds = new Set(prev.map((o: any) => o.id));
+              const existingIds = new Set(
+                prev.map((o: any) => String(o.order_number || o.id))
+              );
               const brandNew = newOrders.filter(
-                (o: any) => !existingIds.has(o.id),
+                (o: any) => !existingIds.has(String(o.order_number || o.id))
               );
 
               const freshOrder = brandNew.find((order: any) => {
@@ -230,17 +255,37 @@ export default function AdminOrdersPage() {
               }
 
               if (brandNew.length === 0) return prev;
-              const merged = [...brandNew, ...prev];
+              const merged = [...brandNew, ...prev].sort(
+                (a: any, b: any) =>
+                  new Date(b.created_at || 0).getTime() -
+                  new Date(a.created_at || 0).getTime()
+              );
               prevOrderIdsRef.current = new Set(merged.map((o: any) => o.id));
               return merged;
             });
           }
         } else {
-          // Full refresh
-          prevOrderIdsRef.current = new Set(newOrders.map((o: any) => o.id));
-          setOrders(newOrders);
+          // Full refresh: Merge pending offline orders that haven't yet reached DB into top!
+          const serverKeys = new Set(
+            newOrders.map((o: any) => String(o.order_number || o.id))
+          );
+          const unsyncedPending = pendingOffline.filter(
+            (po: any) => !serverKeys.has(String(po.order_number || po.id))
+          );
+
+          const merged = [...unsyncedPending, ...newOrders].sort(
+            (a: any, b: any) =>
+              new Date(b.created_at || 0).getTime() -
+              new Date(a.created_at || 0).getTime()
+          );
+
+          prevOrderIdsRef.current = new Set(merged.map((o: any) => o.id));
+          setOrders(merged);
           try {
-            localStorage.setItem("cached_admin_orders", JSON.stringify(newOrders.slice(0, 100)));
+            localStorage.setItem(
+              "cached_admin_orders",
+              JSON.stringify(merged.slice(0, 100))
+            );
           } catch (e) {}
         }
 
@@ -251,22 +296,20 @@ export default function AdminOrdersPage() {
       try {
         const cached = localStorage.getItem("cached_admin_orders");
         let localList: any[] = cached ? JSON.parse(cached) : [];
-        const offlineList = await getOfflineOrders();
-        const pendingOffline = offlineList
-          .filter((o) => o.body && o.method === "POST")
-          .map((o) => ({
-            ...o.body,
-            id: o.body.order_number || o.id,
-            order_number: o.body.order_number || o.id,
-            created_at: new Date(o.timestamp).toISOString(),
-            is_offline: true,
-          }));
-        if (pendingOffline.length > 0 || localList.length > 0) {
-          const map = new Map();
-          localList.forEach((item) => map.set(item.order_number || item.id, item));
-          pendingOffline.forEach((item) => map.set(item.order_number || item.id, item));
-          setOrders(Array.from(map.values()));
-        }
+        const map = new Map<string, any>();
+        pendingOffline.forEach((item) =>
+          map.set(String(item.order_number || item.id), item)
+        );
+        localList.forEach((item) => {
+          const key = String(item.order_number || item.id);
+          if (!map.has(key)) map.set(key, item);
+        });
+        const merged = Array.from(map.values()).sort(
+          (a: any, b: any) =>
+            new Date(b.created_at || 0).getTime() -
+            new Date(a.created_at || 0).getTime()
+        );
+        setOrders(merged);
       } catch (e) {}
     } finally {
       if (!isPolling) setLoading(false);
@@ -633,13 +676,27 @@ export default function AdminOrdersPage() {
       return;
     }
 
-    const itemsHtml = (Array.isArray(order.items) ? order.items : [])
+    let rawItems: any[] = [];
+    try {
+      rawItems = Array.isArray(order.items)
+        ? order.items
+        : typeof order.items === "string"
+          ? JSON.parse(order.items)
+          : [];
+    } catch (e) {
+      rawItems = [];
+    }
+
+    const itemsHtml = rawItems
       .map((item: any) => {
-        const total = (Number(item.menuItem.price) * item.quantity).toFixed(2);
+        const name = (item.menuItem?.name || item.name || "Item").toUpperCase();
+        const price = Number(item.menuItem?.price || item.price || 0);
+        const qty = Number(item.quantity || 1);
+        const total = (price * qty).toFixed(2);
         return `
             <tr>
-                <td style="padding: 4px 0;">${item.menuItem.name.toUpperCase()}</td>
-                <td style="text-align: center; padding: 4px 0;">${item.quantity}</td>
+                <td style="padding: 4px 0;">${name}</td>
+                <td style="text-align: center; padding: 4px 0;">${qty}</td>
                 <td style="text-align: right; padding: 4px 0;">${total}</td>
             </tr>`;
       })
@@ -862,19 +919,26 @@ export default function AdminOrdersPage() {
       return;
     }
 
-    const itemsHtml = (
-      Array.isArray(order.items)
+    let rawItems: any[] = [];
+    try {
+      rawItems = Array.isArray(order.items)
         ? order.items
         : typeof order.items === "string"
           ? JSON.parse(order.items)
-          : []
-    )
+          : [];
+    } catch (e) {
+      rawItems = [];
+    }
+
+    const itemsHtml = rawItems
       .map((item: any) => {
+        const name = (item.menuItem?.name || item.name || "Item").toUpperCase();
+        const qty = Number(item.quantity || 1);
         return (
           '<tr><td style="padding: 4px 0;">' +
-          item.menuItem.name +
+          name +
           '</td><td style="text-align: center; padding: 4px 0;">' +
-          item.quantity +
+          qty +
           "</td></tr>"
         );
       })
@@ -987,6 +1051,12 @@ export default function AdminOrdersPage() {
   };
 
   const filteredOrders = orders.filter((o) => {
+    // Pending offline orders should ALWAYS be visible
+    if (o.is_offline) {
+      if (filter !== "all" && o.order_status !== filter) return false;
+      return true;
+    }
+
     const matchesStatus = filter === "all" || o.order_status === filter;
 
     let matchesDate = true;
@@ -1179,6 +1249,22 @@ export default function AdminOrdersPage() {
                     <h3 style={{ margin: 0 }}>
                       Order #{order.order_number || order.id}
                     </h3>
+                    {order.is_offline && (
+                      <span
+                        className="badge"
+                        style={{
+                          background: "#eab308",
+                          color: "#000",
+                          fontWeight: 700,
+                          fontSize: "0.75rem",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        ⚡ অফলাইন (সিঙ্ক বাকি)
+                      </span>
+                    )}
                     <span
                       className="badge"
                       style={{

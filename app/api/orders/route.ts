@@ -135,7 +135,7 @@ export async function POST(request: Request) {
         } = body;
 
         // Validate required fields
-        if (!items || !total_amount || !payment_method) {
+        if (!items || total_amount === undefined || total_amount === null || !payment_method) {
             return NextResponse.json(
                 { success: false, error: 'Missing required fields' },
                 { status: 400 }
@@ -373,11 +373,19 @@ export async function POST(request: Request) {
                 invoiceNumber = `${prefix}${String(invoiceCount).padStart(4, '0')}`;
             }
 
-            await client.query(
-                `INSERT INTO invoices (order_id, invoice_number, subtotal, tax, discount, total, financial_year_id)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                [order.id, invoiceNumber, subtotal, tax || 0, discount || 0, total_amount, financial_year_id]
-            );
+            try {
+                await client.query('SAVEPOINT invoice_insert_probe');
+                await client.query(
+                    `INSERT INTO invoices (order_id, invoice_number, subtotal, tax, discount, total, delivery_charge, financial_year_id)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                     ON CONFLICT (invoice_number) DO NOTHING`,
+                    [order.id, invoiceNumber, subtotal, tax || 0, discount || 0, total_amount, delivery_charge || 0, financial_year_id]
+                );
+                await client.query('RELEASE SAVEPOINT invoice_insert_probe');
+            } catch (invErr) {
+                await client.query('ROLLBACK TO SAVEPOINT invoice_insert_probe');
+                console.warn('⚠️ Invoice insert skipped or warning:', invErr);
+            }
         }
 
         // COMMIT TRANSACTION

@@ -85,10 +85,20 @@ export default function OfflineIndicator() {
     };
   }, []);
 
+  const handleForceSync = async () => {
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      await syncOfflineOrders();
+      const orders = await getOfflineOrders();
+      setPendingCount(orders.length);
+    }
+  };
+
   if (isOnline && pendingCount === 0) return null;
 
   return (
     <div
+      onClick={handleForceSync}
+      title={isOnline ? "ক্লিক করে এখনই সিঙ্ক করুন (Click to force sync)" : "অফলাইন মোড"}
       style={{
         position: "fixed",
         bottom: "20px",
@@ -105,6 +115,7 @@ export default function OfflineIndicator() {
         fontSize: "0.875rem",
         fontWeight: "bold",
         animation: "fade-in 0.3s ease-in-out",
+        cursor: isOnline ? "pointer" : "default",
       }}
     >
       {isOnline ? (

@@ -62,7 +62,10 @@ export async function PUT(
 
         let driverCommission = null;
 
-        const existingCheck = await query('SELECT * FROM orders WHERE id = $1', [params.id]);
+        const isNumeric = /^\d+$/.test(params.id);
+        const existingCheck = isNumeric
+            ? await query('SELECT * FROM orders WHERE id = $1', [parseInt(params.id, 10)])
+            : await query('SELECT * FROM orders WHERE order_number = $1', [params.id]);
         if (existingCheck.rows.length === 0) {
             return NextResponse.json(
                 { success: false, error: 'Order not found' },
@@ -70,6 +73,7 @@ export async function PUT(
             );
         }
         const existing = existingCheck.rows[0];
+        const effectiveId = existing.id;
 
         // Guard: If order was already settled/paid by cashier, keep cashier's final payment details
         if (existing.payment_status === 'paid' && payment_status === 'paid') {
@@ -91,7 +95,7 @@ export async function PUT(
                 FROM orders o
                 LEFT JOIN users u ON u.id = COALESCE($1::int, o.delivery_boy_id)
                 WHERE o.id = $2
-            `, [dbId || null, params.id]);
+            `, [dbId || null, effectiveId]);
 
             if (commissionRes.rows.length > 0) {
                 const row = commissionRes.rows[0];
@@ -146,7 +150,7 @@ export async function PUT(
                 split_cash !== undefined ? split_cash : null,
                 split_upi !== undefined ? split_upi : null,
                 split_card !== undefined ? split_card : null,
-                params.id
+                effectiveId
             ]
         );
 
@@ -158,7 +162,7 @@ export async function PUT(
         }
 
         // Handle Invoice Generation/Update
-        const invoiceCheck = await query('SELECT * FROM invoices WHERE order_id = $1', [params.id]);
+        const invoiceCheck = await query('SELECT * FROM invoices WHERE order_id = $1', [effectiveId]);
         
         if (invoiceCheck.rows.length === 0 && payment_status === 'paid') {
             // Generate invoice if paid and doesn't exist yet
@@ -257,13 +261,26 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     try {
+        const isNumeric = /^\d+$/.test(params.id);
+        const orderRes = isNumeric
+            ? await query('SELECT id FROM orders WHERE id = $1', [parseInt(params.id, 10)])
+            : await query('SELECT id FROM orders WHERE order_number = $1', [params.id]);
+
+        if (orderRes.rows.length === 0) {
+            return NextResponse.json({
+                success: true,
+                message: 'Order already deleted or not found',
+            });
+        }
+        const effectiveId = orderRes.rows[0].id;
+
         // First delete related invoice
-        await query('DELETE FROM invoices WHERE order_id = $1', [params.id]);
+        await query('DELETE FROM invoices WHERE order_id = $1', [effectiveId]);
 
         // Then delete the order
         const result = await query(
             'DELETE FROM orders WHERE id = $1 RETURNING id',
-            [params.id]
+            [effectiveId]
         );
 
         if (result.rows.length === 0) {

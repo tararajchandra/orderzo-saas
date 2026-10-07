@@ -528,6 +528,7 @@ export default function CreateOrderPage() {
         table_number: orderType === "dine_in" ? tableNumber : null,
         order_status: status,
         prefix: "POS",
+        created_at: new Date().toISOString(),
       };
 
       if (!navigator.onLine) {

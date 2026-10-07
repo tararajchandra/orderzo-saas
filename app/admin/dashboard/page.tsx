@@ -114,7 +114,7 @@ export default function AdminDashboard() {
 
   const loadOfflineStats = async () => {
     try {
-      const cached = localStorage.getItem("cached_orders");
+      const cached = localStorage.getItem("cached_admin_orders");
       let orders: any[] = cached ? JSON.parse(cached) : [];
       const offlineOrders = await getOfflineOrders();
       const offlineMapped = offlineOrders
@@ -122,29 +122,48 @@ export default function AdminDashboard() {
         .map((o) => ({
           ...o.body,
           id: o.body.id || o.body.order_number || o.id,
+          order_number: o.body.order_number || o.body.id || `OFF-${o.id}`,
           total_amount: o.body.total_amount || 0,
           created_at: o.body.created_at || new Date(o.timestamp).toISOString(),
+          is_offline: true,
         }));
 
-      const combined = [...offlineMapped, ...orders];
+      // Combine with deduplication
+      const map = new Map<string, any>();
+      offlineMapped.forEach((item: any) =>
+        map.set(String(item.order_number || item.id), item)
+      );
+      orders.forEach((item: any) => {
+        const key = String(item.order_number || item.id);
+        if (!map.has(key)) map.set(key, item);
+      });
+
+      const combined = Array.from(map.values()).sort(
+        (a: any, b: any) =>
+          new Date(b.created_at || 0).getTime() -
+          new Date(a.created_at || 0).getTime()
+      );
       const today = new Date().toDateString();
 
       setStats({
         totalOrders: combined.length,
-        pendingOrders: combined.filter((o: any) => o.order_status === "pending").length,
+        pendingOrders: combined.filter((o: any) => o.order_status === "pending")
+          .length,
         totalRevenue: combined.reduce(
           (sum: number, o: any) => sum + parseFloat(o.total_amount || 0),
-          0,
+          0
         ),
         todayRevenue: combined
-          .filter((o: any) => new Date(o.created_at).toDateString() === today)
+          .filter(
+            (o: any) => new Date(o.created_at).toDateString() === today
+          )
           .reduce(
             (sum: number, o: any) => sum + parseFloat(o.total_amount || 0),
-            0,
+            0
           ),
       });
 
-      setRecentOrders(combined.slice(0, 5));
+      setRecentOrders(combined.slice(0, 10));
     } catch (e) {
       console.error("Error loading offline dashboard stats:", e);
     } finally {
@@ -166,30 +185,65 @@ export default function AdminDashboard() {
       const data = await response.json();
 
       if (data.success) {
-        const orders = data.data;
+        const serverOrders: any[] = data.data;
+
+        // Also merge pending offline orders so cashier/admin dashboard sees them immediately!
+        const offlineOrders = await getOfflineOrders();
+        const serverOrderNumbers = new Set(
+          serverOrders.map((o: any) => String(o.order_number || o.id))
+        );
+        const offlineMapped = offlineOrders
+          .filter(
+            (o) =>
+              o.body &&
+              !serverOrderNumbers.has(
+                String(o.body.order_number || o.body.id || o.id)
+              )
+          )
+          .map((o) => ({
+            ...o.body,
+            id: o.body.id || o.body.order_number || o.id,
+            order_number: o.body.order_number || o.body.id || `OFF-${o.id}`,
+            total_amount: o.body.total_amount || 0,
+            created_at: o.body.created_at || new Date(o.timestamp).toISOString(),
+            is_offline: true,
+          }));
+
+        const combined = [...offlineMapped, ...serverOrders].sort(
+          (a: any, b: any) =>
+            new Date(b.created_at || 0).getTime() -
+            new Date(a.created_at || 0).getTime()
+        );
+
         try {
-          localStorage.setItem("cached_orders", JSON.stringify(orders));
+          localStorage.setItem(
+            "cached_admin_orders",
+            JSON.stringify(combined.slice(0, 100))
+          );
         } catch (e) {}
 
         const today = new Date().toDateString();
 
         setStats({
-          totalOrders: orders.length,
-          pendingOrders: orders.filter((o: any) => o.order_status === "pending")
-            .length,
-          totalRevenue: orders.reduce(
-            (sum: number, o: any) => sum + parseFloat(o.total_amount),
-            0,
+          totalOrders: combined.length,
+          pendingOrders: combined.filter(
+            (o: any) => o.order_status === "pending"
+          ).length,
+          totalRevenue: combined.reduce(
+            (sum: number, o: any) => sum + parseFloat(o.total_amount || 0),
+            0
           ),
-          todayRevenue: orders
-            .filter((o: any) => new Date(o.created_at).toDateString() === today)
+          todayRevenue: combined
+            .filter(
+              (o: any) => new Date(o.created_at).toDateString() === today
+            )
             .reduce(
-              (sum: number, o: any) => sum + parseFloat(o.total_amount),
-              0,
+              (sum: number, o: any) => sum + parseFloat(o.total_amount || 0),
+              0
             ),
         });
 
-        setRecentOrders(orders.slice(0, 5));
+        setRecentOrders(combined.slice(0, 10));
       }
     } catch (error) {
       console.warn("Error fetching dashboard data, reading offline stats:", error);
@@ -564,7 +618,23 @@ export default function AdminDashboard() {
                       key={order.id}
                       style={{ borderBottom: "1px solid var(--border-color)" }}
                     >
-                      <td style={{ padding: "1rem" }}>#{order.id}</td>
+                      <td style={{ padding: "1rem" }}>
+                        #{order.order_number || order.id}
+                        {order.is_offline && (
+                          <span
+                            className="badge"
+                            style={{
+                              background: "#eab308",
+                              color: "#000",
+                              fontSize: "0.7rem",
+                              fontWeight: 700,
+                              marginLeft: "6px",
+                            }}
+                          >
+                            ⚡ অফলাইন
+                          </span>
+                        )}
+                      </td>
                       <td style={{ padding: "1rem" }}>{order.customer_name}</td>
                       <td style={{ padding: "1rem" }}>
                         ₹{parseFloat(order.total_amount).toFixed(2)}
