@@ -62,6 +62,24 @@ export async function PUT(
 
         let driverCommission = null;
 
+        const existingCheck = await query('SELECT * FROM orders WHERE id = $1', [params.id]);
+        if (existingCheck.rows.length === 0) {
+            return NextResponse.json(
+                { success: false, error: 'Order not found' },
+                { status: 404 }
+            );
+        }
+        const existing = existingCheck.rows[0];
+
+        // Guard: If order was already settled/paid by cashier, keep cashier's final payment details
+        if (existing.payment_status === 'paid' && payment_status === 'paid') {
+            return NextResponse.json({
+                success: true,
+                message: 'Order was already settled by cashier',
+                data: existing,
+            });
+        }
+
         // If status is changing to 'delivered', calculate commission with a single JOIN query
         if (order_status === 'delivered') {
             const dbId = delivery_boy_id; // Use provided ID first
@@ -249,10 +267,10 @@ export async function DELETE(
         );
 
         if (result.rows.length === 0) {
-            return NextResponse.json(
-                { success: false, error: 'Order not found' },
-                { status: 404 }
-            );
+            return NextResponse.json({
+                success: true,
+                message: 'Order already deleted or not found',
+            });
         }
 
         return NextResponse.json({

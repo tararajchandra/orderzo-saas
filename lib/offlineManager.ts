@@ -101,8 +101,8 @@ export const syncOfflineOrders = async () => {
       });
 
       const data = await response.json();
-      if (response.ok && data.success !== false) {
-        // Successfully synced
+      if ((response.ok && data.success !== false) || response.status === 404) {
+        // Successfully synced or already resolved on server
         console.log(`Synced offline order ${order.id} successfully.`);
         await removeOfflineOrder(order.id);
       } else {

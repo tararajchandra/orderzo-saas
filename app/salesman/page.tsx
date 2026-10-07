@@ -7,9 +7,7 @@ import { formatDateTime, getTableList, getGroupedTableList } from "@/lib/utils";
 import { ReceiptPrinter } from "@/lib/receipt-printer";
 import {
   getOfflineOrders,
-  saveOfflineOrder,
   syncOfflineOrders,
-  generateOfflineOrderNumber,
 } from "@/lib/offlineManager";
 
 interface MenuItem {
@@ -600,22 +598,7 @@ export default function SalesmanDashboard() {
       };
 
       if (typeof navigator !== "undefined" && !navigator.onLine) {
-        await saveOfflineOrder(`/api/orders/${masterOrder.id}`, "PUT", masterPayload);
-        for (const o of otherOrders) {
-          await saveOfflineOrder(`/api/orders/${o.id}`, "DELETE", {});
-        }
-        const settledIds = new Set([masterOrder.id, ...otherOrders.map((o: any) => o.id)]);
-        setActiveTables((prev) => {
-          const next = prev.filter((o: any) => !settledIds.has(o.id));
-          try { localStorage.setItem("cached_salesman_tables", JSON.stringify(next)); } catch (e) {}
-          return next;
-        });
-        setPendingOrders((prev) => {
-          const next = prev.filter((o: any) => !settledIds.has(o.id));
-          try { localStorage.setItem("cached_salesman_pending", JSON.stringify(next)); } catch (e) {}
-          return next;
-        });
-        alert(`Table ${tableNo} settled offline! Will sync when back online.`);
+        alert(`⚠️ ইন্টারনেট সংযোগ নেই! কোনো ডেটা বা বিলের অমিল এড়াতে টেবিল ${tableNo}-এর বিল ও সেটেলমেন্ট অনুগ্রহ করে ক্যাশ কাউন্টার থেকে সম্পন্ন করুন।`);
         return;
       }
 
@@ -742,83 +725,9 @@ export default function SalesmanDashboard() {
       };
 
       if (!navigator.onLine) {
-        if (editingOrderId) {
-          const offlineOrderNum = editingOrder?.order_number || String(editingOrderId);
-          orderData.order_number = offlineOrderNum;
-          orderData.id = editingOrderId;
-          await saveOfflineOrder(`/api/orders/${editingOrderId}`, "PUT", orderData);
-
-          // Update activeTables and cache
-          setActiveTables((prev) => {
-            const next = prev.map((t: any) =>
-              t.id === editingOrderId || t.order_number === offlineOrderNum
-                ? { ...t, ...orderData, id: editingOrderId, order_number: offlineOrderNum, is_offline: true }
-                : t,
-            );
-            try { localStorage.setItem("cached_salesman_tables", JSON.stringify(next)); } catch (e) {}
-            return next;
-          });
-
-          // Update pendingOrders and cache
-          setPendingOrders((prev) => {
-            const next = prev.map((p: any) =>
-              p.id === editingOrderId || p.order_number === offlineOrderNum
-                ? { ...p, ...orderData, id: editingOrderId, order_number: offlineOrderNum, is_offline: true }
-                : p,
-            );
-            try { localStorage.setItem("cached_salesman_pending", JSON.stringify(next)); } catch (e) {}
-            return next;
-          });
-
-          const printableOrder = {
-            ...orderData,
-            order_number: offlineOrderNum,
-            id: editingOrderId,
-          };
-          try {
-            await handlePrintKOT(printableOrder);
-          } catch (printErr) {
-            console.error("Offline KOT print failed:", printErr);
-          }
-
-          alert(`অর্ডার #${offlineOrderNum} অফলাইনে সফলভাবে আপডেট হয়েছে এবং KOT প্রিন্ট হয়েছে। ইন্টারনেট আসলে অটো-সিঙ্ক হবে।`);
-          resetForm();
-          setSubmitting(false);
-          return;
-        } else {
-          const offlineOrderNum = generateOfflineOrderNumber(salesmanPrefix);
-          orderData.order_number = offlineOrderNum;
-          orderData.id = offlineOrderNum;
-          orderData.created_at = new Date().toISOString();
-          orderData.is_offline = true;
-
-          await saveOfflineOrder("/api/orders", "POST", orderData);
-
-          if (orderData.order_type === "dine_in" && orderData.table_number) {
-            setActiveTables((prev) => {
-              const next = [orderData, ...prev];
-              try { localStorage.setItem("cached_salesman_tables", JSON.stringify(next)); } catch (e) {}
-              return next;
-            });
-          }
-
-          setPendingOrders((prev) => {
-            const next = [orderData, ...prev];
-            try { localStorage.setItem("cached_salesman_pending", JSON.stringify(next)); } catch (e) {}
-            return next;
-          });
-
-          try {
-            await handlePrintKOT(orderData);
-          } catch (printErr) {
-            console.error("Offline KOT print failed:", printErr);
-          }
-
-          alert(`নতুন অর্ডার #${offlineOrderNum} অফলাইনে সফলভাবে সেভ হয়েছে এবং KOT প্রিন্ট হয়েছে। ইন্টারনেট আসলে অটো-সিঙ্ক হবে।`);
-          resetForm();
-          setSubmitting(false);
-          return;
-        }
+        alert("⚠️ ইন্টারনেট সংযোগ নেই! কোনো ডেটা বা বিলের অমিল এড়াতে অফলাইনে অর্ডার নেওয়া বা আপডেট করার জন্য অনুগ্রহ করে ক্যাশ কাউন্টার ব্যবহার করুন।");
+        setSubmitting(false);
+        return;
       }
 
       let res;
@@ -837,81 +746,9 @@ export default function SalesmanDashboard() {
           });
         }
       } catch (networkError: any) {
-        if (editingOrderId) {
-          const offlineOrderNum = editingOrder?.order_number || String(editingOrderId);
-          orderData.order_number = offlineOrderNum;
-          orderData.id = editingOrderId;
-          await saveOfflineOrder(`/api/orders/${editingOrderId}`, "PUT", orderData);
-
-          setActiveTables((prev) => {
-            const next = prev.map((t: any) =>
-              t.id === editingOrderId || t.order_number === offlineOrderNum
-                ? { ...t, ...orderData, id: editingOrderId, order_number: offlineOrderNum, is_offline: true }
-                : t,
-            );
-            try { localStorage.setItem("cached_salesman_tables", JSON.stringify(next)); } catch (e) {}
-            return next;
-          });
-
-          setPendingOrders((prev) => {
-            const next = prev.map((p: any) =>
-              p.id === editingOrderId || p.order_number === offlineOrderNum
-                ? { ...p, ...orderData, id: editingOrderId, order_number: offlineOrderNum, is_offline: true }
-                : p,
-            );
-            try { localStorage.setItem("cached_salesman_pending", JSON.stringify(next)); } catch (e) {}
-            return next;
-          });
-
-          const printableOrder = {
-            ...orderData,
-            order_number: offlineOrderNum,
-            id: editingOrderId,
-          };
-          try {
-            await handlePrintKOT(printableOrder);
-          } catch (printErr) {
-            console.error("Offline KOT print failed:", printErr);
-          }
-
-          alert(`নেটওয়ার্ক ড্রপ হয়েছে! অর্ডার #${offlineOrderNum} অফলাইনে আপডেট হয়েছে এবং KOT প্রিন্ট হয়েছে।`);
-          resetForm();
-          setSubmitting(false);
-          return;
-        } else {
-          const offlineOrderNum = orderData.order_number || generateOfflineOrderNumber(salesmanPrefix);
-          orderData.order_number = offlineOrderNum;
-          orderData.id = offlineOrderNum;
-          orderData.created_at = new Date().toISOString();
-          orderData.is_offline = true;
-
-          await saveOfflineOrder("/api/orders", "POST", orderData);
-
-          if (orderData.order_type === "dine_in" && orderData.table_number) {
-            setActiveTables((prev) => {
-              const next = [orderData, ...prev];
-              try { localStorage.setItem("cached_salesman_tables", JSON.stringify(next)); } catch (e) {}
-              return next;
-            });
-          }
-
-          setPendingOrders((prev) => {
-            const next = [orderData, ...prev];
-            try { localStorage.setItem("cached_salesman_pending", JSON.stringify(next)); } catch (e) {}
-            return next;
-          });
-
-          try {
-            await handlePrintKOT(orderData);
-          } catch (printErr) {
-            console.error("Offline KOT print failed:", printErr);
-          }
-
-          alert(`নেটওয়ার্ক ড্রপ হয়েছে! অর্ডার #${offlineOrderNum} অফলাইনে সেভ ও প্রিন্ট হয়েছে।`);
-          resetForm();
-          setSubmitting(false);
-          return;
-        }
+        alert("⚠️ নেটওয়ার্ক বিচ্ছিন্ন হয়েছে! সার্ভারে অর্ডার পাঠানো যায়নি। কোনো ডেটা বা বিলের অমিল এড়াতে অনুগ্রহ করে ক্যাশ কাউন্টার থেকে অর্ডারটি সম্পন্ন করুন।");
+        setSubmitting(false);
+        return;
       }
 
       const data = await res.json();
