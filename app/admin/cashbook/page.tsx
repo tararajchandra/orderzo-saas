@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useFinancialYear } from "@/contexts/FinancialYearContext";
 import { useRouter } from "next/navigation";
 import { formatDate, formatDateTime } from "@/lib/utils";
+import { getOfflineOrders } from "@/lib/offlineManager";
 
 interface CashTransaction {
   id: string;
@@ -27,6 +28,7 @@ export default function CashBookPage() {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [expenseDescription, setExpenseDescription] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   const [expenseCategory, setExpenseCategory] = useState("Expense");
 
@@ -46,7 +48,74 @@ export default function CashBookPage() {
     fetchCashTransactions();
   }, []); // Empty dependency - only run on mount
 
+  const loadOfflineCashTransactions = async (currentOpeningBalance?: number) => {
+    setIsOfflineMode(true);
+    const balanceToUse = currentOpeningBalance !== undefined ? currentOpeningBalance : openingBalance;
+    try {
+      const cachedSalesStr = localStorage.getItem("cached_cash_sales");
+      const cachedExpensesStr = localStorage.getItem("cached_expenses");
+      let cashSales = cachedSalesStr ? JSON.parse(cachedSalesStr) : [];
+      let expenses = cachedExpensesStr ? JSON.parse(cachedExpensesStr) : [];
+
+      // Also get any pending offline orders created while disconnected!
+      const offlineOrders = await getOfflineOrders();
+      const offlineCashSales = offlineOrders
+        .filter((o: any) => {
+          const body = o.body;
+          if (!body) return false;
+          const isCash =
+            body.payment_method === "cash" ||
+            (body.payment_method === "split" && Number(body.split_cash || 0) > 0);
+          return isCash && body.order_status !== "cancelled";
+        })
+        .map((o: any) => {
+          const body = o.body;
+          const amount =
+            body.payment_method === "split"
+              ? parseFloat(body.split_cash || 0)
+              : parseFloat(body.total_amount || 0);
+          return {
+            id: `offline-sale-${body.order_number || o.id}`,
+            date: body.created_at || new Date(o.timestamp).toISOString(),
+            description: `Sale (Offline) - ${body.customer_name || "Guest"} (${body.order_number || "Offline"})`,
+            type: "in" as const,
+            amount: amount,
+            category: "Sales",
+            is_offline: true,
+          };
+        });
+
+      const existingIds = new Set(cashSales.map((s: any) => s.id));
+      for (const off of offlineCashSales) {
+        if (!existingIds.has(off.id)) {
+          cashSales.push(off);
+        }
+      }
+
+      const allTransactions = [...cashSales, ...expenses].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      );
+
+      let balance = balanceToUse;
+      const transactionsWithBalance = allTransactions.map((txn) => {
+        balance += txn.type === "in" ? txn.amount : -txn.amount;
+        return { ...txn, balance };
+      });
+
+      setTransactions(transactionsWithBalance);
+    } catch (e) {
+      console.error("Error loading offline cash transactions:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchCashTransactions = async () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await loadOfflineCashTransactions();
+      return;
+    }
+
     try {
       // Fetch orders for cash sales
       const ordersResponse = await fetch(
@@ -61,6 +130,7 @@ export default function CashBookPage() {
       const expensesData = await expensesResponse.json();
 
       if (ordersData.success) {
+        setIsOfflineMode(false);
         // Filter cash transactions
         const cashSales = ordersData.data
           .filter(
@@ -89,6 +159,13 @@ export default function CashBookPage() {
             }))
           : [];
 
+        try {
+          localStorage.setItem("cached_cash_sales", JSON.stringify(cashSales));
+          if (expensesData.success) {
+            localStorage.setItem("cached_expenses", JSON.stringify(expenses));
+          }
+        } catch (e) {}
+
         // Combine and sort by date
         const allTransactions = [...cashSales, ...expenses].sort(
           (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
@@ -104,7 +181,8 @@ export default function CashBookPage() {
         setTransactions(transactionsWithBalance);
       }
     } catch (error) {
-      console.error("Error fetching cash transactions:", error);
+      console.warn("Error fetching cash transactions, reading offline cache:", error);
+      await loadOfflineCashTransactions();
     } finally {
       setLoading(false);
     }
@@ -116,11 +194,20 @@ export default function CashBookPage() {
       const newBalance = parseFloat(balance) || 0;
       setOpeningBalance(newBalance);
       localStorage.setItem("cashBookOpeningBalance", newBalance.toString());
-      fetchCashTransactions(); // Recalculate balances
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        loadOfflineCashTransactions(newBalance);
+      } else {
+        fetchCashTransactions(); // Recalculate balances
+      }
     }
   };
 
   const handleAddExpense = async () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      alert("⚠️ ইন্টারনেট সংযোগ নেই! খরচ (Expense) এন্ট্রি করার জন্য সক্রিয় ইন্টারনেট প্রয়োজন।");
+      return;
+    }
+
     if (!expenseDescription || !expenseAmount) {
       alert("Please fill in all fields");
       return;
@@ -301,6 +388,28 @@ export default function CashBookPage() {
             </button>
           </div>
         </div>
+
+        {isOfflineMode && (
+          <div
+            style={{
+              background: "#fff3cd",
+              color: "#856404",
+              padding: "10px 16px",
+              borderRadius: "8px",
+              marginBottom: "1.5rem",
+              border: "1px solid #ffeeba",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              fontWeight: 500,
+            }}
+          >
+            <span>📶</span>
+            <span>
+              <strong>অফলাইন মোড সক্রিয়:</strong> পূর্বে সংরক্ষিত ক্যাশ রেকর্ড এবং অফলাইনে হওয়া নতুন সেলস প্রদর্শিত হচ্ছে।
+            </span>
+          </div>
+        )}
 
         {/* Expense Form */}
         {showExpenseForm && (

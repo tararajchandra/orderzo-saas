@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { isRouteSupportedOffline, showOfflineRouteWarning } from '@/lib/offlineRoutes';
 
 interface Command {
     id: string;
@@ -84,7 +85,12 @@ export default function CommandPalette() {
             } else if (e.key === 'Enter') {
                 e.preventDefault();
                 if (filteredCommands.length > 0) {
-                    router.push(filteredCommands[selectedIndex].route);
+                    const cmd = filteredCommands[selectedIndex];
+                    if (typeof navigator !== 'undefined' && !navigator.onLine && !isRouteSupportedOffline(cmd.route)) {
+                        showOfflineRouteWarning(cmd.title);
+                        return;
+                    }
+                    router.push(cmd.route);
                     setIsOpen(false);
                 }
             }
@@ -142,6 +148,10 @@ export default function CommandPalette() {
                             <div
                                 key={cmd.id}
                                 onClick={() => {
+                                    if (typeof navigator !== 'undefined' && !navigator.onLine && !isRouteSupportedOffline(cmd.route)) {
+                                        showOfflineRouteWarning(cmd.title);
+                                        return;
+                                    }
                                     router.push(cmd.route);
                                     setIsOpen(false);
                                 }}

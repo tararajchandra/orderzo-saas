@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useFinancialYear } from "@/contexts/FinancialYearContext";
 import { useRouter } from "next/navigation";
 import { formatDate, formatDateTime } from "@/lib/utils";
+import { getOfflineOrders } from "@/lib/offlineManager";
 
 interface SaleEntry {
   id: number;
@@ -41,6 +42,7 @@ export default function SaleBookPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
@@ -51,7 +53,63 @@ export default function SaleBookPage() {
     if (selectedFY) fetchData();
   }, [selectedFY]);
 
+  const loadOfflineSalesData = async () => {
+    setIsOfflineMode(true);
+    try {
+      const cachedSalesStr = localStorage.getItem("cached_sales_data");
+      const cachedSalesmenStr = localStorage.getItem("cached_salesmen_data");
+      let loadedSales: any[] = cachedSalesStr ? JSON.parse(cachedSalesStr) : [];
+      let loadedSalesmen: any[] = cachedSalesmenStr ? JSON.parse(cachedSalesmenStr) : [];
+
+      // Also get any pending offline orders
+      const offlineOrders = await getOfflineOrders();
+      const offlineSales = offlineOrders
+        .filter((o: any) => o.body && o.body.order_status !== "cancelled")
+        .map((o: any) => {
+          const b = o.body;
+          return {
+            id: b.id || b.order_number || o.id,
+            invoice_number: b.invoice_number || b.order_number || `OFF-${o.id}`,
+            customer_name: b.customer_name || "Walk-in Customer",
+            customer_phone: b.customer_phone || "",
+            items: b.items || [],
+            payment_method: b.payment_method || "cash",
+            payment_status: b.payment_status || "paid",
+            order_type: b.order_type || "takeaway",
+            subtotal: Number(b.subtotal || b.total_amount || 0),
+            tax: Number(b.tax || 0),
+            discount: Number(b.discount || 0),
+            total_amount: Number(b.total_amount || 0),
+            order_status: b.order_status || "completed",
+            created_at: b.created_at || new Date(o.timestamp).toISOString(),
+            user_id: b.user_id || null,
+            table_number: b.table_number || null,
+            is_offline: true,
+          };
+        });
+
+      const existingIds = new Set(loadedSales.map((s: any) => s.id || s.invoice_number));
+      for (const off of offlineSales) {
+        if (!existingIds.has(off.id) && !existingIds.has(off.invoice_number)) {
+          loadedSales.unshift(off);
+        }
+      }
+
+      setSales(loadedSales);
+      setSalesmen(loadedSalesmen);
+    } catch (e) {
+      console.error("Error loading offline sales data:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchData = async () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await loadOfflineSalesData();
+      return;
+    }
+
     try {
       // Fetch Salesmen
       const salesmenRes = await fetch("/api/admin/salesmen");
@@ -60,6 +118,9 @@ export default function SaleBookPage() {
       if (salesmenData.success) {
         loadedSalesmen = salesmenData.data;
         setSalesmen(loadedSalesmen);
+        try {
+          localStorage.setItem("cached_salesmen_data", JSON.stringify(loadedSalesmen));
+        } catch (e) {}
       }
 
       // Fetch Orders
@@ -69,6 +130,7 @@ export default function SaleBookPage() {
       const ordersData = await ordersResponse.json();
 
       if (ordersData.success) {
+        setIsOfflineMode(false);
         // Fetch invoices
         const invoicesResponse = await fetch(
           `/api/invoices?fy_id=${selectedFY?.id || ""}`,
@@ -86,10 +148,14 @@ export default function SaleBookPage() {
             };
           });
           setSales(salesData);
+          try {
+            localStorage.setItem("cached_sales_data", JSON.stringify(salesData));
+          } catch (e) {}
         }
       }
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.warn("Error fetching sales data, falling back to cache:", error);
+      await loadOfflineSalesData();
     } finally {
       setLoading(false);
     }
@@ -260,6 +326,28 @@ export default function SaleBookPage() {
             </button>
           </div>
         </div>
+
+        {isOfflineMode && (
+          <div
+            style={{
+              background: "#fff3cd",
+              color: "#856404",
+              padding: "10px 16px",
+              borderRadius: "8px",
+              marginBottom: "1.5rem",
+              border: "1px solid #ffeeba",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              fontWeight: 500,
+            }}
+          >
+            <span>📶</span>
+            <span>
+              <strong>অফলাইন মোড সক্রিয়:</strong> পূর্বে সংরক্ষিত সেলস রেকর্ড এবং অফলাইনে হওয়া নতুন সেলস প্রদর্শিত হচ্ছে।
+            </span>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="glass-card no-print" style={{ marginBottom: "2rem" }}>

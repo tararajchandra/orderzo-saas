@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { syncOfflineOrders, getOfflineOrders } from "@/lib/offlineManager";
+import { isRouteSupportedOffline, showOfflineRouteWarning } from "@/lib/offlineRoutes";
 
 export default function OfflineIndicator() {
   const [isOnline, setIsOnline] = useState(true);
@@ -26,6 +27,41 @@ export default function OfflineIndicator() {
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
+    // Global interceptor for clicks on links that are not supported offline
+    const handleDocumentClick = (e: MouseEvent) => {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        const anchor = (e.target as HTMLElement)?.closest("a");
+        if (anchor) {
+          const href = anchor.getAttribute("href");
+          if (
+            href &&
+            !href.startsWith("#") &&
+            !href.startsWith("tel:") &&
+            !href.startsWith("mailto:") &&
+            !href.startsWith("javascript:")
+          ) {
+            try {
+              const url = new URL(href, window.location.origin);
+              if (url.origin === window.location.origin) {
+                const pathname = url.pathname;
+                if (!isRouteSupportedOffline(pathname)) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const linkText =
+                    anchor.querySelector("h3")?.textContent?.trim() ||
+                    anchor.textContent?.trim().replace(/\s+/g, " ") ||
+                    pathname;
+                  showOfflineRouteWarning(linkText);
+                }
+              }
+            } catch (err) {}
+          }
+        }
+      }
+    };
+
+    document.addEventListener("click", handleDocumentClick, true);
+
     // Periodically check for pending orders and sync if online
     const checkPending = async () => {
       const orders = await getOfflineOrders();
@@ -44,6 +80,7 @@ export default function OfflineIndicator() {
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      document.removeEventListener("click", handleDocumentClick, true);
       clearInterval(syncInterval);
     };
   }, []);

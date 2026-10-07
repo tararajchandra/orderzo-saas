@@ -6,6 +6,69 @@ import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 import { useFinancialYear } from "@/contexts/FinancialYearContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { isRouteSupportedOffline, showOfflineRouteWarning } from "@/lib/offlineRoutes";
+import { getOfflineOrders } from "@/lib/offlineManager";
+
+function DashboardCard({
+  href,
+  icon,
+  title,
+  subtitle,
+  isOnline,
+  titleColor,
+  borderColor,
+}: {
+  href: string;
+  icon: string;
+  title: string;
+  subtitle: string;
+  isOnline: boolean;
+  titleColor?: string;
+  borderColor?: string;
+}) {
+  const supported = isRouteSupportedOffline(href);
+  return (
+    <Link
+      href={href}
+      className="glass-card text-center"
+      onClick={(e) => {
+        if (!isOnline && !supported) {
+          e.preventDefault();
+          showOfflineRouteWarning(title);
+        }
+      }}
+      style={{
+        textDecoration: "none",
+        cursor: "pointer",
+        position: "relative",
+        zIndex: 1,
+        borderColor: borderColor || undefined,
+        borderWidth: borderColor ? "2px" : undefined,
+        opacity: !isOnline && !supported ? 0.75 : 1,
+      }}
+    >
+      <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>{icon}</div>
+      <h3 style={{ color: titleColor }}>{title}</h3>
+      <p className="text-muted">{subtitle}</p>
+      {!isOnline && (
+        <span
+          style={{
+            fontSize: "0.72rem",
+            background: supported ? "#d4edda" : "#f8d7da",
+            color: supported ? "#155724" : "#721c24",
+            padding: "2px 8px",
+            borderRadius: "12px",
+            display: "inline-block",
+            marginTop: "6px",
+            fontWeight: 600,
+          }}
+        >
+          {supported ? "⚡ অফলাইনে সচল" : "🌐 অনলাইন প্রয়োজন"}
+        </span>
+      )}
+    </Link>
+  );
+}
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -17,6 +80,7 @@ export default function AdminDashboard() {
   });
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(true);
   const { selectedFY } = useFinancialYear();
   const { isCashier } = useAuth();
 
@@ -26,10 +90,74 @@ export default function AdminDashboard() {
       router.push("/admin");
       return;
     }
+
+    setIsOnline(navigator.onLine);
+    const handleOnline = () => {
+      setIsOnline(true);
+      fetchDashboardData();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      loadOfflineStats();
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
     if (selectedFY) fetchDashboardData();
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
   }, [selectedFY]);
 
+  const loadOfflineStats = async () => {
+    try {
+      const cached = localStorage.getItem("cached_orders");
+      let orders: any[] = cached ? JSON.parse(cached) : [];
+      const offlineOrders = await getOfflineOrders();
+      const offlineMapped = offlineOrders
+        .filter((o) => o.body && o.body.order_status !== "cancelled")
+        .map((o) => ({
+          ...o.body,
+          id: o.body.id || o.body.order_number || o.id,
+          total_amount: o.body.total_amount || 0,
+          created_at: o.body.created_at || new Date(o.timestamp).toISOString(),
+        }));
+
+      const combined = [...offlineMapped, ...orders];
+      const today = new Date().toDateString();
+
+      setStats({
+        totalOrders: combined.length,
+        pendingOrders: combined.filter((o: any) => o.order_status === "pending").length,
+        totalRevenue: combined.reduce(
+          (sum: number, o: any) => sum + parseFloat(o.total_amount || 0),
+          0,
+        ),
+        todayRevenue: combined
+          .filter((o: any) => new Date(o.created_at).toDateString() === today)
+          .reduce(
+            (sum: number, o: any) => sum + parseFloat(o.total_amount || 0),
+            0,
+          ),
+      });
+
+      setRecentOrders(combined.slice(0, 5));
+    } catch (e) {
+      console.error("Error loading offline dashboard stats:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchDashboardData = async () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await loadOfflineStats();
+      return;
+    }
+
     try {
       const url = selectedFY
         ? `/api/orders?fy_id=${selectedFY.id}`
@@ -39,6 +167,10 @@ export default function AdminDashboard() {
 
       if (data.success) {
         const orders = data.data;
+        try {
+          localStorage.setItem("cached_orders", JSON.stringify(orders));
+        } catch (e) {}
+
         const today = new Date().toDateString();
 
         setStats({
@@ -60,7 +192,8 @@ export default function AdminDashboard() {
         setRecentOrders(orders.slice(0, 5));
       }
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      console.warn("Error fetching dashboard data, reading offline stats:", error);
+      await loadOfflineStats();
     } finally {
       setLoading(false);
     }
@@ -111,367 +244,220 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {!isOnline && (
+          <div
+            style={{
+              background: "#fff3cd",
+              color: "#856404",
+              padding: "12px 16px",
+              borderRadius: "8px",
+              marginBottom: "2rem",
+              border: "1px solid #ffeeba",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              fontWeight: 500,
+            }}
+          >
+            <span style={{ fontSize: "1.3rem" }}>📶</span>
+            <span>
+              <strong>অফলাইন মোড সক্রিয়:</strong> ইন্টারনেট সংযোগ বিচ্ছিন্ন। অফলাইনে <strong>Quick Bill</strong>, <strong>Active Tables</strong>, <strong>Orders</strong>, <strong>Cash Book</strong> এবং <strong>Sale Book</strong> সচল রয়েছে। ইন্টারনেট প্রয়োজন এমন মেনুতে ক্লিক করলে সতর্কবার্তা দেখানো হবে।
+            </span>
+          </div>
+        )}
+
         {/* Quick Links */}
         <div
           className="grid grid-4"
           style={{ marginBottom: "3rem", position: "relative", zIndex: 10 }}
         >
-          <Link
+          <DashboardCard
             href="/admin/menu"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>🍽️</div>
-            <h3>Menu Management</h3>
-            <p className="text-muted">Add, edit, delete items</p>
-          </Link>
-          <Link
+            icon="🍽️"
+            title="Menu Management"
+            subtitle="Add, edit, delete items"
+            isOnline={isOnline}
+          />
+          <DashboardCard
             href="/admin/categories"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>🏷️</div>
-            <h3>Categories</h3>
-            <p className="text-muted">Manage menu categories</p>
-          </Link>
-          <Link
+            icon="🏷️"
+            title="Categories"
+            subtitle="Manage menu categories"
+            isOnline={isOnline}
+          />
+          <DashboardCard
             href="/admin/orders"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>📦</div>
-            <h3>Orders</h3>
-            <p className="text-muted">Manage all orders</p>
-          </Link>
-          <Link
+            icon="📦"
+            title="Orders"
+            subtitle="Manage all orders"
+            isOnline={isOnline}
+          />
+          <DashboardCard
             href="/admin/tables"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-              borderColor: "var(--warning)",
-              borderWidth: "2px",
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>🍽️</div>
-            <h3 style={{ color: "var(--warning)" }}>Active Tables</h3>
-            <p className="text-muted">Manage Dine-in Tabs</p>
-          </Link>
-          <Link
+            icon="🍽️"
+            title="Active Tables"
+            subtitle="Manage Dine-in Tabs"
+            titleColor="var(--warning)"
+            borderColor="var(--warning)"
+            isOnline={isOnline}
+          />
+          <DashboardCard
             href="/admin/analytics"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>📊</div>
-            <h3>Analytics</h3>
-            <p className="text-muted">Charts & insights</p>
-          </Link>
-          <Link
+            icon="📊"
+            title="Analytics"
+            subtitle="Charts & insights"
+            isOnline={isOnline}
+          />
+          <DashboardCard
             href="/admin/billing"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>💰</div>
-            <h3>Billing</h3>
-            <p className="text-muted">Invoices & reports</p>
-          </Link>
+            icon="💰"
+            title="Billing"
+            subtitle="Invoices & reports"
+            isOnline={isOnline}
+          />
           {!isCashier && (
-            <Link
+            <DashboardCard
               href="/admin/settings"
-              className="glass-card text-center"
-              style={{
-                textDecoration: "none",
-                cursor: "pointer",
-                position: "relative",
-                zIndex: 1,
-              }}
-            >
-              <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>⚙️</div>
-              <h3>Settings</h3>
-              <p className="text-muted">Printer & restaurant info</p>
-            </Link>
+              icon="⚙️"
+              title="Settings"
+              subtitle="Printer & restaurant info"
+              isOnline={isOnline}
+            />
           )}
           {!isCashier && (
-            <Link
+            <DashboardCard
               href="/admin/settings/financial-years"
-              className="glass-card text-center"
-              style={{
-                textDecoration: "none",
-                cursor: "pointer",
-                position: "relative",
-                zIndex: 1,
-              }}
-            >
-              <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>📅</div>
-              <h3 style={{ color: "var(--text-primary)" }}>Financial Years</h3>
-              <p style={{ color: "var(--text-secondary)" }}>Manage FYs</p>
-            </Link>
+              icon="📅"
+              title="Financial Years"
+              subtitle="Manage FYs"
+              isOnline={isOnline}
+            />
           )}
-          <Link
+          <DashboardCard
             href="/admin/attendance"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>⏱️</div>
-            <h3 style={{ color: "var(--text-primary)" }}>Staff Attendance</h3>
-            <p style={{ color: "var(--text-secondary)" }}>View Reports</p>
-          </Link>
-          <Link
+            icon="⏱️"
+            title="Staff Attendance"
+            subtitle="View Reports"
+            isOnline={isOnline}
+          />
+          <DashboardCard
             href="/admin/audit-logs"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>📋</div>
-            <h3 style={{ color: "var(--text-primary)" }}>Audit Trail</h3>
-            <p style={{ color: "var(--text-secondary)" }}>Activity Logs</p>
-          </Link>
-
+            icon="📋"
+            title="Audit Trail"
+            subtitle="Activity Logs"
+            isOnline={isOnline}
+          />
           {!isCashier && (
-            <Link
+            <DashboardCard
               href="/admin/salesmen"
-              className="glass-card text-center"
-              style={{
-                textDecoration: "none",
-                cursor: "pointer",
-                position: "relative",
-                zIndex: 1,
-              }}
-            >
-              <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>👨‍💼</div>
-              <h3>Salesmen</h3>
-              <p className="text-muted">Manage sales staff</p>
-            </Link>
+              icon="👨‍💼"
+              title="Salesmen"
+              subtitle="Manage sales staff"
+              isOnline={isOnline}
+            />
           )}
           {!isCashier && (
-            <Link
+            <DashboardCard
               href="/admin/kitchen-staff"
-              className="glass-card text-center"
-              style={{
-                textDecoration: "none",
-                cursor: "pointer",
-                position: "relative",
-                zIndex: 1,
-              }}
-            >
-              <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>👨‍🍳</div>
-              <h3>Kitchen Staff</h3>
-              <p className="text-muted">Manage chefs</p>
-            </Link>
+              icon="👨‍🍳"
+              title="Kitchen Staff"
+              subtitle="Manage chefs"
+              isOnline={isOnline}
+            />
           )}
-          <Link
+          <DashboardCard
             href="/admin/delivery-boys"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>🛵</div>
-            <h3>Delivery Boys</h3>
-            <p className="text-muted">Manage delivery staff</p>
-          </Link>
+            icon="🛵"
+            title="Delivery Boys"
+            subtitle="Manage delivery staff"
+            isOnline={isOnline}
+          />
           {!isCashier && (
-            <Link
+            <DashboardCard
               href="/admin/delivery-locations"
-              className="glass-card text-center"
-              style={{
-                textDecoration: "none",
-                cursor: "pointer",
-                position: "relative",
-                zIndex: 1,
-              }}
-            >
-              <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>📍</div>
-              <h3>Delivery Locations</h3>
-              <p className="text-muted">Manage delivery zones</p>
-            </Link>
+              icon="📍"
+              title="Delivery Locations"
+              subtitle="Manage delivery zones"
+              isOnline={isOnline}
+            />
           )}
-          <Link
+          <DashboardCard
             href="/admin/payouts"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>💸</div>
-            <h3>Commissions</h3>
-            <p className="text-muted">Payouts & Reports</p>
-          </Link>
-          <Link
+            icon="💸"
+            title="Commissions"
+            subtitle="Payouts & Reports"
+            isOnline={isOnline}
+          />
+          <DashboardCard
             href="/admin/quick-bill"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-              borderColor: "var(--primary)",
-              borderWidth: "2px",
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>🧾</div>
-            <h3 style={{ color: "var(--primary)" }}>Quick Bill</h3>
-            <p className="text-muted">Create Invoice & Print</p>
-          </Link>
-          <Link
+            icon="🧾"
+            title="Quick Bill"
+            subtitle="Create Invoice & Print"
+            titleColor="var(--primary)"
+            borderColor="var(--primary)"
+            isOnline={isOnline}
+          />
+          <DashboardCard
             href="/admin/qr-codes"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>📱</div>
-            <h3>Table QR Codes</h3>
-            <p className="text-muted">Print QR for tables</p>
-          </Link>
-          <Link
+            icon="📱"
+            title="Table QR Codes"
+            subtitle="Print QR for tables"
+            isOnline={isOnline}
+          />
+          <DashboardCard
             href="/admin/data-management"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>📊</div>
-            <h3>Data Import/Export</h3>
-            <p className="text-muted">Backup & restore data</p>
-          </Link>
+            icon="📊"
+            title="Data Import/Export"
+            subtitle="Backup & restore data"
+            isOnline={isOnline}
+          />
         </div>
 
         {/* Accounting Links */}
         <h2 style={{ marginBottom: "1.5rem" }}>Accounting</h2>
         <div className="grid grid-4" style={{ marginBottom: "3rem" }}>
-          <Link
+          <DashboardCard
             href="/admin/sales"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>📊</div>
-            <h3>Sale Book</h3>
-            <p className="text-muted">View all sales transactions</p>
-          </Link>
-          <Link
+            icon="📊"
+            title="Sale Book"
+            subtitle="View all sales transactions"
+            isOnline={isOnline}
+          />
+          <DashboardCard
             href="/admin/product-sales"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>📦</div>
-            <h3>Product Sales</h3>
-            <p className="text-muted">Product-wise sales report</p>
-          </Link>
-          <Link
+            icon="📦"
+            title="Product Sales"
+            subtitle="Product-wise sales report"
+            isOnline={isOnline}
+          />
+          <DashboardCard
             href="/admin/cashbook"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>💵</div>
-            <h3>Cash Book</h3>
-            <p className="text-muted">Track cash flow</p>
-          </Link>
-          <Link
+            icon="💵"
+            title="Cash Book"
+            subtitle="Track cash flow"
+            isOnline={isOnline}
+          />
+          <DashboardCard
             href="/admin/gst-report"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>📈</div>
-            <h3>GST Report</h3>
-            <p className="text-muted">Tax breakdown & compliance</p>
-          </Link>
-          <Link
+            icon="📈"
+            title="GST Report"
+            subtitle="Tax breakdown & compliance"
+            isOnline={isOnline}
+          />
+          <DashboardCard
             href="/admin/salesman-report"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>👨‍💼</div>
-            <h3>Salesman Report</h3>
-            <p className="text-muted">Salesman-wise sales data</p>
-          </Link>
-          <Link
+            icon="👨‍💼"
+            title="Salesman Report"
+            subtitle="Salesman-wise sales data"
+            isOnline={isOnline}
+          />
+          <DashboardCard
             href="/admin/table-report"
-            className="glass-card text-center"
-            style={{
-              textDecoration: "none",
-              cursor: "pointer",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>🍽️</div>
-            <h3>Table Report</h3>
-            <p className="text-muted">Table-wise sales data</p>
-          </Link>
+            icon="🍽️"
+            title="Table Report"
+            subtitle="Table-wise sales data"
+            isOnline={isOnline}
+          />
         </div>
 
         {/* Stats */}
