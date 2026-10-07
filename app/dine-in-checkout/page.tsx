@@ -87,6 +87,7 @@ export default function DineInCheckoutPage() {
           customer_lat: lat,
           customer_lng: lng,
           distance: null,
+          prefix: "QR",
         };
 
         const response = await fetch("/api/orders", {

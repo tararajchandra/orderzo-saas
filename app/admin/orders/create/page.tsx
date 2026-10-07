@@ -480,17 +480,21 @@ export default function CreateOrderPage() {
         notes: notes || null,
         table_number: orderType === "dine_in" ? tableNumber : null,
         order_status: status,
+        prefix: "POS",
       };
 
       if (!navigator.onLine) {
-        const { saveOfflineOrder } = await import("@/lib/offlineManager");
+        const { saveOfflineOrder, generateOfflineOrderNumber } = await import("@/lib/offlineManager");
+        const offlineOrderNum = generateOfflineOrderNumber("POS");
+        orderData.order_number = offlineOrderNum;
         await saveOfflineOrder("/api/orders", "POST", orderData);
-        alert("No internet! Order saved offline and will sync automatically.");
+        alert(`No internet! Order #${offlineOrderNum} saved offline and will sync automatically.`);
         
         if (shouldPrint) {
             const printableOrder = {
               ...orderData,
-              id: "OFFLINE", // Temporary ID
+              id: offlineOrderNum,
+              order_number: offlineOrderNum,
             };
             await handlePrintBill(printableOrder);
         }
@@ -509,14 +513,17 @@ export default function CreateOrderPage() {
         });
         data = await res.json();
       } catch (networkError) {
-        const { saveOfflineOrder } = await import("@/lib/offlineManager");
+        const { saveOfflineOrder, generateOfflineOrderNumber } = await import("@/lib/offlineManager");
+        const offlineOrderNum = orderData.order_number || generateOfflineOrderNumber("POS");
+        orderData.order_number = offlineOrderNum;
         await saveOfflineOrder("/api/orders", "POST", orderData);
-        alert("Network Error! Order saved offline and will sync automatically.");
+        alert(`Network Error! Order #${offlineOrderNum} saved offline and will sync automatically.`);
         
         if (shouldPrint) {
             const printableOrder = {
               ...orderData,
-              id: "OFFLINE", 
+              id: offlineOrderNum,
+              order_number: offlineOrderNum,
             };
             await handlePrintBill(printableOrder);
         }

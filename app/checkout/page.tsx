@@ -156,6 +156,7 @@ export default function CheckoutPage() {
         customer_lat: customerCoords?.lat,
         customer_lng: customerCoords?.lng,
         distance: customerCoords?.distance,
+        prefix: "WEB",
       };
 
       const response = await fetch("/api/orders", {

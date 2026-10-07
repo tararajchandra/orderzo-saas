@@ -106,7 +106,25 @@ export default function AdminOrdersPage() {
       fetchOrders(true);
     }, 10000);
 
-    return () => clearInterval(interval);
+    // Auto-sync offline orders when coming online
+    const handleOnline = async () => {
+      try {
+        const { syncOfflineOrders } = await import("@/lib/offlineManager");
+        await syncOfflineOrders();
+        fetchOrders();
+      } catch (e) {
+        console.error("Auto sync error:", e);
+      }
+    };
+    window.addEventListener("online", handleOnline);
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      handleOnline();
+    }
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("online", handleOnline);
+    };
   }, []);
 
   const fetchSettings = async () => {

@@ -16,6 +16,23 @@ export interface OfflineOrder {
   status: "pending" | "syncing" | "failed";
 }
 
+// Generate conflict-free offline order number based on salesman/device prefix
+export const generateOfflineOrderNumber = (prefix: string = "S1"): string => {
+  const cleanPrefix = (prefix || "S1").trim().toUpperCase();
+  const today = new Date();
+  const dateStr = today.toISOString().split("T")[0].replace(/-/g, "");
+  const seqKey = `offline_seq_${cleanPrefix}_${dateStr}`;
+  let currentSeq = 0;
+  try {
+    currentSeq = parseInt(localStorage.getItem(seqKey) || "0", 10);
+  } catch (e) {}
+  currentSeq += 1;
+  try {
+    localStorage.setItem(seqKey, String(currentSeq));
+  } catch (e) {}
+  return `${cleanPrefix}-${dateStr}-${String(currentSeq).padStart(3, "0")}`;
+};
+
 // Save an order locally when offline
 export const saveOfflineOrder = async (
   url: string,

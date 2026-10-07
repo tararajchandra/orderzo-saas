@@ -107,6 +107,9 @@ export async function POST(request: Request) {
         const body = await request.json();
         const {
             user_id,
+            salesman_id,
+            prefix: requestedPrefix,
+            order_number: requestedOrderNumber,
             customer_name,
             customer_phone,
             customer_address,
@@ -206,40 +209,82 @@ export async function POST(request: Request) {
             fy_name = fyResult.rows[0].name; // e.g., '2024-25'
         }
 
-        // Generate daily sequential order number
+        // 1. Determine prefix and effective salesman ID
+        let prefix = requestedPrefix ? String(requestedPrefix).trim().toUpperCase() : null;
+        let effectiveSalesmanId = salesman_id || null;
+
+        if (!prefix) {
+            if (effectiveSalesmanId) {
+                prefix = `S${effectiveSalesmanId}`;
+            } else if (user_id) {
+                const userRes = await client.query('SELECT role FROM users WHERE id = $1', [user_id]);
+                const userRole = userRes.rows[0]?.role;
+                if (userRole === 'salesman') {
+                    effectiveSalesmanId = user_id;
+                    prefix = `S${user_id}`;
+                } else if (userRole === 'cashier' || userRole === 'admin') {
+                    prefix = 'POS';
+                } else if (order_type === 'dine_in') {
+                    prefix = 'QR';
+                } else {
+                    prefix = 'WEB';
+                }
+            } else if (order_type === 'dine_in') {
+                prefix = 'QR';
+            } else {
+                prefix = 'WEB';
+            }
+        }
+
+        // 2. Generate daily sequential order number with prefix
         const today = new Date();
         const datePrefix = today.toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD format
+        let orderNumber = requestedOrderNumber ? String(requestedOrderNumber).trim() : null;
 
-        // Optimized max query using date range for better index usage
-        const maxOrderResult = await client.query(
-            `SELECT MAX(order_number) as max_val FROM orders 
-             WHERE order_number LIKE $1`,
-            [`${datePrefix}-%`]
-        );
-        let orderCount = 1;
-        if (maxOrderResult.rows[0].max_val) {
-            const maxOrder = maxOrderResult.rows[0].max_val;
-            const lastNum = parseInt(maxOrder.split('-')[1]);
-            orderCount = lastNum + 1;
+        // If client passed an order number (e.g. offline queue), verify it does not already exist
+        if (orderNumber) {
+            const checkExisting = await client.query('SELECT id FROM orders WHERE order_number = $1', [orderNumber]);
+            if (checkExisting.rows.length > 0) {
+                // If already exists, re-generate with prefix
+                orderNumber = null;
+            }
         }
-        const orderNumber = `${datePrefix}-${String(orderCount).padStart(3, '0')}`; // Format: YYYYMMDD-XXX
+
+        if (!orderNumber) {
+            const searchPattern = `${prefix}-${datePrefix}-%`;
+            const maxOrderResult = await client.query(
+                `SELECT MAX(order_number) as max_val FROM orders 
+                 WHERE order_number LIKE $1`,
+                [searchPattern]
+            );
+            let orderCount = 1;
+            if (maxOrderResult.rows[0]?.max_val) {
+                const maxOrder = maxOrderResult.rows[0].max_val;
+                const parts = maxOrder.split('-');
+                const lastNum = parseInt(parts[parts.length - 1], 10);
+                if (!isNaN(lastNum)) {
+                    orderCount = lastNum + 1;
+                }
+            }
+            orderNumber = `${prefix}-${datePrefix}-${String(orderCount).padStart(3, '0')}`;
+        }
 
         let orderResult;
         try {
             // Use a SAVEPOINT to handle potential column-missing errors without aborting the whole transaction
             await client.query('SAVEPOINT order_insert_probe');
             
-            // Attempt to insert with geolocation and distance columns
+            // Attempt to insert with geolocation, distance, and salesman_id columns
             orderResult = await client.query(
-                `INSERT INTO orders (order_number, user_id, customer_name, customer_phone, customer_address, order_type, items, subtotal, tax, discount, delivery_location_id, delivery_charge, total_amount, payment_method, notes, table_number, order_status, payment_status, customer_lat, customer_lng, distance, financial_year_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+                `INSERT INTO orders (order_number, user_id, customer_name, customer_phone, customer_address, order_type, items, subtotal, tax, discount, delivery_location_id, delivery_charge, total_amount, payment_method, notes, table_number, order_status, payment_status, customer_lat, customer_lng, distance, financial_year_id, salesman_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
            RETURNING *`,
                 [
                     orderNumber, user_id || null, customer_name || 'Walk-in Customer', customer_phone || 'N/A', customer_address || null,
                     order_type || 'delivery', JSON.stringify(items), subtotal, tax || 0, discount || 0,
                     delivery_location_id || null, delivery_charge || 0, total_amount, payment_method,
                     notes || null, table_number || null, order_status || 'pending', payment_status || 'pending',
-                    customer_lat || null, customer_lng || null, distance || null, financial_year_id,
+                    customer_lat || null, customer_lng || null, distance || null, financial_year_id, effectiveSalesmanId,
                 ]
             );
             
@@ -252,17 +297,37 @@ export async function POST(request: Request) {
                 // Rollback to before the failed query to clear the transaction state
                 await client.query('ROLLBACK TO SAVEPOINT order_insert_probe');
                 
-                orderResult = await client.query(
-                    `INSERT INTO orders (order_number, user_id, customer_name, customer_phone, customer_address, order_type, items, subtotal, tax, discount, delivery_location_id, delivery_charge, total_amount, payment_method, notes, table_number, order_status, payment_status, financial_year_id)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-               RETURNING *`,
-                    [
-                        orderNumber, user_id || null, customer_name || 'Walk-in Customer', customer_phone || 'N/A', customer_address || null,
-                        order_type || 'delivery', JSON.stringify(items), subtotal, tax || 0, discount || 0,
-                        delivery_location_id || null, delivery_charge || 0, total_amount, payment_method,
-                        notes || null, table_number || null, order_status || 'pending', payment_status || 'pending', financial_year_id,
-                    ]
-                );
+                try {
+                    orderResult = await client.query(
+                        `INSERT INTO orders (order_number, user_id, customer_name, customer_phone, customer_address, order_type, items, subtotal, tax, discount, delivery_location_id, delivery_charge, total_amount, payment_method, notes, table_number, order_status, payment_status, financial_year_id, salesman_id)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+                   RETURNING *`,
+                        [
+                            orderNumber, user_id || null, customer_name || 'Walk-in Customer', customer_phone || 'N/A', customer_address || null,
+                            order_type || 'delivery', JSON.stringify(items), subtotal, tax || 0, discount || 0,
+                            delivery_location_id || null, delivery_charge || 0, total_amount, payment_method,
+                            notes || null, table_number || null, order_status || 'pending', payment_status || 'pending', financial_year_id, effectiveSalesmanId,
+                        ]
+                    );
+                } catch (fallbackErr: any) {
+                    if (fallbackErr.code === '42703') {
+                        // Even salesman_id is missing, fallback without salesman_id
+                        await client.query('ROLLBACK TO SAVEPOINT order_insert_probe');
+                        orderResult = await client.query(
+                            `INSERT INTO orders (order_number, user_id, customer_name, customer_phone, customer_address, order_type, items, subtotal, tax, discount, delivery_location_id, delivery_charge, total_amount, payment_method, notes, table_number, order_status, payment_status, financial_year_id)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+                       RETURNING *`,
+                            [
+                                orderNumber, user_id || null, customer_name || 'Walk-in Customer', customer_phone || 'N/A', customer_address || null,
+                                order_type || 'delivery', JSON.stringify(items), subtotal, tax || 0, discount || 0,
+                                delivery_location_id || null, delivery_charge || 0, total_amount, payment_method,
+                                notes || null, table_number || null, order_status || 'pending', payment_status || 'pending', financial_year_id,
+                            ]
+                        );
+                    } else {
+                        throw fallbackErr;
+                    }
+                }
             } else {
                 throw err;
             }

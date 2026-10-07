@@ -517,7 +517,7 @@ export default function QuickBillPage() {
 
     try {
       // Create completed order
-      const orderPayload = {
+      const orderPayload: any = {
         customer_name: customerName || "Walk-in Customer",
         customer_phone: customerPhone || "N/A",
         items: cart,
@@ -530,15 +530,76 @@ export default function QuickBillPage() {
         payment_status: "paid", // Immediate paid
         discount: discount,
         delivery_charge: manualDeliveryCharge,
+        prefix: "POS",
       };
 
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(orderPayload),
-      });
+      if (!navigator.onLine) {
+        const { saveOfflineOrder, generateOfflineOrderNumber } = await import("@/lib/offlineManager");
+        const offlineOrderNum = generateOfflineOrderNumber("POS");
+        orderPayload.order_number = offlineOrderNum;
+        await saveOfflineOrder("/api/orders", "POST", orderPayload);
 
-      const data = await res.json();
+        const printableOrder = {
+          ...orderPayload,
+          id: offlineOrderNum,
+          order_number: offlineOrderNum,
+          tax_amount: calculateTax(),
+          discount_amount: discount,
+        };
+
+        if (action === "kot") {
+          await handlePrintKOT(printableOrder);
+        } else if (action === "print") {
+          await handlePrintBill(printableOrder);
+        }
+
+        alert(`No internet! Bill #${offlineOrderNum} saved offline and printed. Will sync automatically.`);
+        setCart([]);
+        setCustomerName("");
+        setCustomerPhone("");
+        setDiscount(0);
+        setManualDeliveryCharge(0);
+        setSubmitting(false);
+        return;
+      }
+
+      let res, data;
+      try {
+        res = await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(orderPayload),
+        });
+        data = await res.json();
+      } catch (networkError) {
+        const { saveOfflineOrder, generateOfflineOrderNumber } = await import("@/lib/offlineManager");
+        const offlineOrderNum = orderPayload.order_number || generateOfflineOrderNumber("POS");
+        orderPayload.order_number = offlineOrderNum;
+        await saveOfflineOrder("/api/orders", "POST", orderPayload);
+
+        const printableOrder = {
+          ...orderPayload,
+          id: offlineOrderNum,
+          order_number: offlineOrderNum,
+          tax_amount: calculateTax(),
+          discount_amount: discount,
+        };
+
+        if (action === "kot") {
+          await handlePrintKOT(printableOrder);
+        } else if (action === "print") {
+          await handlePrintBill(printableOrder);
+        }
+
+        alert(`Network Error! Bill #${offlineOrderNum} saved offline and printed.`);
+        setCart([]);
+        setCustomerName("");
+        setCustomerPhone("");
+        setDiscount(0);
+        setManualDeliveryCharge(0);
+        setSubmitting(false);
+        return;
+      }
 
       if (data.success) {
         const order = data.data;
