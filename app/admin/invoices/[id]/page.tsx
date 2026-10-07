@@ -1178,11 +1178,11 @@ export default function InvoicePage() {
               >
                 <span>Subtotal:</span>
                 <span>
-                  ₹{parseFloat(invoice.subtotal.toString()).toFixed(2)}
+                  ₹{parseFloat(String(invoice.subtotal || 0)).toFixed(2)}
                 </span>
               </div>
               {settings?.gstType === "regular" &&
-                parseFloat(invoice.tax.toString()) > 0 && (
+                parseFloat(String(invoice.tax || 0)) > 0 && (
                   <div
                     style={{
                       display: "flex",
@@ -1200,12 +1200,12 @@ export default function InvoicePage() {
                   >
                     <span>Tax:</span>
                     <span>
-                      ₹{parseFloat(invoice.tax.toString()).toFixed(2)}
+                      ₹{parseFloat(String(invoice.tax || 0)).toFixed(2)}
                     </span>
                   </div>
                 )}
               {invoice.delivery_charge &&
-                parseFloat(invoice.delivery_charge.toString()) > 0 && (
+                parseFloat(String(invoice.delivery_charge || 0)) > 0 && (
                   <div
                     style={{
                       display: "flex",
@@ -1224,13 +1224,13 @@ export default function InvoicePage() {
                     <span>Delivery Charge:</span>
                     <span>
                       ₹
-                      {parseFloat(invoice.delivery_charge.toString()).toFixed(
+                      {parseFloat(String(invoice.delivery_charge || 0)).toFixed(
                         2,
                       )}
                     </span>
                   </div>
                 )}
-              {parseFloat(invoice.discount?.toString() || "0") > 0 && (
+              {parseFloat(String(invoice.discount || 0)) > 0 && (
                 <div
                   style={{
                     display: "flex",
@@ -1249,7 +1249,7 @@ export default function InvoicePage() {
                 >
                   <span>Discount:</span>
                   <span>
-                    -₹{parseFloat(invoice.discount.toString()).toFixed(2)}
+                    -₹{parseFloat(String(invoice.discount || 0)).toFixed(2)}
                   </span>
                 </div>
               )}
@@ -1273,7 +1273,7 @@ export default function InvoicePage() {
                 }}
               >
                 <span>Total:</span>
-                <span>₹{parseFloat(invoice.total.toString()).toFixed(2)}</span>
+                <span>₹{parseFloat(String(invoice.total || 0)).toFixed(2)}</span>
               </div>
             </div>
 

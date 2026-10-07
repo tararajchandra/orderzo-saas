@@ -384,16 +384,27 @@ export default function AdminOrdersPage() {
       if (!order) return;
 
       // Recalculate total with new discount
-      const subtotal = parseFloat(order.subtotal || 0);
+      const subtotal = parseFloat(order.subtotal || order.total_amount || 0);
       const tax = parseFloat(order.tax || 0);
       const deliveryCharge = parseFloat(order.delivery_charge || 0);
-      const newTotal = subtotal + tax + deliveryCharge - discount;
+      const newTotal = Math.max(0, subtotal + tax + deliveryCharge - discount);
+
+      // Optimistically update local state so the UI stays stable
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? { ...o, discount: discount, total_amount: newTotal }
+            : o,
+        ),
+      );
 
       const response = await fetch(`/api/orders/${orderId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           discount: discount,
+          subtotal: subtotal,
+          tax: tax,
           total_amount: newTotal,
         }),
       });
@@ -401,10 +412,10 @@ export default function AdminOrdersPage() {
       const data = await response.json();
 
       if (data.success) {
-        fetchOrders();
         alert("Discount Updated Successfully");
       } else {
         alert(`Failed to update discount: ${data.error}`);
+        fetchOrders(false);
       }
     } catch (error) {
       console.error("Error updating discount:", error);
@@ -778,8 +789,10 @@ export default function AdminOrdersPage() {
     let matchesDate = true;
     if (dateFilter === "today") {
       const today = new Date().toDateString();
-      const orderDate = new Date(o.created_at).toDateString();
-      matchesDate = orderDate === today;
+      const orderDate = o.created_at ? new Date(o.created_at).toDateString() : today;
+      // An order from today matches, OR if the order is still pending/active from yesterday's dinner service
+      const isPendingOrActive = o.payment_status === "pending" || (o.order_status !== "delivered" && o.order_status !== "cancelled");
+      matchesDate = orderDate === today || isPendingOrActive;
     }
 
     return matchesStatus && matchesDate;
@@ -1082,26 +1095,41 @@ export default function AdminOrdersPage() {
                 <div style={{ marginBottom: "0.75rem" }}>
                   <strong>Items:</strong>
                 </div>
-                {(Array.isArray(order.items) ? order.items : []).map(
-                  (item: any, idx: number) => (
-                    <div
-                      key={idx}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: "0.5rem",
-                        paddingLeft: "1rem",
-                      }}
-                    >
-                      <span className="text-muted">
-                        {item.menuItem.name} × {item.quantity}
-                      </span>
-                      <span>
-                        ₹{(item.menuItem.price * item.quantity).toFixed(2)}
-                      </span>
-                    </div>
-                  ),
-                )}
+                {(() => {
+                  let itemsList: any[] = [];
+                  try {
+                    itemsList = Array.isArray(order.items)
+                      ? order.items
+                      : typeof order.items === "string"
+                        ? JSON.parse(order.items)
+                        : [];
+                  } catch (e) {
+                    itemsList = [];
+                  }
+                  return itemsList.map((item: any, idx: number) => {
+                    const itemName = item?.menuItem?.name || item?.name || "Item";
+                    const itemPrice = Number(item?.menuItem?.price || item?.price || 0);
+                    const itemQty = Number(item?.quantity || 1);
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: "0.5rem",
+                          paddingLeft: "1rem",
+                        }}
+                      >
+                        <span className="text-muted">
+                          {itemName} × {itemQty}
+                        </span>
+                        <span>
+                          ₹{(itemPrice * itemQty).toFixed(2)}
+                        </span>
+                      </div>
+                    );
+                  });
+                })()}
 
                 {/* Order Summary */}
                 <div
@@ -1122,7 +1150,7 @@ export default function AdminOrdersPage() {
                     <span className="text-muted">Subtotal:</span>
                     <span>
                       ₹
-                      {parseFloat(order.subtotal || order.total_amount).toFixed(
+                      {parseFloat(order.subtotal || order.total_amount || 0).toFixed(
                         2,
                       )}
                     </span>
@@ -1137,7 +1165,7 @@ export default function AdminOrdersPage() {
                       }}
                     >
                       <span className="text-muted">Tax:</span>
-                      <span>₹{parseFloat(order.tax).toFixed(2)}</span>
+                      <span>₹{parseFloat(order.tax || 0).toFixed(2)}</span>
                     </div>
                   )}
                   {parseFloat(order.delivery_charge || 0) > 0 && (
@@ -1151,7 +1179,7 @@ export default function AdminOrdersPage() {
                     >
                       <span className="text-muted">Delivery Charge:</span>
                       <span>
-                        ₹{parseFloat(order.delivery_charge).toFixed(2)}
+                        ₹{parseFloat(order.delivery_charge || 0).toFixed(2)}
                       </span>
                     </div>
                   )}
@@ -1166,7 +1194,7 @@ export default function AdminOrdersPage() {
                       }}
                     >
                       <span>Discount:</span>
-                      <span>-₹{parseFloat(order.discount).toFixed(2)}</span>
+                      <span>-₹{parseFloat(order.discount || 0).toFixed(2)}</span>
                     </div>
                   )}
                   <div
@@ -1182,7 +1210,7 @@ export default function AdminOrdersPage() {
                   >
                     <span>Total:</span>
                     <span style={{ color: "var(--primary)" }}>
-                      ₹{parseFloat(order.total_amount).toFixed(2)}
+                      ₹{parseFloat(order.total_amount || 0).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -1417,7 +1445,7 @@ export default function AdminOrdersPage() {
                     placeholder="0.00"
                     style={{ textAlign: "right" }}
                   />
-                  {order.discount > 0 && (
+                  {parseFloat(order.discount || 0) > 0 && (
                     <div
                       style={{
                         fontSize: "0.75rem",
@@ -1425,7 +1453,7 @@ export default function AdminOrdersPage() {
                         marginTop: "0.25rem",
                       }}
                     >
-                      Discount Applied: ₹{parseFloat(order.discount).toFixed(2)}
+                      Discount Applied: ₹{parseFloat(order.discount || 0).toFixed(2)}
                     </div>
                   )}
                 </div>

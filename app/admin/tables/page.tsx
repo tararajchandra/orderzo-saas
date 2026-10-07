@@ -46,7 +46,8 @@ export default function AdminTablesPage() {
   const [loading, setLoading] = useState(true);
   const { selectedFY } = useFinancialYear();
   const [settlingTable, setSettlingTable] = useState<string | null>(null);
-  const [splitPaymentModal, setSplitPaymentModal] = useState<{tableNo: string, total: number} | null>(null);
+  const [tableDiscount, setTableDiscount] = useState<number>(0);
+  const [splitPaymentModal, setSplitPaymentModal] = useState<{tableNo: string, total: number, discount?: number} | null>(null);
   const [splitAmounts, setSplitAmounts] = useState({ cash: 0, upi: 0, card: 0 });
   const [totalTables, setTotalTables] = useState(16);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
@@ -240,9 +241,10 @@ export default function AdminTablesPage() {
     }
   };
 
-  const handleSettleTable = async (tableNo: string, paymentMethod: string, splits?: any) => {
+  const handleSettleTable = async (tableNo: string, paymentMethod: string, splits?: any, discountOverride?: number) => {
+    const appliedDiscount = discountOverride !== undefined ? discountOverride : tableDiscount;
     const confirmSettle = confirm(
-      `Are you sure you want to settle all pending orders for Table ${tableNo} with ${paymentMethod.toUpperCase()}?`,
+      `Are you sure you want to settle all pending orders for Table ${tableNo} with ${paymentMethod.toUpperCase()}${appliedDiscount > 0 ? ` (Discount: ₹${appliedDiscount.toFixed(2)})` : ''}?`,
     );
     if (!confirmSettle) return;
 
@@ -260,7 +262,7 @@ export default function AdminTablesPage() {
       let combinedItems: any[] = [];
       let totalSubtotal = 0;
       let totalTax = 0;
-      let totalDiscount = 0;
+      let existingOrderDiscount = 0;
 
       sortedOrders.forEach((o: any) => {
         let parsedItems = [];
@@ -271,7 +273,7 @@ export default function AdminTablesPage() {
         combinedItems = [...combinedItems, ...parsedItems];
         totalSubtotal += parseFloat(o.subtotal || 0);
         totalTax += parseFloat(o.tax || 0);
-        totalDiscount += parseFloat(o.discount || 0);
+        existingOrderDiscount += parseFloat(o.discount || 0);
       });
 
       const mergedItemsMap = new Map();
@@ -288,7 +290,8 @@ export default function AdminTablesPage() {
         }
       });
       const finalItems = Array.from(mergedItemsMap.values());
-      const finalTotal = totalSubtotal + totalTax - totalDiscount;
+      const effectiveDiscount = appliedDiscount !== undefined ? appliedDiscount : existingOrderDiscount;
+      const finalTotal = Math.max(0, totalSubtotal + totalTax - effectiveDiscount);
 
       // Update Master Order with merged items and totals
       await fetch(`/api/orders/${masterOrder.id}`, {
@@ -304,7 +307,7 @@ export default function AdminTablesPage() {
           items: finalItems,
           subtotal: totalSubtotal,
           tax: totalTax,
-          discount: totalDiscount,
+          discount: effectiveDiscount,
           total_amount: finalTotal,
         }),
       });
@@ -319,6 +322,7 @@ export default function AdminTablesPage() {
 
       alert(`Table ${tableNo} settled successfully!`);
       setShowModal(false);
+      setTableDiscount(0);
       fetchActiveTableOrders();
     } catch (error) {
       console.error("Error settling table:", error);
@@ -420,7 +424,7 @@ export default function AdminTablesPage() {
   };
 
   // Print Bill functionality - combining all orders for the table
-  const handlePrintBill = (tableNo: string) => {
+  const handlePrintBill = (tableNo: string, discountOverride?: number) => {
     if (!settings) {
       alert("Settings not loaded yet.");
       return;
@@ -438,7 +442,6 @@ export default function AdminTablesPage() {
     let totalSubtotal = 0;
     let totalTax = 0;
     let totalDiscount = 0;
-    let grandTotal = group.total;
 
     group.orders.forEach((o: any) => {
       let parsedItems = [];
@@ -452,6 +455,9 @@ export default function AdminTablesPage() {
       totalTax += parseFloat(o.tax || 0);
       totalDiscount += parseFloat(o.discount || 0);
     });
+
+    const effectiveDiscount = discountOverride !== undefined ? discountOverride : totalDiscount;
+    const grandTotal = Math.max(0, totalSubtotal + totalTax - effectiveDiscount);
 
     // Combine same items if they appear across multiple orders
     const mergedItemsMap = new Map();
@@ -556,6 +562,15 @@ export default function AdminTablesPage() {
                         </tr>`
                             : ""
                         }
+                        ${
+                          effectiveDiscount > 0
+                            ? `
+                        <tr>
+                            <td>Discount</td>
+                            <td class="text-right">-Rs. ${effectiveDiscount.toFixed(2)}</td>
+                        </tr>`
+                            : ""
+                        }
                     </table>
                 </div>
 
@@ -648,6 +663,11 @@ export default function AdminTablesPage() {
                         key={tableNo}
                         onClick={() => {
                           if (isOccupied) {
+                            const initialDiscount = (tableGroups[tableNo]?.orders || []).reduce(
+                              (sum: number, o: any) => sum + parseFloat(o.discount || 0),
+                              0,
+                            );
+                            setTableDiscount(initialDiscount);
                             setSelectedTable(tableNo);
                             setShowModal(true);
                           } else {
@@ -658,7 +678,6 @@ export default function AdminTablesPage() {
                         style={{
                           height: "100px",
                           borderRadius: "12px",
-                          border: "none",
                           background: isOccupied ? theme.occupied : theme.empty,
                           border: isOccupied
                             ? "none"
@@ -775,6 +794,11 @@ export default function AdminTablesPage() {
           <button
             onClick={() => {
               if (!contextMenu.isOccupied) return;
+              const initialDiscount = (tableGroups[contextMenu.tableNo]?.orders || []).reduce(
+                (sum: number, o: any) => sum + parseFloat(o.discount || 0),
+                0,
+              );
+              setTableDiscount(initialDiscount);
               setContextMenu(null);
               setSelectedTable(contextMenu.tableNo);
               setShowModal(true);
@@ -1121,25 +1145,71 @@ export default function AdminTablesPage() {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: "1.5rem",
+                  marginBottom: "0.5rem",
                 }}
               >
-                <span style={{ fontSize: "1rem", fontWeight: 600 }}>
-                  Master Bill
+                <span style={{ fontSize: "0.95rem", color: "var(--text-muted)" }}>
+                  Bill Subtotal & Taxes
                 </span>
-                <span
-                  style={{
-                    fontSize: "1.25rem",
-                    fontWeight: 700,
-                    color: "var(--primary)",
-                  }}
-                >
+                <span style={{ fontSize: "1rem", fontWeight: 600 }}>
                   ₹{tableGroups[selectedTable].total.toFixed(2)}
                 </span>
               </div>
 
+              {/* Discount Input */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "0.75rem",
+                  padding: "0.5rem",
+                  background: "var(--glass-bg)",
+                  borderRadius: "8px",
+                  border: "1px solid var(--border-color)",
+                }}
+              >
+                <span style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--primary)" }}>
+                  🎁 Discount (₹):
+                </span>
+                <input
+                  type="number"
+                  className="input"
+                  style={{ width: "120px", textAlign: "right", padding: "0.35rem 0.5rem", fontSize: "0.95rem" }}
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
+                  value={tableDiscount || ""}
+                  onChange={(e) => setTableDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+                />
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "1.25rem",
+                  paddingTop: "0.5rem",
+                  borderTop: "1px dashed var(--border-color)",
+                }}
+              >
+                <span style={{ fontSize: "1.1rem", fontWeight: 700 }}>
+                  Master Bill Total
+                </span>
+                <span
+                  style={{
+                    fontSize: "1.35rem",
+                    fontWeight: 700,
+                    color: "var(--primary)",
+                  }}
+                >
+                  ₹{Math.max(0, tableGroups[selectedTable].total - tableDiscount).toFixed(2)}
+                </span>
+              </div>
+
               <button
-                onClick={() => handlePrintBill(selectedTable)}
+                onClick={() => handlePrintBill(selectedTable, tableDiscount)}
                 className="btn btn-ghost"
                 style={{
                   width: "100%",
@@ -1161,7 +1231,7 @@ export default function AdminTablesPage() {
                 }}
               >
                 <button
-                  onClick={() => handleSettleTable(selectedTable, "cash")}
+                  onClick={() => handleSettleTable(selectedTable, "cash", undefined, tableDiscount)}
                   disabled={settlingTable === selectedTable}
                   className="btn btn-primary"
                   style={{
@@ -1173,7 +1243,7 @@ export default function AdminTablesPage() {
                   {settlingTable === selectedTable ? "..." : "💵 Settle Cash"}
                 </button>
                 <button
-                  onClick={() => handleSettleTable(selectedTable, "upi")}
+                  onClick={() => handleSettleTable(selectedTable, "upi", undefined, tableDiscount)}
                   disabled={settlingTable === selectedTable}
                   className="btn btn-secondary"
                   style={{
@@ -1189,8 +1259,9 @@ export default function AdminTablesPage() {
                 </button>
                   <button
                     onClick={() => {
-                      setSplitPaymentModal({ tableNo: selectedTable, total: tableGroups[selectedTable].total });
-                      setSplitAmounts({ cash: tableGroups[selectedTable].total, upi: 0, card: 0 });
+                      const netBill = Math.max(0, tableGroups[selectedTable].total - tableDiscount);
+                      setSplitPaymentModal({ tableNo: selectedTable, total: netBill, discount: tableDiscount });
+                      setSplitAmounts({ cash: netBill, upi: 0, card: 0 });
                     }}
                     disabled={settlingTable === selectedTable}
                     className="btn btn-warning"
@@ -1342,8 +1413,10 @@ export default function AdminTablesPage() {
                 className="btn btn-primary" 
                 disabled={(splitAmounts.cash + splitAmounts.upi + splitAmounts.card) !== splitPaymentModal.total}
                 onClick={() => {
+                  const targetTable = splitPaymentModal.tableNo;
+                  const targetDiscount = splitPaymentModal.discount;
                   setSplitPaymentModal(null);
-                  handleSettleTable(splitPaymentModal.tableNo, "split", splitAmounts);
+                  handleSettleTable(targetTable, "split", splitAmounts, targetDiscount);
                 }}
               >
                 Confirm Settle

@@ -144,28 +144,67 @@ export async function PUT(
         
         if (invoiceCheck.rows.length === 0 && payment_status === 'paid') {
             // Generate invoice if paid and doesn't exist yet
-            const invoiceDateStr = new Date().toISOString().split('T')[0];
-            const invoiceDate = invoiceDateStr.replace(/-/g, '');
-            const invoiceCountResult = await query(
-                `SELECT COUNT(*) as count FROM invoices 
-                 WHERE generated_at >= CURRENT_DATE 
-                 AND generated_at < (CURRENT_DATE + INTERVAL '1 day')`
-            );
-            const invoiceCount = parseInt(invoiceCountResult.rows[0].count) + 1;
-            const invoiceNumber = `INV-${invoiceDate}-${String(invoiceCount).padStart(4, '0')}`;
-            
             const updatedOrder = result.rows[0];
 
+            // Get active financial year
+            const fyResult = await query('SELECT id, name FROM financial_years WHERE is_active = true');
+            let financial_year_id = updatedOrder.financial_year_id || null;
+            let fy_name = '';
+            if (fyResult.rows.length > 0) {
+                if (!financial_year_id) financial_year_id = fyResult.rows[0].id;
+                fy_name = fyResult.rows[0].name;
+            }
+
+            let invoiceCount = 1;
+            let invoiceNumber = '';
+
+            if (financial_year_id && fy_name) {
+                const shortFy = fy_name.replace('20', '');
+                const prefix = `INV/${shortFy}/`;
+                const invoiceMaxResult = await query(
+                    `SELECT MAX(invoice_number) as max_val FROM invoices 
+                     WHERE invoice_number LIKE $1`, [`${prefix}%`]
+                );
+                if (invoiceMaxResult.rows[0]?.max_val) {
+                    const maxInv = invoiceMaxResult.rows[0].max_val;
+                    const lastNum = parseInt(maxInv.split('/').pop() || '0');
+                    invoiceCount = lastNum + 1;
+                }
+                invoiceNumber = `${prefix}${String(invoiceCount).padStart(4, '0')}`;
+            } else {
+                const invoiceDateStr = new Date().toISOString().split('T')[0];
+                const invoiceDate = invoiceDateStr.replace(/-/g, '');
+                const prefix = `INV-${invoiceDate}-`;
+                const invoiceMaxResult = await query(
+                    `SELECT MAX(invoice_number) as max_val FROM invoices 
+                     WHERE invoice_number LIKE $1`, [`${prefix}%`]
+                );
+                if (invoiceMaxResult.rows[0]?.max_val) {
+                    const maxInv = invoiceMaxResult.rows[0].max_val;
+                    const lastNum = parseInt(maxInv.split('-').pop() || '0');
+                    invoiceCount = lastNum + 1;
+                }
+                invoiceNumber = `${prefix}${String(invoiceCount).padStart(4, '0')}`;
+            }
+
             await query(
-                `INSERT INTO invoices (order_id, invoice_number, subtotal, tax, discount, total)
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                `INSERT INTO invoices (order_id, invoice_number, subtotal, tax, discount, total, delivery_charge, financial_year_id)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                 ON CONFLICT (order_id) DO UPDATE 
+                 SET subtotal = EXCLUDED.subtotal,
+                     tax = EXCLUDED.tax,
+                     discount = EXCLUDED.discount,
+                     total = EXCLUDED.total,
+                     delivery_charge = EXCLUDED.delivery_charge`,
                 [
                     params.id, 
                     invoiceNumber, 
-                    subtotal ?? updatedOrder.subtotal, 
+                    subtotal ?? updatedOrder.subtotal ?? 0, 
                     tax ?? updatedOrder.tax ?? 0, 
                     discount ?? updatedOrder.discount ?? 0, 
-                    total_amount ?? updatedOrder.total_amount
+                    total_amount ?? updatedOrder.total_amount ?? 0,
+                    updatedOrder.delivery_charge ?? 0,
+                    financial_year_id
                 ]
             );
         } else if (invoiceCheck.rows.length > 0 && (discount !== undefined || subtotal !== undefined || tax !== undefined || total_amount !== undefined)) {
@@ -177,7 +216,7 @@ export async function PUT(
                  discount = COALESCE($3, discount),
                  total = COALESCE($4, total)
                  WHERE order_id = $5`,
-                [subtotal, tax, discount, total_amount, params.id]
+                [subtotal ?? null, tax ?? null, discount ?? null, total_amount ?? null, params.id]
             );
         }
 

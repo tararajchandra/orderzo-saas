@@ -71,7 +71,11 @@ export async function GET(request: Request) {
         }
 
         if (dateParam === 'today') {
-            queryText += ` AND o.created_at >= CURRENT_DATE AND o.created_at < (CURRENT_DATE + INTERVAL '1 day')`;
+            queryText += ` AND (
+                (o.created_at >= CURRENT_DATE AND o.created_at < (CURRENT_DATE + INTERVAL '1 day'))
+                OR o.payment_status = 'pending'
+                OR (o.order_status NOT IN ('delivered', 'cancelled'))
+            )`;
         } else if (since) {
             queryText += ` AND o.created_at > $${paramCount}`;
             params.push(since);
