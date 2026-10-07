@@ -5,6 +5,11 @@ import { useFinancialYear } from "@/contexts/FinancialYearContext";
 import { useRouter } from "next/navigation";
 import { formatDateTime, getTableList, getGroupedTableList } from "@/lib/utils";
 import Link from "next/link";
+import {
+  getOfflineOrders,
+  saveOfflineOrder,
+  syncOfflineOrders,
+} from "@/lib/offlineManager";
 
 // Zone Color Palette
 const ZONE_COLORS = [
@@ -42,8 +47,21 @@ const ZONE_COLORS = [
 
 export default function AdminTablesPage() {
   const router = useRouter();
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<any[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("cached_active_table_orders");
+        if (cached) return JSON.parse(cached);
+      } catch (e) {}
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window !== "undefined" && !navigator.onLine) {
+      return false;
+    }
+    return true;
+  });
   const { selectedFY } = useFinancialYear();
   const [settlingTable, setSettlingTable] = useState<string | null>(null);
   const [tableDiscount, setTableDiscount] = useState<number>(0);
@@ -93,30 +111,97 @@ export default function AdminTablesPage() {
       fetchActiveTableOrders(true);
     }, 15000);
 
-    return () => clearInterval(interval);
+    const handleOnline = async () => {
+      try {
+        await syncOfflineOrders();
+        fetchActiveTableOrders();
+      } catch (e) {}
+    };
+    window.addEventListener("online", handleOnline);
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      handleOnline();
+    }
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("online", handleOnline);
+    };
   }, []);
 
   const fetchSettings = async () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      try {
+        const cached = localStorage.getItem("cached_settings");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          setSettings(parsed);
+          if (parsed.totalTables) setTotalTables(parseInt(parsed.totalTables, 10));
+        }
+      } catch (e) {}
+      return;
+    }
     try {
       const response = await fetch("/api/settings");
       const data = await response.json();
       if (data.success) {
         setSettings(data.data);
+        try { localStorage.setItem("cached_settings", JSON.stringify(data.data)); } catch (e) {}
         if (data.data.totalTables) {
           setTotalTables(parseInt(data.data.totalTables, 10));
         }
       }
     } catch (error) {
-      console.error("Error fetching settings:", error);
+      console.warn("Error fetching settings, checking cache:", error);
+      try {
+        const cached = localStorage.getItem("cached_settings");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          setSettings(parsed);
+          if (parsed.totalTables) setTotalTables(parseInt(parsed.totalTables, 10));
+        }
+      } catch (e) {}
     }
   };
 
   const fetchActiveTableOrders = async (isPolling = false) => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      try {
+        const cached = localStorage.getItem("cached_active_table_orders");
+        let localList: any[] = cached ? JSON.parse(cached) : [];
+        const offlineList = await getOfflineOrders();
+        const offlineDineIn = offlineList
+          .filter(
+            (o) =>
+              o.body &&
+              (o.body.order_type === "dine_in" || o.body.order_type === "dine-in") &&
+              o.body.table_number &&
+              o.body.payment_status !== "paid" &&
+              o.body.order_status !== "cancelled",
+          )
+          .map((o) => ({
+            ...o.body,
+            id: o.body.order_number || o.id,
+            order_number: o.body.order_number || o.id,
+            created_at: new Date(o.timestamp).toISOString(),
+            is_offline: true,
+          }));
+        const map = new Map();
+        localList.forEach((item) => map.set(item.order_number || item.id, item));
+        offlineDineIn.forEach((item) => map.set(item.order_number || item.id, item));
+        setOrders(Array.from(map.values()));
+      } catch (e) {}
+      if (!isPolling) setLoading(false);
+      return;
+    }
+
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
       const response = await fetch(
         "/api/orders?type=dine_in&payment_status=pending&limit=200&include_items=true",
-        { cache: "no-store" },
+        { cache: "no-store", signal: controller.signal },
       );
+      clearTimeout(timeoutId);
       const data = await response.json();
       if (data.success) {
         const activeDineInOrders = data.data.filter(
@@ -127,9 +212,40 @@ export default function AdminTablesPage() {
             o.order_status !== "cancelled",
         );
         setOrders(activeDineInOrders);
+        try {
+          localStorage.setItem(
+            "cached_active_table_orders",
+            JSON.stringify(activeDineInOrders),
+          );
+        } catch (e) {}
       }
     } catch (error) {
-      console.error("Error fetching table orders:", error);
+      console.warn("Error fetching table orders, checking cache:", error);
+      try {
+        const cached = localStorage.getItem("cached_active_table_orders");
+        let localList: any[] = cached ? JSON.parse(cached) : [];
+        const offlineList = await getOfflineOrders();
+        const offlineDineIn = offlineList
+          .filter(
+            (o) =>
+              o.body &&
+              (o.body.order_type === "dine_in" || o.body.order_type === "dine-in") &&
+              o.body.table_number &&
+              o.body.payment_status !== "paid" &&
+              o.body.order_status !== "cancelled",
+          )
+          .map((o) => ({
+            ...o.body,
+            id: o.body.order_number || o.id,
+            order_number: o.body.order_number || o.id,
+            created_at: new Date(o.timestamp).toISOString(),
+            is_offline: true,
+          }));
+        const map = new Map();
+        localList.forEach((item) => map.set(item.order_number || item.id, item));
+        offlineDineIn.forEach((item) => map.set(item.order_number || item.id, item));
+        setOrders(Array.from(map.values()));
+      } catch (e) {}
     } finally {
       if (!isPolling) setLoading(false);
     }
@@ -209,19 +325,45 @@ export default function AdminTablesPage() {
 
     // For a table, discount is usually applied at settle time. Let's assume 0 for now unless we fetched it.
     // To be safe, we'll just set subtotal and tax, and total_amount.
-    const finalTotal = totalSubtotal + totalTax;
+    const masterPayload = {
+      items: editingTableItems.items,
+      subtotal: totalSubtotal,
+      tax: totalTax,
+      total_amount: finalTotal,
+    };
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await saveOfflineOrder(`/api/orders/${editingTableItems.masterOrderId}`, "PUT", masterPayload);
+      for (const id of editingTableItems.otherOrderIds) {
+        await saveOfflineOrder(`/api/orders/${id}`, "DELETE", {});
+      }
+
+      setOrders((prev) => {
+        const deletedSet = new Set(editingTableItems.otherOrderIds);
+        const next = prev
+          .filter((o) => !deletedSet.has(o.id))
+          .map((o) =>
+            o.id === editingTableItems.masterOrderId
+              ? { ...o, ...masterPayload, is_offline: true }
+              : o,
+          );
+        try {
+          localStorage.setItem("cached_active_table_orders", JSON.stringify(next));
+        } catch (e) {}
+        return next;
+      });
+
+      alert(`Items for Table ${editingTableItems.tableNo} updated offline! Will sync automatically.`);
+      setEditingTableItems(null);
+      return;
+    }
 
     try {
       // 1. Update Master Order
       await fetch(`/api/orders/${editingTableItems.masterOrderId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: editingTableItems.items,
-          subtotal: totalSubtotal,
-          tax: totalTax,
-          total_amount: finalTotal,
-        }),
+        body: JSON.stringify(masterPayload),
       });
 
       // 2. Delete other orders
@@ -236,8 +378,31 @@ export default function AdminTablesPage() {
       setEditingTableItems(null);
       fetchActiveTableOrders();
     } catch (error) {
-      console.error("Error updating table items:", error);
-      alert("An error occurred while updating the table items.");
+      console.warn("Error updating table items on server, saving offline:", error);
+      try {
+        await saveOfflineOrder(`/api/orders/${editingTableItems.masterOrderId}`, "PUT", masterPayload);
+        for (const id of editingTableItems.otherOrderIds) {
+          await saveOfflineOrder(`/api/orders/${id}`, "DELETE", {});
+        }
+        setOrders((prev) => {
+          const deletedSet = new Set(editingTableItems.otherOrderIds);
+          const next = prev
+            .filter((o) => !deletedSet.has(o.id))
+            .map((o) =>
+              o.id === editingTableItems.masterOrderId
+                ? { ...o, ...masterPayload, is_offline: true }
+                : o,
+            );
+          try {
+            localStorage.setItem("cached_active_table_orders", JSON.stringify(next));
+          } catch (e) {}
+          return next;
+        });
+        alert(`নেটওয়ার্ক সমস্যার কারণে টেবিল ${editingTableItems.tableNo}-এর আইটেম অফলাইনে সংরক্ষিত হয়েছে।`);
+        setEditingTableItems(null);
+      } catch (e) {
+        alert("An error occurred while updating the table items.");
+      }
     }
   };
 
@@ -293,23 +458,46 @@ export default function AdminTablesPage() {
       const effectiveDiscount = appliedDiscount !== undefined ? appliedDiscount : existingOrderDiscount;
       const finalTotal = Math.max(0, totalSubtotal + totalTax - effectiveDiscount);
 
+      const masterPayload = {
+        payment_status: "paid",
+        payment_method: paymentMethod,
+        split_cash: splits?.cash || 0,
+        split_upi: splits?.upi || 0,
+        split_card: splits?.card || 0,
+        order_status: "delivered",
+        items: finalItems,
+        subtotal: totalSubtotal,
+        tax: totalTax,
+        discount: effectiveDiscount,
+        total_amount: finalTotal,
+      };
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        await saveOfflineOrder(`/api/orders/${masterOrder.id}`, "PUT", masterPayload);
+        for (const o of otherOrders) {
+          await saveOfflineOrder(`/api/orders/${o.id}`, "DELETE", {});
+        }
+
+        const settledIds = new Set([masterOrder.id, ...otherOrders.map((o: any) => o.id)]);
+        setOrders((prev) => {
+          const next = prev.filter((o: any) => !settledIds.has(o.id));
+          try {
+            localStorage.setItem("cached_active_table_orders", JSON.stringify(next));
+          } catch (e) {}
+          return next;
+        });
+
+        alert(`Table ${tableNo} settled offline! Will sync when back online.`);
+        setShowModal(false);
+        setTableDiscount(0);
+        return;
+      }
+
       // Update Master Order with merged items and totals
       await fetch(`/api/orders/${masterOrder.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          payment_status: "paid",
-          payment_method: paymentMethod,
-          split_cash: splits?.cash || 0,
-          split_upi: splits?.upi || 0,
-          split_card: splits?.card || 0,
-          order_status: "delivered",
-          items: finalItems,
-          subtotal: totalSubtotal,
-          tax: totalTax,
-          discount: effectiveDiscount,
-          total_amount: finalTotal,
-        }),
+        body: JSON.stringify(masterPayload),
       });
 
       // Delete the duplicate separated orders since they are now merged
@@ -325,8 +513,33 @@ export default function AdminTablesPage() {
       setTableDiscount(0);
       fetchActiveTableOrders();
     } catch (error) {
-      console.error("Error settling table:", error);
-      alert("An error occurred while settling the table.");
+      console.warn("Error settling table on server, saving offline:", error);
+      try {
+        const sortedOrders = [...tableOrders].sort((a: any, b: any) => a.id - b.id);
+        const masterOrder = sortedOrders[0];
+        const otherOrders = sortedOrders.slice(1);
+        await saveOfflineOrder(`/api/orders/${masterOrder.id}`, "PUT", {
+          payment_status: "paid",
+          payment_method: paymentMethod,
+          order_status: "delivered",
+        });
+        for (const o of otherOrders) {
+          await saveOfflineOrder(`/api/orders/${o.id}`, "DELETE", {});
+        }
+        const settledIds = new Set([masterOrder.id, ...otherOrders.map((o: any) => o.id)]);
+        setOrders((prev) => {
+          const next = prev.filter((o: any) => !settledIds.has(o.id));
+          try {
+            localStorage.setItem("cached_active_table_orders", JSON.stringify(next));
+          } catch (e) {}
+          return next;
+        });
+        alert(`নেটওয়ার্ক সমস্যার কারণে টেবিল ${tableNo} অফলাইনে সেটেল হয়েছে।`);
+        setShowModal(false);
+        setTableDiscount(0);
+      } catch (e) {
+        alert("An error occurred while settling the table.");
+      }
     } finally {
       setSettlingTable(null);
     }

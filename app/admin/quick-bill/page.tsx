@@ -7,6 +7,11 @@ import { useAuth } from "@/contexts/AuthContext";
 
 import { ReceiptPrinter } from "@/lib/receipt-printer";
 import { formatDate } from "@/lib/utils";
+import {
+  saveOfflineOrder,
+  generateOfflineOrderNumber,
+  syncOfflineOrders,
+} from "@/lib/offlineManager";
 
 interface MenuItem {
   id: number;
@@ -57,26 +62,66 @@ export default function QuickBillPage() {
   useEffect(() => {
     fetchMenuItems();
     fetchSettings();
+
+    const handleOnline = async () => {
+      try {
+        await syncOfflineOrders();
+      } catch (e) {}
+    };
+    window.addEventListener("online", handleOnline);
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      handleOnline();
+    }
+    return () => window.removeEventListener("online", handleOnline);
   }, []);
 
   const fetchSettings = async () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      try {
+        const cached = localStorage.getItem("cached_settings");
+        if (cached) setSettings(JSON.parse(cached));
+      } catch (e) {}
+      return;
+    }
     try {
       const response = await fetch("/api/settings");
       const data = await response.json();
       if (data.success) {
         setSettings(data.data);
+        try { localStorage.setItem("cached_settings", JSON.stringify(data.data)); } catch (e) {}
       }
     } catch (error) {
-      console.error("Error fetching settings:", error);
+      console.warn("Error fetching settings, checking cache:", error);
+      try {
+        const cached = localStorage.getItem("cached_settings");
+        if (cached) setSettings(JSON.parse(cached));
+      } catch (e) {}
     }
   };
 
   const fetchMenuItems = async () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      try {
+        const cached = localStorage.getItem("cached_menu_items");
+        if (cached) {
+          const items = JSON.parse(cached);
+          setMenuItems(items);
+          const cats = Array.from(
+            new Set(items.map((i: MenuItem) => i.category_name).filter(Boolean)),
+          ) as string[];
+          setCategories(["all", ...cats]);
+        }
+      } catch (e) {}
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/menu?available=true");
       const data = await res.json();
       if (data.success) {
         setMenuItems(data.data);
+        try { localStorage.setItem("cached_menu_items", JSON.stringify(data.data)); } catch (e) {}
         const cats = Array.from(
           new Set(
             data.data.map((i: MenuItem) => i.category_name).filter(Boolean),
@@ -85,7 +130,18 @@ export default function QuickBillPage() {
         setCategories(["all", ...cats]);
       }
     } catch (error) {
-      console.error("Error fetching menu:", error);
+      console.warn("Error fetching menu, checking offline cache:", error);
+      try {
+        const cached = localStorage.getItem("cached_menu_items");
+        if (cached) {
+          const items = JSON.parse(cached);
+          setMenuItems(items);
+          const cats = Array.from(
+            new Set(items.map((i: MenuItem) => i.category_name).filter(Boolean)),
+          ) as string[];
+          setCategories(["all", ...cats]);
+        }
+      } catch (e) {}
     } finally {
       setLoading(false);
     }
@@ -534,10 +590,23 @@ export default function QuickBillPage() {
       };
 
       if (!navigator.onLine) {
-        const { saveOfflineOrder, generateOfflineOrderNumber } = await import("@/lib/offlineManager");
         const offlineOrderNum = generateOfflineOrderNumber("POS");
         orderPayload.order_number = offlineOrderNum;
         await saveOfflineOrder("/api/orders", "POST", orderPayload);
+
+        // Update cached_admin_orders for instant display in orders list
+        try {
+          const cached = localStorage.getItem("cached_admin_orders");
+          const list = cached ? JSON.parse(cached) : [];
+          list.unshift({
+            ...orderPayload,
+            id: offlineOrderNum,
+            order_number: offlineOrderNum,
+            created_at: new Date().toISOString(),
+            is_offline: true,
+          });
+          localStorage.setItem("cached_admin_orders", JSON.stringify(list.slice(0, 100)));
+        } catch (e) {}
 
         const printableOrder = {
           ...orderPayload,
@@ -553,7 +622,7 @@ export default function QuickBillPage() {
           await handlePrintBill(printableOrder);
         }
 
-        alert(`No internet! Bill #${offlineOrderNum} saved offline and printed. Will sync automatically.`);
+        alert(`অফলাইন বিল সম্পন্ন! Bill #${offlineOrderNum} সেভ ও প্রিন্ট হয়েছে। ইন্টারনেট আসলে অটো-সিঙ্ক হবে।`);
         setCart([]);
         setCustomerName("");
         setCustomerPhone("");
@@ -572,10 +641,22 @@ export default function QuickBillPage() {
         });
         data = await res.json();
       } catch (networkError) {
-        const { saveOfflineOrder, generateOfflineOrderNumber } = await import("@/lib/offlineManager");
         const offlineOrderNum = orderPayload.order_number || generateOfflineOrderNumber("POS");
         orderPayload.order_number = offlineOrderNum;
         await saveOfflineOrder("/api/orders", "POST", orderPayload);
+
+        try {
+          const cached = localStorage.getItem("cached_admin_orders");
+          const list = cached ? JSON.parse(cached) : [];
+          list.unshift({
+            ...orderPayload,
+            id: offlineOrderNum,
+            order_number: offlineOrderNum,
+            created_at: new Date().toISOString(),
+            is_offline: true,
+          });
+          localStorage.setItem("cached_admin_orders", JSON.stringify(list.slice(0, 100)));
+        } catch (e) {}
 
         const printableOrder = {
           ...orderPayload,
@@ -591,7 +672,7 @@ export default function QuickBillPage() {
           await handlePrintBill(printableOrder);
         }
 
-        alert(`Network Error! Bill #${offlineOrderNum} saved offline and printed.`);
+        alert(`নেটওয়ার্ক ড্রপ হয়েছে! Bill #${offlineOrderNum} অফলাইনে সেভ ও প্রিন্ট হয়েছে।`);
         setCart([]);
         setCustomerName("");
         setCustomerPhone("");
