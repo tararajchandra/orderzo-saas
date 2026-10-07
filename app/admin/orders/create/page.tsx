@@ -488,7 +488,6 @@ export default function CreateOrderPage() {
         const offlineOrderNum = generateOfflineOrderNumber("POS");
         orderData.order_number = offlineOrderNum;
         await saveOfflineOrder("/api/orders", "POST", orderData);
-        alert(`No internet! Order #${offlineOrderNum} saved offline and will sync automatically.`);
         
         if (shouldPrint) {
             const printableOrder = {
@@ -498,8 +497,14 @@ export default function CreateOrderPage() {
             };
             await handlePrintBill(printableOrder);
         }
-        
-        router.push("/admin/orders");
+
+        alert(`অফলাইন বিল সম্পন্ন! Order #${offlineOrderNum} সেভ ও প্রিন্ট হয়েছে। ইন্টারনেট আসলে অটো-সিঙ্ক হবে।`);
+        setCart([]);
+        setCustomerName("");
+        setCustomerPhone("");
+        setCustomerAddress("");
+        setNotes("");
+        setDiscount(0);
         setSubmitting(false);
         return;
       }
@@ -517,7 +522,6 @@ export default function CreateOrderPage() {
         const offlineOrderNum = orderData.order_number || generateOfflineOrderNumber("POS");
         orderData.order_number = offlineOrderNum;
         await saveOfflineOrder("/api/orders", "POST", orderData);
-        alert(`Network Error! Order #${offlineOrderNum} saved offline and will sync automatically.`);
         
         if (shouldPrint) {
             const printableOrder = {
@@ -527,8 +531,14 @@ export default function CreateOrderPage() {
             };
             await handlePrintBill(printableOrder);
         }
-        
-        router.push("/admin/orders");
+
+        alert(`নেটওয়ার্ক ড্রপ হয়েছে! Order #${offlineOrderNum} অফলাইনে সেভ ও প্রিন্ট হয়েছে।`);
+        setCart([]);
+        setCustomerName("");
+        setCustomerPhone("");
+        setCustomerAddress("");
+        setNotes("");
+        setDiscount(0);
         setSubmitting(false);
         return;
       }

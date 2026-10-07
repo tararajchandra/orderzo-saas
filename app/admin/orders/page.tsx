@@ -199,12 +199,36 @@ export default function AdminOrdersPage() {
           // Full refresh
           prevOrderIdsRef.current = new Set(newOrders.map((o: any) => o.id));
           setOrders(newOrders);
+          try {
+            localStorage.setItem("cached_admin_orders", JSON.stringify(newOrders.slice(0, 100)));
+          } catch (e) {}
         }
 
         lastFetchTimeRef.current = fetchTime;
       }
     } catch (error) {
-      console.error("Error fetching orders:", error);
+      console.error("Error fetching orders, checking offline cache:", error);
+      try {
+        const cached = localStorage.getItem("cached_admin_orders");
+        let localList: any[] = cached ? JSON.parse(cached) : [];
+        const { getOfflineOrders } = await import("@/lib/offlineManager");
+        const offlineList = await getOfflineOrders();
+        const pendingOffline = offlineList
+          .filter((o) => o.body)
+          .map((o) => ({
+            ...o.body,
+            id: o.body.order_number || o.id,
+            order_number: o.body.order_number || o.id,
+            created_at: new Date(o.timestamp).toISOString(),
+            is_offline: true,
+          }));
+        if (pendingOffline.length > 0 || localList.length > 0) {
+          const map = new Map();
+          localList.forEach((item) => map.set(item.order_number || item.id, item));
+          pendingOffline.forEach((item) => map.set(item.order_number || item.id, item));
+          setOrders(Array.from(map.values()));
+        }
+      } catch (e) {}
     } finally {
       if (!isPolling) setLoading(false);
     }

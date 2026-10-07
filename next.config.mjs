@@ -19,6 +19,12 @@ const withPWA = withPWAInit({
   disable: process.env.NODE_ENV === "development",
   register: true,
   skipWaiting: true,
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: false,
+  fallbacks: {
+    document: "/offline.html",
+  },
 });
 
 export default withPWA(nextConfig);
