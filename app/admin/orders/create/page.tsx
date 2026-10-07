@@ -31,6 +31,7 @@ interface DeliveryLocation {
 
 import { ReceiptPrinter } from "@/lib/receipt-printer";
 import { formatDate } from "@/lib/utils";
+import { saveOfflineOrder, generateOfflineOrderNumber } from "@/lib/offlineManager";
 
 export default function CreateOrderPage() {
   const router = useRouter();
@@ -84,6 +85,29 @@ export default function CreateOrderPage() {
 
   useEffect(() => {
     const loadData = async () => {
+      // Offline fallback upfront
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        try {
+          const cachedMenu = localStorage.getItem("cached_menu_items");
+          if (cachedMenu) {
+            const parsed = JSON.parse(cachedMenu);
+            setMenuItems(parsed);
+            const cats = Array.from(
+              new Set(
+                parsed.map((i: MenuItem) => i.category_name).filter(Boolean),
+              ),
+            ) as string[];
+            setCategories(["all", ...cats]);
+          }
+          const cachedLocs = localStorage.getItem("cached_delivery_locations");
+          if (cachedLocs) {
+            setDeliveryLocations(JSON.parse(cachedLocs));
+          }
+        } catch (e) {}
+        setLoading(false);
+        return;
+      }
+
       try {
         // Fetch Settings
         await fetchSettings();
@@ -93,6 +117,9 @@ export default function CreateOrderPage() {
         const menuData = await menuRes.json();
         if (menuData.success) {
           setMenuItems(menuData.data);
+          try {
+            localStorage.setItem("cached_menu_items", JSON.stringify(menuData.data));
+          } catch (e) {}
           const cats = Array.from(
             new Set(
               menuData.data
@@ -108,9 +135,29 @@ export default function CreateOrderPage() {
         const locData = await locRes.json();
         if (locData.success) {
           setDeliveryLocations(locData.data);
+          try {
+            localStorage.setItem("cached_delivery_locations", JSON.stringify(locData.data));
+          } catch (e) {}
         }
       } catch (error) {
-        console.error("Error loading data", error);
+        console.error("Error loading data, reading cache:", error);
+        try {
+          const cachedMenu = localStorage.getItem("cached_menu_items");
+          if (cachedMenu) {
+            const parsed = JSON.parse(cachedMenu);
+            setMenuItems(parsed);
+            const cats = Array.from(
+              new Set(
+                parsed.map((i: MenuItem) => i.category_name).filter(Boolean),
+              ),
+            ) as string[];
+            setCategories(["all", ...cats]);
+          }
+          const cachedLocs = localStorage.getItem("cached_delivery_locations");
+          if (cachedLocs) {
+            setDeliveryLocations(JSON.parse(cachedLocs));
+          }
+        } catch (e) {}
       } finally {
         setLoading(false);
       }
@@ -484,11 +531,24 @@ export default function CreateOrderPage() {
       };
 
       if (!navigator.onLine) {
-        const { saveOfflineOrder, generateOfflineOrderNumber } = await import("@/lib/offlineManager");
         const offlineOrderNum = generateOfflineOrderNumber("POS");
         orderData.order_number = offlineOrderNum;
         await saveOfflineOrder("/api/orders", "POST", orderData);
         
+        // Cache order in cached_admin_orders for instant display when navigating back to orders
+        try {
+          const cached = localStorage.getItem("cached_admin_orders");
+          const list = cached ? JSON.parse(cached) : [];
+          list.unshift({
+            ...orderData,
+            id: offlineOrderNum,
+            order_number: offlineOrderNum,
+            created_at: new Date().toISOString(),
+            is_offline: true,
+          });
+          localStorage.setItem("cached_admin_orders", JSON.stringify(list.slice(0, 100)));
+        } catch (e) {}
+
         if (shouldPrint) {
             const printableOrder = {
               ...orderData,
@@ -518,11 +578,23 @@ export default function CreateOrderPage() {
         });
         data = await res.json();
       } catch (networkError) {
-        const { saveOfflineOrder, generateOfflineOrderNumber } = await import("@/lib/offlineManager");
         const offlineOrderNum = orderData.order_number || generateOfflineOrderNumber("POS");
         orderData.order_number = offlineOrderNum;
         await saveOfflineOrder("/api/orders", "POST", orderData);
         
+        try {
+          const cached = localStorage.getItem("cached_admin_orders");
+          const list = cached ? JSON.parse(cached) : [];
+          list.unshift({
+            ...orderData,
+            id: offlineOrderNum,
+            order_number: offlineOrderNum,
+            created_at: new Date().toISOString(),
+            is_offline: true,
+          });
+          localStorage.setItem("cached_admin_orders", JSON.stringify(list.slice(0, 100)));
+        } catch (e) {}
+
         if (shouldPrint) {
             const printableOrder = {
               ...orderData,
@@ -603,7 +675,13 @@ export default function CreateOrderPage() {
       >
         <h1>Create Order</h1>
         <button
-          onClick={() => router.push("/admin/orders")}
+          onClick={() => {
+            if (typeof window !== "undefined" && window.history.length > 1) {
+              window.history.back();
+            } else {
+              router.push("/admin/orders");
+            }
+          }}
           className="btn btn-ghost"
         >
           ← Back to Orders

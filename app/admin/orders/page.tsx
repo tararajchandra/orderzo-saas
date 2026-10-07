@@ -5,11 +5,25 @@ import { useRouter } from "next/navigation";
 
 import { ReceiptPrinter } from "@/lib/receipt-printer";
 import { formatDate, formatDateTime } from "@/lib/utils";
+import { getOfflineOrders, saveOfflineOrder, syncOfflineOrders } from "@/lib/offlineManager";
 
 export default function AdminOrdersPage() {
   const router = useRouter();
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<any[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("cached_admin_orders");
+        if (cached) return JSON.parse(cached);
+      } catch (e) {}
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window !== "undefined" && !navigator.onLine) {
+      return false;
+    }
+    return true;
+  });
   const [filter, setFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("today");
   const [printingOrderId, setPrintingOrderId] = useState<number | null>(null);
@@ -109,7 +123,6 @@ export default function AdminOrdersPage() {
     // Auto-sync offline orders when coming online
     const handleOnline = async () => {
       try {
-        const { syncOfflineOrders } = await import("@/lib/offlineManager");
         await syncOfflineOrders();
         fetchOrders();
       } catch (e) {
@@ -152,25 +165,53 @@ export default function AdminOrdersPage() {
   };
 
   const fetchOrders = async (isPolling = false) => {
+    // If device is offline, load from cache immediately with 0 delay
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      try {
+        const cached = localStorage.getItem("cached_admin_orders");
+        let localList: any[] = cached ? JSON.parse(cached) : [];
+        const offlineList = await getOfflineOrders();
+        const pendingOffline = offlineList
+          .filter((o) => o.body && o.method === "POST")
+          .map((o) => ({
+            ...o.body,
+            id: o.body.order_number || o.id,
+            order_number: o.body.order_number || o.id,
+            created_at: new Date(o.timestamp).toISOString(),
+            is_offline: true,
+          }));
+        const map = new Map();
+        localList.forEach((item) => map.set(item.order_number || item.id, item));
+        pendingOffline.forEach((item) => map.set(item.order_number || item.id, item));
+        setOrders(Array.from(map.values()));
+      } catch (e) {
+        console.error("Error reading offline orders:", e);
+      } finally {
+        if (!isPolling) setLoading(false);
+      }
+      return;
+    }
+
     try {
-      // For polling: only fetch orders created since last check using timestamp
-      // For initial load: fetch today's orders + recent 200 to show history
       let url = "/api/orders?include_items=true&date=today&limit=200";
 
       if (isPolling && lastFetchTimeRef.current) {
         url = `/api/orders?include_items=true&since=${encodeURIComponent(lastFetchTimeRef.current)}&limit=50`;
       }
 
-      // Update timestamp before fetch to avoid missing orders created during the request
       const fetchTime = new Date().toISOString();
 
-      const response = await fetch(url, { cache: "no-store" });
+      // 4-second timeout to prevent indefinite hanging when internet drops
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+      clearTimeout(timeoutId);
+
       const data = await response.json();
       if (data.success) {
         const newOrders = data.data;
 
         if (isPolling && lastFetchTimeRef.current) {
-          // Merge new orders into existing state
           if (newOrders.length > 0) {
             setOrders((prev) => {
               const existingIds = new Set(prev.map((o: any) => o.id));
@@ -178,7 +219,6 @@ export default function AdminOrdersPage() {
                 (o: any) => !existingIds.has(o.id),
               );
 
-              // Check for notification (non-salesman orders only)
               const freshOrder = brandNew.find((order: any) => {
                 return !salesmen.some((s) => s.id === order.user_id);
               });
@@ -207,14 +247,13 @@ export default function AdminOrdersPage() {
         lastFetchTimeRef.current = fetchTime;
       }
     } catch (error) {
-      console.error("Error fetching orders, checking offline cache:", error);
+      console.warn("Error fetching orders, checking offline cache:", error);
       try {
         const cached = localStorage.getItem("cached_admin_orders");
         let localList: any[] = cached ? JSON.parse(cached) : [];
-        const { getOfflineOrders } = await import("@/lib/offlineManager");
         const offlineList = await getOfflineOrders();
         const pendingOffline = offlineList
-          .filter((o) => o.body)
+          .filter((o) => o.body && o.method === "POST")
           .map((o) => ({
             ...o.body,
             id: o.body.order_number || o.id,
@@ -247,130 +286,212 @@ export default function AdminOrdersPage() {
   };
 
   const updateDeliveryBoy = async (orderId: number, deliveryBoyId: string) => {
+    const boyId = deliveryBoyId ? parseInt(deliveryBoyId) : null;
+    const boy = deliveryBoys.find((b) => b.id === boyId);
+
+    // Optimistically update local state & cache
+    setOrders((prev) => {
+      const next = prev.map((o) =>
+        o.id === orderId
+          ? { ...o, delivery_boy_id: boyId, delivery_boy_name: boy?.name }
+          : o,
+      );
+      try {
+        localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
+      } catch (e) {}
+      return next;
+    });
+
+    const payload = { delivery_boy_id: boyId };
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+      alert("Delivery Boy Assigned Updated (Offline)");
+      return;
+    }
+
     try {
       const response = await fetch(`/api/orders/${orderId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          delivery_boy_id: deliveryBoyId ? parseInt(deliveryBoyId) : null,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         fetchOrders();
         alert("Delivery Boy Assigned Updated");
       } else {
-        alert("Failed to update assignment");
+        await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+        alert("ডেলিভারি বয় অফলাইনে সংরক্ষিত হয়েছে।");
       }
     } catch (error) {
-      console.error("Error updating delivery boy:", error);
+      console.warn("Error updating delivery boy, saved offline:", error);
+      await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+      alert("নেটওয়ার্ক সমস্যার কারণে অফলাইনে সংরক্ষিত হয়েছে।");
     }
   };
 
   const updateOrderStatus = async (orderId: number, status: string) => {
+    // Optimistically update local state & cache
+    setOrders((prev) => {
+      const next = prev.map((o) => (o.id === orderId ? { ...o, order_status: status } : o));
+      try {
+        localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
+      } catch (e) {}
+      return next;
+    });
+
+    const payload = { order_status: status };
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+      alert(`Order status updated to: ${status} (Offline)`);
+      return;
+    }
+
     try {
-      console.log("Updating order status:", orderId, status);
       const response = await fetch(`/api/orders/${orderId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order_status: status }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
-      console.log("Update response:", data);
-
       if (data.success) {
         fetchOrders();
         alert(`Order status updated to: ${status}`);
       } else {
-        alert(`Failed to update order: ${data.error}`);
+        await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+        alert(`অফলাইনে স্ট্যাটাস সংরক্ষিত হয়েছে (${status})`);
       }
     } catch (error) {
-      console.error("Error updating order:", error);
-      alert(
-        "An error occurred while updating the order. Check console for details.",
-      );
+      console.warn("Status update network error, saved offline:", error);
+      await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+      alert(`নেটওয়ার্ক সমস্যার কারণে অফলাইনে সংরক্ষিত হয়েছে (${status})`);
     }
   };
 
   const updatePaymentStatus = async (orderId: number, status: string) => {
+    // Optimistically update local state & cache
+    setOrders((prev) => {
+      const next = prev.map((o) => (o.id === orderId ? { ...o, payment_status: status } : o));
+      try {
+        localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
+      } catch (e) {}
+      return next;
+    });
+
+    const payload = { payment_status: status };
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+      alert(`Payment status updated to: ${status} (Offline)`);
+      return;
+    }
+
     try {
-      console.log("Updating payment status:", orderId, status);
       const response = await fetch(`/api/orders/${orderId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payment_status: status }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
-      console.log("Update response:", data);
-
       if (data.success) {
         fetchOrders();
         alert(`Payment status updated to: ${status}`);
       } else {
-        alert(`Failed to update payment: ${data.error}`);
+        await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+        alert(`অফলাইনে পেমেন্ট স্ট্যাটাস সংরক্ষিত হয়েছে (${status})`);
       }
     } catch (error) {
-      console.error("Error updating payment:", error);
-      alert(
-        "An error occurred while updating payment. Check console for details.",
-      );
+      console.warn("Payment status network error, saved offline:", error);
+      await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+      alert(`নেটওয়ার্ক সমস্যার কারণে অফলাইনে সংরক্ষিত হয়েছে (${status})`);
     }
   };
 
   const handleSplitPaymentUpdate = async (orderId: number, splits: any) => {
+    const payload = { 
+      payment_method: "split",
+      split_cash: splits.cash || 0,
+      split_upi: splits.upi || 0,
+      split_card: splits.card || 0
+    };
+
+    // Optimistically update local state & cache
+    setOrders((prev) => {
+      const next = prev.map((o) => (o.id === orderId ? { ...o, ...payload } : o));
+      try {
+        localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
+      } catch (e) {}
+      return next;
+    });
+
+    setSplitPaymentModal(null);
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+      alert("Split payment updated successfully (Offline)");
+      return;
+    }
+
     try {
-      console.log("Updating split payment method:", orderId, splits);
       const response = await fetch(`/api/orders/${orderId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          payment_method: "split",
-          split_cash: splits.cash || 0,
-          split_upi: splits.upi || 0,
-          split_card: splits.card || 0
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
-      console.log("Update response:", data);
-
       if (data.success) {
         fetchOrders();
         alert("Split payment updated successfully");
       } else {
-        alert(`Failed to update split payment: ${data.error}`);
+        await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+        alert("স্প্লিট পেমেন্ট অফলাইনে সংরক্ষিত হয়েছে।");
       }
     } catch (error) {
-      console.error("Error updating split payment:", error);
-      alert("An error occurred while updating split payment.");
+      console.warn("Error updating split payment, saved offline:", error);
+      await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+      alert("নেটওয়ার্ক সমস্যার কারণে অফলাইনে সংরক্ষিত হয়েছে।");
     }
   };
 
   const updatePaymentMethod = async (orderId: number, method: string) => {
+    const payload = { payment_method: method };
+
+    // Optimistically update local state & cache
+    setOrders((prev) => {
+      const next = prev.map((o) => (o.id === orderId ? { ...o, payment_method: method } : o));
+      try {
+        localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
+      } catch (e) {}
+      return next;
+    });
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+      alert(`Payment method updated to: ${method} (Offline)`);
+      return;
+    }
+
     try {
-      console.log("Updating payment method:", orderId, method);
       const response = await fetch(`/api/orders/${orderId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payment_method: method }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
-      console.log("Update response:", data);
-
       if (data.success) {
         fetchOrders();
         alert(`Payment method updated to: ${method}`);
       } else {
-        alert(`Failed to update payment method: ${data.error}`);
+        await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+        alert(`পেমেন্ট মেথড অফলাইনে সংরক্ষিত হয়েছে (${method})`);
       }
     } catch (error) {
-      console.error("Error updating payment method:", error);
-      alert(
-        "An error occurred while updating payment method. Check console for details.",
-      );
+      console.warn("Error updating payment method, saved offline:", error);
+      await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+      alert(`নেটওয়ার্ক সমস্যার কারণে অফলাইনে সংরক্ষিত হয়েছে (${method})`);
     }
   };
 
@@ -393,30 +514,56 @@ export default function AdminOrdersPage() {
 
     const currentDeliveryCharge = parseFloat(editingOrderItems.delivery_charge || 0);
     const currentDiscount = parseFloat(editingOrderItems.discount || 0);
-    
-    const newTotalAmount = newSubtotal + newTax + currentDeliveryCharge - currentDiscount;
+    const newTotalAmount = Math.max(0, newSubtotal + newTax + currentDeliveryCharge - currentDiscount);
+
+    const orderIdToUpdate = editingOrderItems.id;
+    const payload = {
+      items: editingOrderItems.items,
+      subtotal: newSubtotal,
+      tax: newTax,
+      total_amount: newTotalAmount,
+    };
+
+    // 1. Optimistically update local orders state & cache
+    setOrders((prev) => {
+      const next = prev.map((o) =>
+        o.id === orderIdToUpdate
+          ? { ...o, items: editingOrderItems.items, subtotal: newSubtotal, tax: newTax, total_amount: newTotalAmount }
+          : o,
+      );
+      try {
+        localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
+      } catch (e) {}
+      return next;
+    });
+
+    setEditingOrderItems(null);
+
+    // 2. If offline, save PUT request to offline manager
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await saveOfflineOrder(`/api/orders/${orderIdToUpdate}`, "PUT", payload);
+      alert("অর্ডার আইটেম অফলাইনে সফলভাবে আপডেট হয়েছে! ইন্টারনেট আসলে অটো-সিঙ্ক হবে।");
+      return;
+    }
 
     try {
-      const response = await fetch(`/api/orders/${editingOrderItems.id}`, {
+      const response = await fetch(`/api/orders/${orderIdToUpdate}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: editingOrderItems.items,
-          subtotal: newSubtotal,
-          tax: newTax,
-          total_amount: newTotalAmount,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        setEditingOrderItems(null);
+        alert("Items updated successfully!");
         fetchOrders();
       } else {
-        alert("Failed to update items");
+        await saveOfflineOrder(`/api/orders/${orderIdToUpdate}`, "PUT", payload);
+        alert("সার্ভার রেসপন্স করেনি, অফলাইনে সংরক্ষিত হয়েছে।");
       }
     } catch (error) {
-      console.error("Error updating items:", error);
-      alert("Error updating items");
+      console.warn("Error updating items on server, saved offline:", error);
+      await saveOfflineOrder(`/api/orders/${orderIdToUpdate}`, "PUT", payload);
+      alert("নেটওয়ার্ক সমস্যার কারণে আইটেম অফলাইনে সংরক্ষিত হয়েছে। ইন্টারনেট আসলে অটো-সিঙ্ক হবে।");
     }
   };
 
@@ -425,30 +572,41 @@ export default function AdminOrdersPage() {
       const order = orders.find((o) => o.id === orderId);
       if (!order) return;
 
-      // Recalculate total with new discount
       const subtotal = parseFloat(order.subtotal || order.total_amount || 0);
       const tax = parseFloat(order.tax || 0);
       const deliveryCharge = parseFloat(order.delivery_charge || 0);
       const newTotal = Math.max(0, subtotal + tax + deliveryCharge - discount);
 
-      // Optimistically update local state so the UI stays stable
-      setOrders((prev) =>
-        prev.map((o) =>
+      // Optimistically update local state & cache
+      setOrders((prev) => {
+        const next = prev.map((o) =>
           o.id === orderId
             ? { ...o, discount: discount, total_amount: newTotal }
             : o,
-        ),
-      );
+        );
+        try {
+          localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
+        } catch (e) {}
+        return next;
+      });
+
+      const payload = {
+        discount: discount,
+        subtotal: subtotal,
+        tax: tax,
+        total_amount: newTotal,
+      };
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+        alert("ডিসকাউন্ট অফলাইনে সফলভাবে আপডেট হয়েছে! ইন্টারনেট আসলে অটো-সিঙ্ক হবে।");
+        return;
+      }
 
       const response = await fetch(`/api/orders/${orderId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          discount: discount,
-          subtotal: subtotal,
-          tax: tax,
-          total_amount: newTotal,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -456,12 +614,15 @@ export default function AdminOrdersPage() {
       if (data.success) {
         alert("Discount Updated Successfully");
       } else {
-        alert(`Failed to update discount: ${data.error}`);
-        fetchOrders(false);
+        await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+        alert("ডিসকাউন্ট অফলাইনে সংরক্ষিত হয়েছে।");
       }
     } catch (error) {
-      console.error("Error updating discount:", error);
-      alert("An error occurred while updating discount.");
+      console.warn("Error updating discount on server, saved offline:", error);
+      const order = orders.find((o) => o.id === orderId);
+      const payload = { discount, total_amount: order?.total_amount };
+      await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+      alert("নেটওয়ার্ক সমস্যার কারণে ডিসকাউন্ট অফলাইনে সংরক্ষিত হয়েছে।");
     }
   };
 
@@ -830,11 +991,23 @@ export default function AdminOrdersPage() {
 
     let matchesDate = true;
     if (dateFilter === "today") {
-      const today = new Date().toDateString();
-      const orderDate = o.created_at ? new Date(o.created_at).toDateString() : today;
-      // An order from today matches, OR if the order is still pending/active from yesterday's dinner service
+      const orderTime = o.created_at ? new Date(o.created_at).getTime() : Date.now();
+      const isWithinLast24Hours = (Date.now() - orderTime) < 24 * 60 * 60 * 1000;
+
+      const getShiftDate = (d: Date | string) => {
+        const dt = new Date(d);
+        // Shifts reset at 5:00 AM; before 5 AM belongs to previous evening's dinner service
+        if (dt.getHours() < 5) {
+          dt.setDate(dt.getDate() - 1);
+        }
+        return dt.toDateString();
+      };
+
+      const currentShift = getShiftDate(new Date());
+      const orderShift = getShiftDate(o.created_at || new Date());
       const isPendingOrActive = o.payment_status === "pending" || (o.order_status !== "delivered" && o.order_status !== "cancelled");
-      matchesDate = orderDate === today || isPendingOrActive;
+
+      matchesDate = orderShift === currentShift || isWithinLast24Hours || isPendingOrActive;
     }
 
     return matchesStatus && matchesDate;

@@ -73,6 +73,7 @@ export async function GET(request: Request) {
         if (dateParam === 'today') {
             queryText += ` AND (
                 (o.created_at >= CURRENT_DATE AND o.created_at < (CURRENT_DATE + INTERVAL '1 day'))
+                OR (o.created_at >= NOW() - INTERVAL '24 hours')
                 OR o.payment_status = 'pending'
                 OR (o.order_status NOT IN ('delivered', 'cancelled'))
             )`;

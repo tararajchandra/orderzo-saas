@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDateTime, getTableList, getGroupedTableList } from "@/lib/utils";
 import { ReceiptPrinter } from "@/lib/receipt-printer";
+import {
+  getOfflineOrders,
+  saveOfflineOrder,
+  syncOfflineOrders,
+  generateOfflineOrderNumber,
+} from "@/lib/offlineManager";
 
 interface MenuItem {
   id: number;
@@ -64,8 +70,24 @@ export default function SalesmanDashboard() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pendingOrders, setPendingOrders] = useState<any[]>([]);
-  const [activeTables, setActiveTables] = useState<any[]>([]);
+  const [pendingOrders, setPendingOrders] = useState<any[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("cached_salesman_pending");
+        if (cached) return JSON.parse(cached);
+      } catch (e) {}
+    }
+    return [];
+  });
+  const [activeTables, setActiveTables] = useState<any[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("cached_salesman_tables");
+        if (cached) return JSON.parse(cached);
+      } catch (e) {}
+    }
+    return [];
+  });
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [settlingTable, setSettlingTable] = useState<string | null>(null);
@@ -75,6 +97,7 @@ export default function SalesmanDashboard() {
     "create",
   );
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
+  const [editingOrder, setEditingOrder] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -121,7 +144,6 @@ export default function SalesmanDashboard() {
     // Auto-sync offline orders when coming online
     const handleOnline = async () => {
       try {
-        const { syncOfflineOrders } = await import("@/lib/offlineManager");
         await syncOfflineOrders();
         fetchActiveTables();
         fetchPendingOrders();
@@ -188,16 +210,11 @@ export default function SalesmanDashboard() {
 
   const fetchPendingOrders = async () => {
     if (!user) return;
-    try {
-      const res = await fetch(`/api/orders?userId=${user.id}&status=pending`);
-      const data = await res.json();
-      if (data.success) {
-        setPendingOrders(data.data);
-      }
-    } catch (error) {
-      console.error("Error fetching pending orders:", error);
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
       try {
-        const { getOfflineOrders } = await import("@/lib/offlineManager");
+        const cached = localStorage.getItem("cached_salesman_pending");
+        let localList: any[] = cached ? JSON.parse(cached) : [];
         const offlineList = await getOfflineOrders();
         const offlineMyOrders = offlineList
           .filter((o) => o.body && (!o.body.user_id || o.body.user_id === user.id))
@@ -208,35 +225,34 @@ export default function SalesmanDashboard() {
             created_at: new Date(o.timestamp).toISOString(),
             is_offline: true,
           }));
-        if (offlineMyOrders.length > 0) {
-          setPendingOrders(offlineMyOrders);
-        }
+        const map = new Map();
+        localList.forEach((item) => map.set(item.order_number || item.id, item));
+        offlineMyOrders.forEach((item) => map.set(item.order_number || item.id, item));
+        setPendingOrders(Array.from(map.values()));
       } catch (e) {}
+      return;
     }
-  };
 
-  const fetchActiveTables = async () => {
-    if (!user) return;
     try {
-      // Fetch all dine-in orders that are pending payment
-      const res = await fetch(
-        `/api/orders?type=dine_in&payment_status=pending&limit=200&include_items=true`,
-      );
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(`/api/orders?userId=${user.id}&status=pending`, { signal: controller.signal });
+      clearTimeout(timeoutId);
       const data = await res.json();
       if (data.success) {
-        // Filter out cancelled just in case
-        const dineInOrders = data.data.filter(
-          (o: any) => o.table_number && o.order_status !== "cancelled",
-        );
-        setActiveTables(dineInOrders);
+        setPendingOrders(data.data);
+        try {
+          localStorage.setItem("cached_salesman_pending", JSON.stringify(data.data));
+        } catch (e) {}
       }
     } catch (error) {
-      console.error("Error fetching active tables, checking offline orders:", error);
+      console.warn("Error fetching pending orders, reading offline cache:", error);
       try {
-        const { getOfflineOrders } = await import("@/lib/offlineManager");
+        const cached = localStorage.getItem("cached_salesman_pending");
+        let localList: any[] = cached ? JSON.parse(cached) : [];
         const offlineList = await getOfflineOrders();
-        const offlineDineIn = offlineList
-          .filter((o) => o.body && o.body.order_type === "dine_in" && o.body.table_number)
+        const offlineMyOrders = offlineList
+          .filter((o) => o.body && (!o.body.user_id || o.body.user_id === user.id))
           .map((o) => ({
             ...o.body,
             id: o.body.order_number || o.id,
@@ -244,15 +260,83 @@ export default function SalesmanDashboard() {
             created_at: new Date(o.timestamp).toISOString(),
             is_offline: true,
           }));
-        if (offlineDineIn.length > 0) {
-          setActiveTables(offlineDineIn);
-        }
+        const map = new Map();
+        localList.forEach((item) => map.set(item.order_number || item.id, item));
+        offlineMyOrders.forEach((item) => map.set(item.order_number || item.id, item));
+        setPendingOrders(Array.from(map.values()));
+      } catch (e) {}
+    }
+  };
+
+  const fetchActiveTables = async () => {
+    if (!user) return;
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      try {
+        const cached = localStorage.getItem("cached_salesman_tables");
+        let localList: any[] = cached ? JSON.parse(cached) : [];
+        const offlineList = await getOfflineOrders();
+        const offlineDineIn = offlineList
+          .filter((o) => o.body && o.body.order_type === "dine_in" && o.body.table_number && o.body.order_status !== "cancelled")
+          .map((o) => ({
+            ...o.body,
+            id: o.body.order_number || o.id,
+            order_number: o.body.order_number || o.id,
+            created_at: new Date(o.timestamp).toISOString(),
+            is_offline: true,
+          }));
+        const map = new Map();
+        localList.forEach((item) => map.set(item.order_number || item.id, item));
+        offlineDineIn.forEach((item) => map.set(item.order_number || item.id, item));
+        setActiveTables(Array.from(map.values()));
+      } catch (e) {}
+      return;
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(
+        `/api/orders?type=dine_in&payment_status=pending&limit=200&include_items=true`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+      const data = await res.json();
+      if (data.success) {
+        const dineInOrders = data.data.filter(
+          (o: any) => o.table_number && o.order_status !== "cancelled",
+        );
+        setActiveTables(dineInOrders);
+        try {
+          localStorage.setItem("cached_salesman_tables", JSON.stringify(dineInOrders));
+        } catch (e) {}
+      }
+    } catch (error) {
+      console.warn("Error fetching active tables, checking offline orders:", error);
+      try {
+        const cached = localStorage.getItem("cached_salesman_tables");
+        let localList: any[] = cached ? JSON.parse(cached) : [];
+        const offlineList = await getOfflineOrders();
+        const offlineDineIn = offlineList
+          .filter((o) => o.body && o.body.order_type === "dine_in" && o.body.table_number && o.body.order_status !== "cancelled")
+          .map((o) => ({
+            ...o.body,
+            id: o.body.order_number || o.id,
+            order_number: o.body.order_number || o.id,
+            created_at: new Date(o.timestamp).toISOString(),
+            is_offline: true,
+          }));
+        const map = new Map();
+        localList.forEach((item) => map.set(item.order_number || item.id, item));
+        offlineDineIn.forEach((item) => map.set(item.order_number || item.id, item));
+        setActiveTables(Array.from(map.values()));
       } catch (e) {}
     }
   };
 
   const handleEditOrder = (order: any) => {
     setEditingOrderId(order.id);
+    setEditingOrder(order);
     setCustomerName(order.customer_name || "");
     setCustomerPhone(order.customer_phone || "");
     setOrderType(order.order_type || "dine_in");
@@ -277,6 +361,7 @@ export default function SalesmanDashboard() {
 
   const resetForm = () => {
     setEditingOrderId(null);
+    setEditingOrder(null);
     setCart([]);
     setTableNumber("");
     setCustomerName("");
@@ -503,20 +588,42 @@ export default function SalesmanDashboard() {
       const finalItems = Array.from(mergedItemsMap.values());
       const finalTotal = totalSubtotal + totalTax - totalDiscount;
 
+      const masterPayload = {
+        payment_status: "paid",
+        payment_method: paymentMethod,
+        order_status: "delivered",
+        items: finalItems,
+        subtotal: totalSubtotal,
+        tax: totalTax,
+        discount: totalDiscount,
+        total_amount: finalTotal,
+      };
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        await saveOfflineOrder(`/api/orders/${masterOrder.id}`, "PUT", masterPayload);
+        for (const o of otherOrders) {
+          await saveOfflineOrder(`/api/orders/${o.id}`, "DELETE", {});
+        }
+        const settledIds = new Set([masterOrder.id, ...otherOrders.map((o: any) => o.id)]);
+        setActiveTables((prev) => {
+          const next = prev.filter((o: any) => !settledIds.has(o.id));
+          try { localStorage.setItem("cached_salesman_tables", JSON.stringify(next)); } catch (e) {}
+          return next;
+        });
+        setPendingOrders((prev) => {
+          const next = prev.filter((o: any) => !settledIds.has(o.id));
+          try { localStorage.setItem("cached_salesman_pending", JSON.stringify(next)); } catch (e) {}
+          return next;
+        });
+        alert(`Table ${tableNo} settled offline! Will sync when back online.`);
+        return;
+      }
+
       // Update Master Order with merged items and totals
       await fetch(`/api/orders/${masterOrder.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          payment_status: "paid",
-          payment_method: paymentMethod,
-          order_status: "delivered",
-          items: finalItems,
-          subtotal: totalSubtotal,
-          tax: totalTax,
-          discount: totalDiscount,
-          total_amount: finalTotal,
-        }),
+        body: JSON.stringify(masterPayload),
       });
 
       // Delete the duplicate separated orders since they are now merged
@@ -635,38 +742,83 @@ export default function SalesmanDashboard() {
       };
 
       if (!navigator.onLine) {
-        // Import dynamically to avoid SSR issues
-        const { saveOfflineOrder, generateOfflineOrderNumber } = await import("@/lib/offlineManager");
-        const url = editingOrderId ? `/api/orders/${editingOrderId}` : "/api/orders";
-        const method = editingOrderId ? "PUT" : "POST";
-        
-        let offlineOrderNum = null;
-        if (!editingOrderId) {
-          offlineOrderNum = generateOfflineOrderNumber(salesmanPrefix);
+        if (editingOrderId) {
+          const offlineOrderNum = editingOrder?.order_number || String(editingOrderId);
           orderData.order_number = offlineOrderNum;
-        }
+          orderData.id = editingOrderId;
+          await saveOfflineOrder(`/api/orders/${editingOrderId}`, "PUT", orderData);
 
-        await saveOfflineOrder(url, method, orderData);
-        
-        if (offlineOrderNum) {
+          // Update activeTables and cache
+          setActiveTables((prev) => {
+            const next = prev.map((t: any) =>
+              t.id === editingOrderId || t.order_number === offlineOrderNum
+                ? { ...t, ...orderData, id: editingOrderId, order_number: offlineOrderNum, is_offline: true }
+                : t,
+            );
+            try { localStorage.setItem("cached_salesman_tables", JSON.stringify(next)); } catch (e) {}
+            return next;
+          });
+
+          // Update pendingOrders and cache
+          setPendingOrders((prev) => {
+            const next = prev.map((p: any) =>
+              p.id === editingOrderId || p.order_number === offlineOrderNum
+                ? { ...p, ...orderData, id: editingOrderId, order_number: offlineOrderNum, is_offline: true }
+                : p,
+            );
+            try { localStorage.setItem("cached_salesman_pending", JSON.stringify(next)); } catch (e) {}
+            return next;
+          });
+
           const printableOrder = {
             ...orderData,
             order_number: offlineOrderNum,
-            id: offlineOrderNum,
+            id: editingOrderId,
           };
           try {
             await handlePrintKOT(printableOrder);
           } catch (printErr) {
             console.error("Offline KOT print failed:", printErr);
           }
-        }
 
-        alert(`No internet! Order #${orderData.order_number || ''} saved offline and KOT printed. Will sync automatically when back online.`);
-        resetForm();
-        fetchActiveTables();
-        fetchPendingOrders();
-        setSubmitting(false);
-        return;
+          alert(`অর্ডার #${offlineOrderNum} অফলাইনে সফলভাবে আপডেট হয়েছে এবং KOT প্রিন্ট হয়েছে। ইন্টারনেট আসলে অটো-সিঙ্ক হবে।`);
+          resetForm();
+          setSubmitting(false);
+          return;
+        } else {
+          const offlineOrderNum = generateOfflineOrderNumber(salesmanPrefix);
+          orderData.order_number = offlineOrderNum;
+          orderData.id = offlineOrderNum;
+          orderData.created_at = new Date().toISOString();
+          orderData.is_offline = true;
+
+          await saveOfflineOrder("/api/orders", "POST", orderData);
+
+          if (orderData.order_type === "dine_in" && orderData.table_number) {
+            setActiveTables((prev) => {
+              const next = [orderData, ...prev];
+              try { localStorage.setItem("cached_salesman_tables", JSON.stringify(next)); } catch (e) {}
+              return next;
+            });
+          }
+
+          setPendingOrders((prev) => {
+            const next = [orderData, ...prev];
+            try { localStorage.setItem("cached_salesman_pending", JSON.stringify(next)); } catch (e) {}
+            return next;
+          });
+
+          try {
+            await handlePrintKOT(orderData);
+          } catch (printErr) {
+            console.error("Offline KOT print failed:", printErr);
+          }
+
+          alert(`নতুন অর্ডার #${offlineOrderNum} অফলাইনে সফলভাবে সেভ হয়েছে এবং KOT প্রিন্ট হয়েছে। ইন্টারনেট আসলে অটো-সিঙ্ক হবে।`);
+          resetForm();
+          setSubmitting(false);
+          return;
+        }
       }
 
       let res;
@@ -685,38 +837,81 @@ export default function SalesmanDashboard() {
           });
         }
       } catch (networkError: any) {
-        // Fallback if fetch fails due to network (e.g. disconnected mid-request)
-        const { saveOfflineOrder, generateOfflineOrderNumber } = await import("@/lib/offlineManager");
-        const url = editingOrderId ? `/api/orders/${editingOrderId}` : "/api/orders";
-        const method = editingOrderId ? "PUT" : "POST";
-
-        let offlineOrderNum = null;
-        if (!editingOrderId && !orderData.order_number) {
-          offlineOrderNum = generateOfflineOrderNumber(salesmanPrefix);
+        if (editingOrderId) {
+          const offlineOrderNum = editingOrder?.order_number || String(editingOrderId);
           orderData.order_number = offlineOrderNum;
-        }
+          orderData.id = editingOrderId;
+          await saveOfflineOrder(`/api/orders/${editingOrderId}`, "PUT", orderData);
 
-        await saveOfflineOrder(url, method, orderData);
-        
-        if (offlineOrderNum) {
+          setActiveTables((prev) => {
+            const next = prev.map((t: any) =>
+              t.id === editingOrderId || t.order_number === offlineOrderNum
+                ? { ...t, ...orderData, id: editingOrderId, order_number: offlineOrderNum, is_offline: true }
+                : t,
+            );
+            try { localStorage.setItem("cached_salesman_tables", JSON.stringify(next)); } catch (e) {}
+            return next;
+          });
+
+          setPendingOrders((prev) => {
+            const next = prev.map((p: any) =>
+              p.id === editingOrderId || p.order_number === offlineOrderNum
+                ? { ...p, ...orderData, id: editingOrderId, order_number: offlineOrderNum, is_offline: true }
+                : p,
+            );
+            try { localStorage.setItem("cached_salesman_pending", JSON.stringify(next)); } catch (e) {}
+            return next;
+          });
+
           const printableOrder = {
             ...orderData,
             order_number: offlineOrderNum,
-            id: offlineOrderNum,
+            id: editingOrderId,
           };
           try {
             await handlePrintKOT(printableOrder);
           } catch (printErr) {
             console.error("Offline KOT print failed:", printErr);
           }
-        }
 
-        alert(`Network Error! Order #${orderData.order_number || ''} saved offline and will sync automatically.`);
-        resetForm();
-        fetchActiveTables();
-        fetchPendingOrders();
-        setSubmitting(false);
-        return;
+          alert(`নেটওয়ার্ক ড্রপ হয়েছে! অর্ডার #${offlineOrderNum} অফলাইনে আপডেট হয়েছে এবং KOT প্রিন্ট হয়েছে।`);
+          resetForm();
+          setSubmitting(false);
+          return;
+        } else {
+          const offlineOrderNum = orderData.order_number || generateOfflineOrderNumber(salesmanPrefix);
+          orderData.order_number = offlineOrderNum;
+          orderData.id = offlineOrderNum;
+          orderData.created_at = new Date().toISOString();
+          orderData.is_offline = true;
+
+          await saveOfflineOrder("/api/orders", "POST", orderData);
+
+          if (orderData.order_type === "dine_in" && orderData.table_number) {
+            setActiveTables((prev) => {
+              const next = [orderData, ...prev];
+              try { localStorage.setItem("cached_salesman_tables", JSON.stringify(next)); } catch (e) {}
+              return next;
+            });
+          }
+
+          setPendingOrders((prev) => {
+            const next = [orderData, ...prev];
+            try { localStorage.setItem("cached_salesman_pending", JSON.stringify(next)); } catch (e) {}
+            return next;
+          });
+
+          try {
+            await handlePrintKOT(orderData);
+          } catch (printErr) {
+            console.error("Offline KOT print failed:", printErr);
+          }
+
+          alert(`নেটওয়ার্ক ড্রপ হয়েছে! অর্ডার #${offlineOrderNum} অফলাইনে সেভ ও প্রিন্ট হয়েছে।`);
+          resetForm();
+          setSubmitting(false);
+          return;
+        }
       }
 
       const data = await res.json();
