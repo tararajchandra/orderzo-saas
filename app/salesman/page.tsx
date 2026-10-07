@@ -565,21 +565,45 @@ export default function SalesmanDashboard() {
         order_status: status,
       };
 
+      if (!navigator.onLine) {
+        // Import dynamically to avoid SSR issues
+        const { saveOfflineOrder } = await import("@/lib/offlineManager");
+        const url = editingOrderId ? `/api/orders/${editingOrderId}` : "/api/orders";
+        const method = editingOrderId ? "PUT" : "POST";
+        await saveOfflineOrder(url, method, orderData);
+        
+        alert("No internet! Order saved offline and will sync automatically when back online.");
+        resetForm();
+        setSubmitting(false);
+        return;
+      }
+
       let res;
-      if (editingOrderId) {
-        // Update existing order
-        res = await fetch(`/api/orders/${editingOrderId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(orderData),
-        });
-      } else {
-        // Create new order
-        res = await fetch("/api/orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(orderData),
-        });
+      try {
+        if (editingOrderId) {
+          res = await fetch(`/api/orders/${editingOrderId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(orderData),
+          });
+        } else {
+          res = await fetch("/api/orders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(orderData),
+          });
+        }
+      } catch (networkError: any) {
+        // Fallback if fetch fails due to network (e.g. disconnected mid-request)
+        const { saveOfflineOrder } = await import("@/lib/offlineManager");
+        const url = editingOrderId ? `/api/orders/${editingOrderId}` : "/api/orders";
+        const method = editingOrderId ? "PUT" : "POST";
+        await saveOfflineOrder(url, method, orderData);
+        
+        alert("Network Error! Order saved offline and will sync automatically.");
+        resetForm();
+        setSubmitting(false);
+        return;
       }
 
       const data = await res.json();

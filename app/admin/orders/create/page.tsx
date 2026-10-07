@@ -482,12 +482,49 @@ export default function CreateOrderPage() {
         order_status: status,
       };
 
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(orderData),
-      });
-      const data = await res.json();
+      if (!navigator.onLine) {
+        const { saveOfflineOrder } = await import("@/lib/offlineManager");
+        await saveOfflineOrder("/api/orders", "POST", orderData);
+        alert("No internet! Order saved offline and will sync automatically.");
+        
+        if (shouldPrint) {
+            const printableOrder = {
+              ...orderData,
+              id: "OFFLINE", // Temporary ID
+            };
+            await handlePrintBill(printableOrder);
+        }
+        
+        router.push("/admin/orders");
+        setSubmitting(false);
+        return;
+      }
+
+      let res, data;
+      try {
+        res = await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(orderData),
+        });
+        data = await res.json();
+      } catch (networkError) {
+        const { saveOfflineOrder } = await import("@/lib/offlineManager");
+        await saveOfflineOrder("/api/orders", "POST", orderData);
+        alert("Network Error! Order saved offline and will sync automatically.");
+        
+        if (shouldPrint) {
+            const printableOrder = {
+              ...orderData,
+              id: "OFFLINE", 
+            };
+            await handlePrintBill(printableOrder);
+        }
+        
+        router.push("/admin/orders");
+        setSubmitting(false);
+        return;
+      }
 
       if (data.success) {
         if (shouldPrint) {

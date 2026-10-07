@@ -7,11 +7,22 @@ import { FinancialYearProvider } from "@/contexts/FinancialYearContext";
 import Navbar from "@/components/Navbar";
 import CommandPalette from "@/components/CommandPalette";
 import Footer from "@/components/Footer";
+import OfflineIndicator from "@/components/OfflineIndicator";
 
 export const metadata: Metadata = {
   title: "OrderZo - Order Delicious Food Online",
   description:
     "Experience the finest dining from the comfort of your home. Order from our extensive menu of authentic dishes.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "OrderZo POS",
+  },
+};
+
+export const viewport = {
+  themeColor: "#FF5722",
 };
 
 export default function RootLayout({
@@ -28,6 +39,7 @@ export default function RootLayout({
               <FinancialYearProvider>
                 <Navbar />
                 <CommandPalette />
+                <OfflineIndicator />
                 <div style={{ minHeight: "calc(100vh - 200px)" }}>
                   {children}
                 </div>
