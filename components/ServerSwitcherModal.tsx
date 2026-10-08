@@ -36,6 +36,8 @@ export default function ServerSwitcherModal({
           setSelectedPreset("localhost");
         } else if (active.includes("demo")) {
           setSelectedPreset("demo");
+        } else if (active.includes("app.orderzo.in")) {
+          setSelectedPreset("live");
         } else {
           setSelectedPreset("custom");
         }
@@ -48,10 +50,12 @@ export default function ServerSwitcherModal({
   const handlePresetSelect = (preset: string) => {
     setSelectedPreset(preset);
     setTestStatus({ tested: false });
-    if (preset === "localhost") {
-      setCustomUrl("http://localhost:3000");
+    if (preset === "live") {
+      setCustomUrl("https://app.orderzo.in");
     } else if (preset === "demo") {
       setCustomUrl("https://demo.orderzo.in");
+    } else if (preset === "localhost") {
+      setCustomUrl("http://localhost:3000");
     }
   };
 
@@ -67,37 +71,69 @@ export default function ServerSwitcherModal({
     const startTime = Date.now();
 
     try {
-      // Test heartbeat or settings endpoint
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      // 1. First try reading /api/settings directly
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(`${urlToTest}/api/settings`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        clearTimeout(timeoutId);
+        const latency = Date.now() - startTime;
 
-      const res = await fetch(`${urlToTest}/api/pos/heartbeat`, {
-        signal: controller.signal,
+        if (res.ok) {
+          try {
+            const data = await res.json();
+            const rName = data?.data?.restaurantName;
+            setTestStatus({
+              tested: true,
+              success: true,
+              latencyMs: latency,
+              message: rName
+                ? `Connection successful! (${rName} • ${latency}ms)`
+                : `Connection successful! (${latency}ms latency)`,
+            });
+            return;
+          } catch {
+            setTestStatus({
+              tested: true,
+              success: true,
+              latencyMs: latency,
+              message: `Connection successful! (${latency}ms latency)`,
+            });
+            return;
+          }
+        }
+      } catch {
+        // Fallback to cross-origin ping if /api/settings is blocked by browser CORS
+      }
+
+      // 2. Cross-origin reachability test with mode: 'no-cors'
+      const noCorsCtrl = new AbortController();
+      const noCorsTimeoutId = setTimeout(() => noCorsCtrl.abort(), 8000);
+      await fetch(`${urlToTest}/`, {
+        mode: "no-cors",
+        signal: noCorsCtrl.signal,
         cache: "no-store",
       });
-      clearTimeout(timeoutId);
+      clearTimeout(noCorsTimeoutId);
       const latency = Date.now() - startTime;
 
-      if (res.ok) {
-        setTestStatus({
-          tested: true,
-          success: true,
-          latencyMs: latency,
-          message: `Connection successful! (${latency}ms latency)`,
-        });
-      } else {
-        setTestStatus({
-          tested: true,
-          success: false,
-          latencyMs: latency,
-          message: `Server responded with HTTP ${res.status}.`,
-        });
-      }
+      setTestStatus({
+        tested: true,
+        success: true,
+        latencyMs: latency,
+        message: `Server is online and reachable! (${latency}ms latency)`,
+      });
     } catch (err: any) {
       setTestStatus({
         tested: true,
         success: false,
-        message: err.name === "AbortError" ? "Connection timed out." : "Cannot reach server. Check URL or internet.",
+        message:
+          err.name === "AbortError"
+            ? "Connection timed out (server took >8s to respond)."
+            : "Cannot reach server. Check URL, internet, or domain name.",
       });
     } finally {
       setTesting(false);
@@ -264,12 +300,31 @@ export default function ServerSwitcherModal({
           <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem" }}>
             Select Environment:
           </label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem" }}>
+            <button
+              type="button"
+              onClick={() => handlePresetSelect("live")}
+              style={{
+                padding: "0.75rem 0.5rem",
+                borderRadius: "10px",
+                border: selectedPreset === "live" ? "2px solid #10b981" : "1px solid rgba(255,255,255,0.1)",
+                background: selectedPreset === "live" ? "rgba(16, 185, 129, 0.2)" : "rgba(255,255,255,0.03)",
+                color: selectedPreset === "live" ? "#34d399" : "#fff",
+                cursor: "pointer",
+                textAlign: "left",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+              }}
+            >
+              🟢 Live Cloud App
+              <div style={{ fontSize: "0.7rem", opacity: 0.75, fontWeight: 400 }}>app.orderzo.in</div>
+            </button>
+
             <button
               type="button"
               onClick={() => handlePresetSelect("demo")}
               style={{
-                padding: "0.75rem",
+                padding: "0.75rem 0.5rem",
                 borderRadius: "10px",
                 border: selectedPreset === "demo" ? "2px solid #fbbf24" : "1px solid rgba(255,255,255,0.1)",
                 background: selectedPreset === "demo" ? "rgba(251, 191, 36, 0.15)" : "rgba(255,255,255,0.03)",
@@ -281,14 +336,14 @@ export default function ServerSwitcherModal({
               }}
             >
               🟡 Demo Server
-              <div style={{ fontSize: "0.7rem", opacity: 0.75, fontWeight: 400 }}>Test / Demo Database</div>
+              <div style={{ fontSize: "0.7rem", opacity: 0.75, fontWeight: 400 }}>demo.orderzo.in</div>
             </button>
 
             <button
               type="button"
               onClick={() => handlePresetSelect("localhost")}
               style={{
-                padding: "0.75rem",
+                padding: "0.75rem 0.5rem",
                 borderRadius: "10px",
                 border: selectedPreset === "localhost" ? "2px solid #60a5fa" : "1px solid rgba(255,255,255,0.1)",
                 background: selectedPreset === "localhost" ? "rgba(96, 165, 250, 0.15)" : "rgba(255,255,255,0.03)",
@@ -299,8 +354,8 @@ export default function ServerSwitcherModal({
                 fontWeight: 600,
               }}
             >
-              💻 Localhost (3000)
-              <div style={{ fontSize: "0.7rem", opacity: 0.75, fontWeight: 400 }}>Local machine server</div>
+              💻 Localhost
+              <div style={{ fontSize: "0.7rem", opacity: 0.75, fontWeight: 400 }}>Local machine</div>
             </button>
           </div>
         </div>
