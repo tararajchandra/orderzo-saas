@@ -4,17 +4,17 @@
   "version": "0.1.0",
   "identifier": "com.orderzo.pos",
   "build": {
-    "frontendDist": "../out",
+    "frontendDist": "../public",
     "devUrl": "http://localhost:3000",
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeBuildCommand": ""
   },
   "app": {
     "windows": [
       {
         "label": "main",
         "title": "OrderZo POS - Cash Counter",
-        "url": "http://localhost:3000/admin/orders",
+        "url": "index.html",
         "width": 1280,
         "height": 800,
         "resizable": true,

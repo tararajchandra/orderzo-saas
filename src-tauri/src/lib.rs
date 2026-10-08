@@ -33,19 +33,29 @@ pub fn run() {
                 })
             };
 
-            if let Some(url) = saved_url {
-                let trimmed = url.trim().trim_end_matches('/').to_string();
-                if !trimmed.is_empty() {
-                    let target = if trimmed.ends_with("/admin/orders") {
+            let default_target = if cfg!(debug_assertions) {
+                "http://localhost:3000/admin/orders".to_string()
+            } else {
+                "https://app.orderzo.in/admin/orders".to_string()
+            };
+
+            let target_url = match saved_url {
+                Some(url) => {
+                    let trimmed = url.trim().trim_end_matches('/').to_string();
+                    if trimmed.is_empty() {
+                        default_target
+                    } else if trimmed.ends_with("/admin/orders") {
                         trimmed
                     } else {
                         format!("{}/admin/orders", trimmed)
-                    };
-                    if let Some(window) = app.get_webview_window("main") {
-                        let js = format!("window.location.href = '{}';", target);
-                        let _ = window.eval(&js);
                     }
                 }
+                None => default_target,
+            };
+
+            if let Some(window) = app.get_webview_window("main") {
+                let js = format!("window.location.href = '{}';", target_url);
+                let _ = window.eval(&js);
             }
 
             app.manage(db_state);
