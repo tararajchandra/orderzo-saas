@@ -212,7 +212,12 @@ export default function AdminOrdersPage() {
           );
           if (targetKey && map.has(targetKey)) {
             const existing = map.get(targetKey);
-            map.set(targetKey, { ...existing, ...put.body, is_offline: true });
+            map.set(targetKey, {
+              ...existing,
+              ...put.body,
+              created_at: existing.created_at || put.body?.created_at,
+              is_offline: true,
+            });
           }
         });
         const merged = Array.from(map.values()).sort(
@@ -304,7 +309,14 @@ export default function AdminOrdersPage() {
                     String(order.id) === targetKey)
                 );
               });
-              return matchedPut ? { ...order, ...matchedPut.body, is_offline: true } : order;
+              return matchedPut
+                ? {
+                    ...order,
+                    ...matchedPut.body,
+                    created_at: order.created_at || matchedPut.body?.created_at,
+                    is_offline: true,
+                  }
+                : order;
             });
           }
           merged.sort(
@@ -347,7 +359,12 @@ export default function AdminOrdersPage() {
           );
           if (targetKey && map.has(targetKey)) {
             const existing = map.get(targetKey);
-            map.set(targetKey, { ...existing, ...put.body, is_offline: true });
+            map.set(targetKey, {
+              ...existing,
+              ...put.body,
+              created_at: existing.created_at || put.body?.created_at,
+              is_offline: true,
+            });
           }
         });
         const merged = Array.from(map.values()).sort(
@@ -613,6 +630,7 @@ export default function AdminOrdersPage() {
       subtotal: newSubtotal,
       tax: newTax,
       total_amount: newTotalAmount,
+      created_at: editingOrderItems.created_at,
     };
 
     // 1. Optimistically update local orders state & cache
@@ -621,7 +639,14 @@ export default function AdminOrdersPage() {
         String(o.id) === String(orderIdToUpdate) ||
         String(o.order_number) === String(orderIdToUpdate) ||
         (editingOrderItems.order_number && String(o.order_number) === String(editingOrderItems.order_number))
-          ? { ...o, items: editingOrderItems.items, subtotal: newSubtotal, tax: newTax, total_amount: newTotalAmount }
+          ? {
+              ...o,
+              items: editingOrderItems.items,
+              subtotal: newSubtotal,
+              tax: newTax,
+              total_amount: newTotalAmount,
+              created_at: o.created_at || editingOrderItems.created_at,
+            }
           : o,
       );
       try {

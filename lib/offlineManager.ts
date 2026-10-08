@@ -108,21 +108,24 @@ export const saveOfflineOrder = async (
       if (existingPendingIndex !== -1) {
         // Order is still pending in local queue -> merge directly into it!
         const targetOrder = existingOrders[existingPendingIndex];
+        const preservedCreatedAt =
+          targetOrder.body?.created_at ||
+          body?.created_at ||
+          new Date(targetOrder.timestamp || timestamp).toISOString();
+
         existingOrders[existingPendingIndex] = {
           ...targetOrder,
           body: {
             ...targetOrder.body,
             ...body,
-            created_at:
-              targetOrder.body?.created_at ||
-              body?.created_at ||
-              new Date(timestamp).toISOString(),
+            created_at: preservedCreatedAt,
             order_number:
               targetOrder.body?.order_number || body?.order_number || targetKey,
             id: targetOrder.body?.id || body?.id || targetKey,
             is_offline: true,
           },
-          timestamp,
+          // Keep original order creation timestamp so fallback sorting does not change!
+          timestamp: targetOrder.timestamp || timestamp,
         };
         await localforage.setItem("pending_orders", existingOrders);
       } else {
@@ -137,8 +140,8 @@ export const saveOfflineOrder = async (
           existingOrders[putIndex].body = {
             ...existingOrders[putIndex].body,
             ...body,
+            created_at: existingOrders[putIndex].body?.created_at || body?.created_at,
           };
-          existingOrders[putIndex].timestamp = timestamp;
         } else {
           existingOrders.push({
             id: `offline_put_${timestamp}_${Math.random().toString(36).substr(2, 9)}`,
@@ -148,6 +151,7 @@ export const saveOfflineOrder = async (
               ...body,
               id: body?.id || targetKey,
               order_number: body?.order_number || targetKey,
+              created_at: body?.created_at,
               is_offline: true,
             },
             timestamp,
@@ -171,6 +175,7 @@ export const saveOfflineOrder = async (
                 return {
                   ...item,
                   ...body,
+                  created_at: item.created_at || body?.created_at,
                   is_offline: true,
                 };
               }
