@@ -8,6 +8,7 @@ import {
 } from "@/lib/offlineManager";
 import { isRouteSupportedOffline, showOfflineRouteWarning } from "@/lib/offlineRoutes";
 import ServerSwitcherModal from "@/components/ServerSwitcherModal";
+import { isTauri } from "@/lib/tauriBridge";
 
 export default function OfflineIndicator() {
   const [isOnline, setIsOnline] = useState(true);
@@ -108,7 +109,7 @@ export default function OfflineIndicator() {
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && (e.key === "S" || e.key === "s")) {
+      if (isTauri() && e.ctrlKey && e.shiftKey && (e.key === "S" || e.key === "s")) {
         e.preventDefault();
         setIsServerModalOpen((prev) => !prev);
       }
@@ -151,10 +152,12 @@ export default function OfflineIndicator() {
 
   return (
     <>
-      <ServerSwitcherModal
-        isOpen={isServerModalOpen}
-        onClose={() => setIsServerModalOpen(false)}
-      />
+      {isTauri() && (
+        <ServerSwitcherModal
+          isOpen={isServerModalOpen}
+          onClose={() => setIsServerModalOpen(false)}
+        />
+      )}
 
       {showSyncBadge && (
         <div
