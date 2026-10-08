@@ -105,7 +105,7 @@ export default function ProductSalesReportPage() {
               productId,
               productName: item.menuItem.name,
               category:
-                item.menuItem.category_name ||
+                (item.menuItem as any).category_name ||
                 item.menuItem.category ||
                 "Uncategorized",
               totalQuantity: quantity,

@@ -506,7 +506,7 @@ export default function CreateOrderPage() {
 
     setSubmitting(true);
     try {
-      const orderData = {
+      const orderData: any = {
         user_id: user?.id,
         customer_name: customerName,
         customer_phone: customerPhone,
@@ -535,20 +535,6 @@ export default function CreateOrderPage() {
         const offlineOrderNum = generateOfflineOrderNumber("POS");
         orderData.order_number = offlineOrderNum;
         await saveOfflineOrder("/api/orders", "POST", orderData);
-        
-        // Cache order in cached_admin_orders for instant display when navigating back to orders
-        try {
-          const cached = localStorage.getItem("cached_admin_orders");
-          const list = cached ? JSON.parse(cached) : [];
-          list.unshift({
-            ...orderData,
-            id: offlineOrderNum,
-            order_number: offlineOrderNum,
-            created_at: new Date().toISOString(),
-            is_offline: true,
-          });
-          localStorage.setItem("cached_admin_orders", JSON.stringify(list.slice(0, 100)));
-        } catch (e) {}
 
         if (shouldPrint) {
             const printableOrder = {
@@ -582,19 +568,6 @@ export default function CreateOrderPage() {
         const offlineOrderNum = orderData.order_number || generateOfflineOrderNumber("POS");
         orderData.order_number = offlineOrderNum;
         await saveOfflineOrder("/api/orders", "POST", orderData);
-        
-        try {
-          const cached = localStorage.getItem("cached_admin_orders");
-          const list = cached ? JSON.parse(cached) : [];
-          list.unshift({
-            ...orderData,
-            id: offlineOrderNum,
-            order_number: offlineOrderNum,
-            created_at: new Date().toISOString(),
-            is_offline: true,
-          });
-          localStorage.setItem("cached_admin_orders", JSON.stringify(list.slice(0, 100)));
-        } catch (e) {}
 
         if (shouldPrint) {
             const printableOrder = {

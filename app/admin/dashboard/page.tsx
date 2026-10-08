@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { formatDate } from "@/lib/utils";
+import { formatDate, sortOrdersDesc } from "@/lib/utils";
 import { useFinancialYear } from "@/contexts/FinancialYearContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { isRouteSupportedOffline, showOfflineRouteWarning } from "@/lib/offlineRoutes";
@@ -138,11 +138,7 @@ export default function AdminDashboard() {
         if (!map.has(key)) map.set(key, item);
       });
 
-      const combined = Array.from(map.values()).sort(
-        (a: any, b: any) =>
-          new Date(b.created_at || 0).getTime() -
-          new Date(a.created_at || 0).getTime()
-      );
+      const combined = Array.from(map.values()).sort(sortOrdersDesc);
       const today = new Date().toDateString();
 
       setStats({
@@ -209,11 +205,7 @@ export default function AdminDashboard() {
             is_offline: true,
           }));
 
-        const combined = [...offlineMapped, ...serverOrders].sort(
-          (a: any, b: any) =>
-            new Date(b.created_at || 0).getTime() -
-            new Date(a.created_at || 0).getTime()
-        );
+        const combined = [...offlineMapped, ...serverOrders].sort(sortOrdersDesc);
 
         try {
           localStorage.setItem(

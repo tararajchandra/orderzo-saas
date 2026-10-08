@@ -596,20 +596,6 @@ export default function QuickBillPage() {
         orderPayload.order_number = offlineOrderNum;
         await saveOfflineOrder("/api/orders", "POST", orderPayload);
 
-        // Update cached_admin_orders for instant display in orders list
-        try {
-          const cached = localStorage.getItem("cached_admin_orders");
-          const list = cached ? JSON.parse(cached) : [];
-          list.unshift({
-            ...orderPayload,
-            id: offlineOrderNum,
-            order_number: offlineOrderNum,
-            created_at: new Date().toISOString(),
-            is_offline: true,
-          });
-          localStorage.setItem("cached_admin_orders", JSON.stringify(list.slice(0, 100)));
-        } catch (e) {}
-
         const printableOrder = {
           ...orderPayload,
           id: offlineOrderNum,
@@ -646,19 +632,6 @@ export default function QuickBillPage() {
         const offlineOrderNum = orderPayload.order_number || generateOfflineOrderNumber("POS");
         orderPayload.order_number = offlineOrderNum;
         await saveOfflineOrder("/api/orders", "POST", orderPayload);
-
-        try {
-          const cached = localStorage.getItem("cached_admin_orders");
-          const list = cached ? JSON.parse(cached) : [];
-          list.unshift({
-            ...orderPayload,
-            id: offlineOrderNum,
-            order_number: offlineOrderNum,
-            created_at: new Date().toISOString(),
-            is_offline: true,
-          });
-          localStorage.setItem("cached_admin_orders", JSON.stringify(list.slice(0, 100)));
-        } catch (e) {}
 
         const printableOrder = {
           ...orderPayload,

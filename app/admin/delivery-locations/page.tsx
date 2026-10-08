@@ -316,7 +316,7 @@ export default function DeliveryLocationsPage() {
                           ? `Range: ${location.min_radius_km || 0}km - ${location.radius_km}km`
                           : "⚠️ Missing GPS Coordinates (Auto-detection disabled)"}
                       </div>
-                      {location.min_order_value > 0 && (
+                      {Number(location.min_order_value || 0) > 0 && (
                         <div
                           style={{
                             fontSize: "0.75rem",
@@ -327,7 +327,7 @@ export default function DeliveryLocationsPage() {
                         >
                           🛒 Min Order: ₹
                           {parseFloat(
-                            location.min_order_value.toString(),
+                            (location.min_order_value || 0).toString(),
                           ).toFixed(2)}
                         </div>
                       )}

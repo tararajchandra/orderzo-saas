@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useFinancialYear } from "@/contexts/FinancialYearContext";
 import { useRouter } from "next/navigation";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDate, formatDateTime, sortOrdersDesc } from "@/lib/utils";
 import { getOfflineOrders } from "@/lib/offlineManager";
 
 interface SaleEntry {
@@ -23,6 +23,10 @@ interface SaleEntry {
   created_at: string;
   user_id: number | null; // Added to track source
   table_number: string | null;
+  split_cash?: number;
+  split_upi?: number;
+  split_card?: number;
+  [key: string]: any;
 }
 
 interface Salesman {
@@ -95,6 +99,7 @@ export default function SaleBookPage() {
         }
       }
 
+      loadedSales.sort(sortOrdersDesc);
       setSales(loadedSales);
       setSalesmen(loadedSalesmen);
     } catch (e) {

@@ -183,7 +183,7 @@ export default function AdminTablesPage() {
             ...o.body,
             id: o.body.order_number || o.id,
             order_number: o.body.order_number || o.id,
-            created_at: new Date(o.timestamp).toISOString(),
+            created_at: o.body.created_at || new Date(o.timestamp).toISOString(),
             is_offline: true,
           }));
         const map = new Map();
@@ -240,7 +240,7 @@ export default function AdminTablesPage() {
             ...o.body,
             id: o.body.order_number || o.id,
             order_number: o.body.order_number || o.id,
-            created_at: new Date(o.timestamp).toISOString(),
+            created_at: o.body.created_at || new Date(o.timestamp).toISOString(),
             is_offline: true,
           }));
         const map = new Map();
@@ -325,8 +325,7 @@ export default function AdminTablesPage() {
       }
     });
 
-    // For a table, discount is usually applied at settle time. Let's assume 0 for now unless we fetched it.
-    // To be safe, we'll just set subtotal and tax, and total_amount.
+    const finalTotal = totalSubtotal + totalTax;
     const masterPayload = {
       items: editingTableItems.items,
       subtotal: totalSubtotal,

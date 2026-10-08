@@ -1,7 +1,14 @@
-export function formatDate(date: string | Date | null | undefined): string {
+export function formatDate(date: string | number | Date | null | undefined): string {
   if (!date) return "";
-  const d = new Date(date);
-  // metrics: 'en-IN' uses dd/mm/yyyy
+  let d: Date;
+  if (typeof date === "number") {
+    d = new Date(date);
+  } else if (typeof date === "string" && /^\d+$/.test(date.trim())) {
+    d = new Date(parseInt(date.trim(), 10));
+  } else {
+    d = new Date(date);
+  }
+  if (isNaN(d.getTime())) return "";
   return d.toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "2-digit",
@@ -9,9 +16,17 @@ export function formatDate(date: string | Date | null | undefined): string {
   });
 }
 
-export function formatDateTime(date: string | Date | null | undefined): string {
+export function formatDateTime(date: string | number | Date | null | undefined): string {
   if (!date) return "";
-  const d = new Date(date);
+  let d: Date;
+  if (typeof date === "number") {
+    d = new Date(date);
+  } else if (typeof date === "string" && /^\d+$/.test(date.trim())) {
+    d = new Date(parseInt(date.trim(), 10));
+  } else {
+    d = new Date(date);
+  }
+  if (isNaN(d.getTime())) return "";
   return d.toLocaleString("en-IN", {
     day: "2-digit",
     month: "2-digit",
@@ -20,6 +35,90 @@ export function formatDateTime(date: string | Date | null | undefined): string {
     minute: "2-digit",
     hour12: true,
   });
+}
+
+export function getLocalDateStr(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}${month}${day}`;
+}
+
+export function sortOrdersDesc(a: any, b: any): number {
+  if (!a && !b) return 0;
+  if (!a) return 1;
+  if (!b) return -1;
+
+  // 1. Try extracting standard POS order number parts: [PREFIX]-[YYYYMMDD]-[SEQ]
+  const parseOrderNum = (order: any) => {
+    const raw = String(order?.order_number || order?.id || "").trim();
+    const match = raw.match(/^([A-Za-z0-9]+)-(\d{8})-(\d+)$/);
+    if (match) {
+      return {
+        prefix: match[1].toUpperCase(),
+        dateStr: match[2],
+        seq: parseInt(match[3], 10),
+      };
+    }
+    const lastNumMatch = raw.match(/-(\d+)$/);
+    if (lastNumMatch) {
+      return {
+        prefix: "",
+        dateStr: "",
+        seq: parseInt(lastNumMatch[1], 10),
+      };
+    }
+    return null;
+  };
+
+  const parsedA = parseOrderNum(a);
+  const parsedB = parseOrderNum(b);
+
+  // If both have structured order numbers
+  if (parsedA && parsedB) {
+    // If dates differ (e.g. 20261008 vs 20261007), newer date comes first
+    if (parsedA.dateStr && parsedB.dateStr && parsedA.dateStr !== parsedB.dateStr) {
+      return parsedB.dateStr.localeCompare(parsedA.dateStr);
+    }
+    // If same prefix and date, higher sequence number ALWAYS comes first
+    if (parsedA.prefix === parsedB.prefix && parsedA.seq !== parsedB.seq) {
+      return parsedB.seq - parsedA.seq;
+    }
+  }
+
+  // 2. Compare created_at / timestamp
+  const getTime = (order: any): number => {
+    if (!order) return 0;
+    const val = order.created_at || order.timestamp;
+    if (!val) return 0;
+    if (typeof val === "number") return val;
+    if (typeof val === "string" && /^\d+$/.test(val.trim())) return parseInt(val.trim(), 10);
+    const t = new Date(val).getTime();
+    return isNaN(t) ? 0 : t;
+  };
+
+  const timeA = getTime(a);
+  const timeB = getTime(b);
+  if (timeA !== timeB && timeA > 0 && timeB > 0) {
+    return timeB - timeA;
+  }
+
+  // 3. Fallback: if one has higher sequence number
+  if (parsedA && parsedB && parsedA.seq !== parsedB.seq) {
+    return parsedB.seq - parsedA.seq;
+  }
+
+  // 4. Fallback: numeric database ID comparison (e.g. id: 15 vs 14)
+  const idA = typeof a.id === "number" ? a.id : parseInt(String(a.id), 10);
+  const idB = typeof b.id === "number" ? b.id : parseInt(String(b.id), 10);
+  if (!isNaN(idA) && !isNaN(idB) && idA !== idB) {
+    return idB - idA;
+  }
+
+  // 5. Final tie-breaker: string comparison
+  return String(b.order_number || b.id || "").localeCompare(
+    String(a.order_number || a.id || "")
+  );
 }
 
 export function getTableList(settings: any): string[] {

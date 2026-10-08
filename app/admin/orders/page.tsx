@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import { ReceiptPrinter } from "@/lib/receipt-printer";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDate, formatDateTime, sortOrdersDesc } from "@/lib/utils";
 import { getOfflineOrders, saveOfflineOrder, syncOfflineOrders } from "@/lib/offlineManager";
 
 export default function AdminOrdersPage() {
@@ -13,7 +13,10 @@ export default function AdminOrdersPage() {
     if (typeof window !== "undefined") {
       try {
         const cached = localStorage.getItem("cached_admin_orders");
-        if (cached) return JSON.parse(cached);
+        if (cached) {
+          const list = JSON.parse(cached);
+          return Array.isArray(list) ? list.sort(sortOrdersDesc) : [];
+        }
       } catch (e) {}
     }
     return [];
@@ -210,21 +213,24 @@ export default function AdminOrdersPage() {
             put.url.replace(/^\/api\/orders\/?/, "") ||
             ""
           );
-          if (targetKey && map.has(targetKey)) {
-            const existing = map.get(targetKey);
-            map.set(targetKey, {
-              ...existing,
-              ...put.body,
-              created_at: existing.created_at || put.body?.created_at,
-              is_offline: true,
+          if (targetKey) {
+            map.forEach((existing, k) => {
+              if (
+                String(existing.order_number || "") === targetKey ||
+                String(existing.id || "") === targetKey ||
+                k === targetKey
+              ) {
+                map.set(k, {
+                  ...existing,
+                  ...put.body,
+                  created_at: existing.created_at || put.body?.created_at,
+                  is_offline: true,
+                });
+              }
             });
           }
         });
-        const merged = Array.from(map.values()).sort(
-          (a: any, b: any) =>
-            new Date(b.created_at || 0).getTime() -
-            new Date(a.created_at || 0).getTime()
-        );
+        const merged = Array.from(map.values()).sort(sortOrdersDesc);
         setOrders(merged);
       } catch (e) {
         console.error("Error reading offline orders:", e);
@@ -275,11 +281,7 @@ export default function AdminOrdersPage() {
               }
 
               if (brandNew.length === 0) return prev;
-              const merged = [...brandNew, ...prev].sort(
-                (a: any, b: any) =>
-                  new Date(b.created_at || 0).getTime() -
-                  new Date(a.created_at || 0).getTime()
-              );
+              const merged = [...brandNew, ...prev].sort(sortOrdersDesc);
               prevOrderIdsRef.current = new Set(merged.map((o: any) => o.id));
               return merged;
             });
@@ -305,8 +307,8 @@ export default function AdminOrdersPage() {
                 );
                 return (
                   targetKey &&
-                  (String(order.order_number) === targetKey ||
-                    String(order.id) === targetKey)
+                  (String(order.order_number || "") === targetKey ||
+                    String(order.id || "") === targetKey)
                 );
               });
               return matchedPut
@@ -319,11 +321,7 @@ export default function AdminOrdersPage() {
                 : order;
             });
           }
-          merged.sort(
-            (a: any, b: any) =>
-              new Date(b.created_at || 0).getTime() -
-              new Date(a.created_at || 0).getTime()
-          );
+          merged.sort(sortOrdersDesc);
 
           prevOrderIdsRef.current = new Set(merged.map((o: any) => o.id));
           setOrders(merged);
@@ -357,21 +355,24 @@ export default function AdminOrdersPage() {
             put.url.replace(/^\/api\/orders\/?/, "") ||
             ""
           );
-          if (targetKey && map.has(targetKey)) {
-            const existing = map.get(targetKey);
-            map.set(targetKey, {
-              ...existing,
-              ...put.body,
-              created_at: existing.created_at || put.body?.created_at,
-              is_offline: true,
+          if (targetKey) {
+            map.forEach((existing, k) => {
+              if (
+                String(existing.order_number || "") === targetKey ||
+                String(existing.id || "") === targetKey ||
+                k === targetKey
+              ) {
+                map.set(k, {
+                  ...existing,
+                  ...put.body,
+                  created_at: existing.created_at || put.body?.created_at,
+                  is_offline: true,
+                });
+              }
             });
           }
         });
-        const merged = Array.from(map.values()).sort(
-          (a: any, b: any) =>
-            new Date(b.created_at || 0).getTime() -
-            new Date(a.created_at || 0).getTime()
-        );
+        const merged = Array.from(map.values()).sort(sortOrdersDesc);
         setOrders(merged);
       } catch (e) {}
     } finally {
@@ -397,11 +398,18 @@ export default function AdminOrdersPage() {
 
     // Optimistically update local state & cache
     setOrders((prev) => {
+      const isCurrentlyOffline = typeof navigator !== "undefined" && !navigator.onLine;
       const next = prev.map((o) =>
-        o.id === orderId
-          ? { ...o, delivery_boy_id: boyId, delivery_boy_name: boy?.name }
+        String(o.id) === String(orderId) || String(o.order_number) === String(orderId)
+          ? {
+              ...o,
+              delivery_boy_id: boyId,
+              delivery_boy_name: boy?.name,
+              is_offline: isCurrentlyOffline ? true : o.is_offline,
+            }
           : o,
       );
+      next.sort(sortOrdersDesc);
       try {
         localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
       } catch (e) {}
@@ -439,7 +447,13 @@ export default function AdminOrdersPage() {
   const updateOrderStatus = async (orderId: number, status: string) => {
     // Optimistically update local state & cache
     setOrders((prev) => {
-      const next = prev.map((o) => (o.id === orderId ? { ...o, order_status: status } : o));
+      const isCurrentlyOffline = typeof navigator !== "undefined" && !navigator.onLine;
+      const next = prev.map((o) =>
+        String(o.id) === String(orderId) || String(o.order_number) === String(orderId)
+          ? { ...o, order_status: status, is_offline: isCurrentlyOffline ? true : o.is_offline }
+          : o,
+      );
+      next.sort(sortOrdersDesc);
       try {
         localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
       } catch (e) {}
@@ -478,7 +492,13 @@ export default function AdminOrdersPage() {
   const updatePaymentStatus = async (orderId: number, status: string) => {
     // Optimistically update local state & cache
     setOrders((prev) => {
-      const next = prev.map((o) => (o.id === orderId ? { ...o, payment_status: status } : o));
+      const isCurrentlyOffline = typeof navigator !== "undefined" && !navigator.onLine;
+      const next = prev.map((o) =>
+        String(o.id) === String(orderId) || String(o.order_number) === String(orderId)
+          ? { ...o, payment_status: status, is_offline: isCurrentlyOffline ? true : o.is_offline }
+          : o,
+      );
+      next.sort(sortOrdersDesc);
       try {
         localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
       } catch (e) {}
@@ -524,7 +544,13 @@ export default function AdminOrdersPage() {
 
     // Optimistically update local state & cache
     setOrders((prev) => {
-      const next = prev.map((o) => (o.id === orderId ? { ...o, ...payload } : o));
+      const isCurrentlyOffline = typeof navigator !== "undefined" && !navigator.onLine;
+      const next = prev.map((o) =>
+        String(o.id) === String(orderId) || String(o.order_number) === String(orderId)
+          ? { ...o, ...payload, is_offline: isCurrentlyOffline ? true : o.is_offline }
+          : o,
+      );
+      next.sort(sortOrdersDesc);
       try {
         localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
       } catch (e) {}
@@ -566,7 +592,13 @@ export default function AdminOrdersPage() {
 
     // Optimistically update local state & cache
     setOrders((prev) => {
-      const next = prev.map((o) => (o.id === orderId ? { ...o, payment_method: method } : o));
+      const isCurrentlyOffline = typeof navigator !== "undefined" && !navigator.onLine;
+      const next = prev.map((o) =>
+        String(o.id) === String(orderId) || String(o.order_number) === String(orderId)
+          ? { ...o, payment_method: method, is_offline: isCurrentlyOffline ? true : o.is_offline }
+          : o,
+      );
+      next.sort(sortOrdersDesc);
       try {
         localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
       } catch (e) {}
@@ -635,6 +667,7 @@ export default function AdminOrdersPage() {
 
     // 1. Optimistically update local orders state & cache
     setOrders((prev) => {
+      const isCurrentlyOffline = typeof navigator !== "undefined" && !navigator.onLine;
       const next = prev.map((o) =>
         String(o.id) === String(orderIdToUpdate) ||
         String(o.order_number) === String(orderIdToUpdate) ||
@@ -646,9 +679,11 @@ export default function AdminOrdersPage() {
               tax: newTax,
               total_amount: newTotalAmount,
               created_at: o.created_at || editingOrderItems.created_at,
+              is_offline: isCurrentlyOffline ? true : o.is_offline,
             }
           : o,
       );
+      next.sort(sortOrdersDesc);
       try {
         localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
       } catch (e) {}
@@ -687,7 +722,9 @@ export default function AdminOrdersPage() {
 
   const updateDiscount = async (orderId: number, discount: number) => {
     try {
-      const order = orders.find((o) => o.id === orderId);
+      const order = orders.find(
+        (o) => String(o.id) === String(orderId) || String(o.order_number) === String(orderId)
+      );
       if (!order) return;
 
       const subtotal = parseFloat(order.subtotal || order.total_amount || 0);
@@ -697,11 +734,18 @@ export default function AdminOrdersPage() {
 
       // Optimistically update local state & cache
       setOrders((prev) => {
+        const isCurrentlyOffline = typeof navigator !== "undefined" && !navigator.onLine;
         const next = prev.map((o) =>
-          o.id === orderId
-            ? { ...o, discount: discount, total_amount: newTotal }
+          String(o.id) === String(orderId) || String(o.order_number) === String(orderId)
+            ? {
+                ...o,
+                discount: discount,
+                total_amount: newTotal,
+                is_offline: isCurrentlyOffline ? true : o.is_offline,
+              }
             : o,
         );
+        next.sort(sortOrdersDesc);
         try {
           localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
         } catch (e) {}

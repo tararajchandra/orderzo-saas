@@ -1,4 +1,5 @@
 import localforage from "localforage";
+import { sortOrdersDesc, getLocalDateStr } from "@/lib/utils";
 
 // Configure localforage
 localforage.config({
@@ -17,20 +18,38 @@ export interface OfflineOrder {
 }
 
 // Generate conflict-free offline order number based on salesman/device prefix
-export const generateOfflineOrderNumber = (prefix: string = "S1"): string => {
-  const cleanPrefix = (prefix || "S1").trim().toUpperCase();
-  const today = new Date();
-  const dateStr = today.toISOString().split("T")[0].replace(/-/g, "");
+export const generateOfflineOrderNumber = (prefix: string = "POS"): string => {
+  const cleanPrefix = (prefix || "POS").trim().toUpperCase();
+  const dateStr = getLocalDateStr(new Date());
   const seqKey = `offline_seq_${cleanPrefix}_${dateStr}`;
-  let currentSeq = 0;
+  let maxSeq = 0;
   try {
-    currentSeq = parseInt(localStorage.getItem(seqKey) || "0", 10);
+    maxSeq = parseInt(localStorage.getItem(seqKey) || "0", 10);
   } catch (e) {}
-  currentSeq += 1;
+
+  // Check cached_admin_orders to find the highest existing sequence number for today
   try {
-    localStorage.setItem(seqKey, String(currentSeq));
+    const cached = localStorage.getItem("cached_admin_orders");
+    if (cached) {
+      const list: any[] = JSON.parse(cached);
+      const pattern = `${cleanPrefix}-${dateStr}-`;
+      for (const o of list) {
+        const num = String(o.order_number || "");
+        if (num.startsWith(pattern)) {
+          const seq = parseInt(num.replace(pattern, ""), 10);
+          if (!isNaN(seq) && seq > maxSeq) {
+            maxSeq = seq;
+          }
+        }
+      }
+    }
   } catch (e) {}
-  return `${cleanPrefix}-${dateStr}-${String(currentSeq).padStart(3, "0")}`;
+
+  const nextSeq = maxSeq + 1;
+  try {
+    localStorage.setItem(seqKey, String(nextSeq));
+  } catch (e) {}
+  return `${cleanPrefix}-${dateStr}-${String(nextSeq).padStart(3, "0")}`;
 };
 
 // Save or update an order locally when offline
@@ -100,9 +119,14 @@ export const saveOfflineOrder = async (
       // Check if this targets a pending order already in local queue
       const existingPendingIndex = existingOrders.findIndex(
         (o) =>
-          String(o.body?.order_number || o.body?.id || o.id) === targetKey ||
-          o.url === url ||
-          o.url === `/api/orders/${targetKey}`
+          String(o.body?.order_number || "") === targetKey ||
+          String(o.body?.id || "") === targetKey ||
+          String(o.id || "") === targetKey ||
+          (targetKeyFromUrl && (
+            String(o.body?.order_number || "") === targetKeyFromUrl ||
+            String(o.body?.id || "") === targetKeyFromUrl ||
+            o.url === `/api/orders/${targetKeyFromUrl}`
+          ))
       );
 
       if (existingPendingIndex !== -1) {
@@ -133,7 +157,9 @@ export const saveOfflineOrder = async (
         const putIndex = existingOrders.findIndex(
           (o) =>
             o.method === "PUT" &&
-            (o.url === url || o.url === `/api/orders/${targetKey}`)
+            (o.url === url ||
+              (targetKey && o.url === `/api/orders/${targetKey}`) ||
+              (targetKeyFromUrl && o.url === `/api/orders/${targetKeyFromUrl}`))
         );
 
         if (putIndex !== -1) {
@@ -169,8 +195,12 @@ export const saveOfflineOrder = async (
             const list: any[] = JSON.parse(cached);
             const updated = list.map((item: any) => {
               if (
-                String(item.order_number || item.id) === targetKey ||
-                String(item.id) === targetKeyFromUrl
+                String(item.order_number || "") === targetKey ||
+                String(item.id || "") === targetKey ||
+                (targetKeyFromUrl && (
+                  String(item.order_number || "") === targetKeyFromUrl ||
+                  String(item.id || "") === targetKeyFromUrl
+                ))
               ) {
                 return {
                   ...item,
@@ -181,6 +211,7 @@ export const saveOfflineOrder = async (
               }
               return item;
             });
+            updated.sort(sortOrdersDesc);
             localStorage.setItem(
               "cached_admin_orders",
               JSON.stringify(updated.slice(0, 100))
@@ -247,6 +278,7 @@ export const saveOfflineOrder = async (
             String(orderEntry.order_number || orderEntry.id)
         );
         filtered.unshift(orderEntry);
+        filtered.sort(sortOrdersDesc);
         localStorage.setItem(
           "cached_admin_orders",
           JSON.stringify(filtered.slice(0, 100))
@@ -338,6 +370,7 @@ export const syncOfflineOrders = async () => {
                   }
                   return item;
                 });
+                updated.sort(sortOrdersDesc);
                 localStorage.setItem(
                   "cached_admin_orders",
                   JSON.stringify(updated.slice(0, 100))
