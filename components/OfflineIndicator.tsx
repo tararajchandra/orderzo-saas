@@ -7,12 +7,14 @@ import {
   startAutoBackgroundSync,
 } from "@/lib/offlineManager";
 import { isRouteSupportedOffline, showOfflineRouteWarning } from "@/lib/offlineRoutes";
+import ServerSwitcherModal from "@/components/ServerSwitcherModal";
 
 export default function OfflineIndicator() {
   const [isOnline, setIsOnline] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncingState, setIsSyncingState] = useState(false);
   const [justSyncedCount, setJustSyncedCount] = useState<number | null>(null);
+  const [isServerModalOpen, setIsServerModalOpen] = useState(false);
 
   useEffect(() => {
     // Initial check
@@ -105,6 +107,14 @@ export default function OfflineIndicator() {
       }
     };
 
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === "S" || e.key === "s")) {
+        e.preventDefault();
+        setIsServerModalOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
     document.addEventListener("click", handleDocumentClick, true);
 
     checkPending();
@@ -115,6 +125,7 @@ export default function OfflineIndicator() {
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("offline-orders-updated", handleOrdersUpdated);
       window.removeEventListener("offline-orders-synced", handleOrdersSynced as EventListener);
+      window.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("click", handleDocumentClick, true);
     };
   }, []);
@@ -136,13 +147,19 @@ export default function OfflineIndicator() {
     }
   };
 
-  // If online, no pending orders, and no recent sync badge, remain hidden
-  if (isOnline && pendingCount === 0 && !justSyncedCount) return null;
+  const showSyncBadge = !isOnline || pendingCount > 0 || !!justSyncedCount;
 
   return (
-    <div
-      onClick={handleForceSync}
-      title={isOnline ? "ক্লিক করে এখনই সিঙ্ক করুন (Click to force sync now)" : "অফলাইন মোড - ইন্টারনেট আসলে অটো-সিঙ্ক হবে"}
+    <>
+      <ServerSwitcherModal
+        isOpen={isServerModalOpen}
+        onClose={() => setIsServerModalOpen(false)}
+      />
+
+      {showSyncBadge && (
+        <div
+          onClick={handleForceSync}
+          title={isOnline ? "ক্লিক করে এখনই সিঙ্ক করুন (Click to force sync now)" : "অফলাইন মোড - ইন্টারনেট আসলে অটো-সিঙ্ক হবে"}
       style={{
         position: "fixed",
         bottom: "20px",
@@ -199,5 +216,7 @@ export default function OfflineIndicator() {
         </>
       )}
     </div>
+      )}
+    </>
   );
 }

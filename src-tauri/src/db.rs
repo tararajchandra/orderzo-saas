@@ -170,3 +170,54 @@ pub fn mark_order_synced(
     .map_err(|e| e.to_string())?;
     Ok(true)
 }
+
+#[tauri::command]
+pub fn get_server_url(state: tauri::State<'_, DbState>) -> Result<Option<String>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT value FROM settings WHERE key = 'server_url'")
+        .map_err(|e| e.to_string())?;
+
+    let mut rows = stmt.query([]).map_err(|e| e.to_string())?;
+    if let Some(row) = rows.next().map_err(|e| e.to_string())? {
+        let val: String = row.get(0).map_err(|e| e.to_string())?;
+        Ok(Some(val))
+    } else {
+        Ok(None)
+    }
+}
+
+#[tauri::command]
+pub fn switch_server_url(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, DbState>,
+    url: String,
+) -> Result<bool, String> {
+    use tauri::Manager;
+
+    let trimmed = url.trim().trim_end_matches('/').to_string();
+    if trimmed.is_empty() {
+        return Err("Server URL cannot be empty".to_string());
+    }
+
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES ('server_url', ?1)
+         ON CONFLICT(key) DO UPDATE SET value = ?1",
+        params![trimmed],
+    )
+    .map_err(|e| e.to_string())?;
+
+    if let Some(window) = app.get_webview_window("main") {
+        let target = if trimmed.ends_with("/admin/orders") {
+            trimmed
+        } else {
+            format!("{}/admin/orders", trimmed)
+        };
+        let js = format!("window.location.href = '{}';", target);
+        let _ = window.eval(&js);
+    }
+
+    Ok(true)
+}
+

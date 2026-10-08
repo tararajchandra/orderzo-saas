@@ -24,6 +24,30 @@ pub fn run() {
             let db_state = db::init_db(app_data_dir)
                 .expect("Failed to initialize local SQLite database");
             
+            // Check if custom server URL is saved in local SQLite
+            let saved_url: Option<String> = {
+                let conn = db_state.conn.lock().ok();
+                conn.and_then(|c| {
+                    let mut stmt = c.prepare("SELECT value FROM settings WHERE key = 'server_url'").ok()?;
+                    stmt.query_row([], |row| row.get(0)).ok()
+                })
+            };
+
+            if let Some(url) = saved_url {
+                let trimmed = url.trim().trim_end_matches('/').to_string();
+                if !trimmed.is_empty() {
+                    let target = if trimmed.ends_with("/admin/orders") {
+                        trimmed
+                    } else {
+                        format!("{}/admin/orders", trimmed)
+                    };
+                    if let Some(window) = app.get_webview_window("main") {
+                        let js = format!("window.location.href = '{}';", target);
+                        let _ = window.eval(&js);
+                    }
+                }
+            }
+
             app.manage(db_state);
 
             Ok(())
@@ -37,7 +61,9 @@ pub fn run() {
             db::set_setting,
             db::save_local_order,
             db::get_unsynced_orders,
-            db::mark_order_synced
+            db::mark_order_synced,
+            db::get_server_url,
+            db::switch_server_url
         ])
         .run(tauri::generate_context!())
         .expect("error while building tauri application");

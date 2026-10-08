@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import ServerSwitcherModal from "@/components/ServerSwitcherModal";
 import {
   isTauri,
   getInstalledPrinters,
   printSilentBill,
   openCashDrawer,
   setLocalSetting,
+  getServerUrl,
   PrinterInfo,
 } from "@/lib/tauriBridge";
 
@@ -67,8 +69,15 @@ export default function SettingsPage() {
   const [kotPrinter, setKotPrinter] = useState<string>("");
   const [testPrinting, setTestPrinting] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
+  const [isServerModalOpen, setIsServerModalOpen] = useState(false);
+  const [activeServerUrl, setActiveServerUrl] = useState<string>("");
 
   useEffect(() => {
+    getServerUrl().then((url) => {
+      if (url) setActiveServerUrl(url);
+      else if (typeof window !== "undefined") setActiveServerUrl(window.location.origin);
+    });
+
     if (isTauri()) {
       setIsDesktop(true);
       getInstalledPrinters().then((list) => {
@@ -660,6 +669,72 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* SERVER & CLOUD ENVIRONMENT SWITCHER */}
+          <div className="glass-card" style={{ marginBottom: "1.5rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexWrap: "wrap", gap: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "1.8rem" }}>🌐</span>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700 }}>
+                    Cloud Server Environment / ক্লাউড সার্ভার সংযোগ
+                  </h2>
+                  <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                    Connect POS to Demo, Live Restaurant Server, or Localhost
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsServerModalOpen(true)}
+                className="btn btn-primary"
+                style={{ fontSize: "0.875rem" }}
+              >
+                🔄 Switch Server / সার্ভার পরিবর্তন
+              </button>
+            </div>
+
+            <div
+              style={{
+                background: "rgba(255, 255, 255, 0.04)",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                borderRadius: "12px",
+                padding: "1rem 1.25rem",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "1rem",
+              }}
+            >
+              <div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px" }}>
+                  CURRENT ACTIVE SERVER / DATABASE:
+                </div>
+                <div style={{ fontSize: "1rem", fontWeight: 700, color: "#34d399", wordBreak: "break-all" }}>
+                  {activeServerUrl || (typeof window !== "undefined" ? window.location.origin : "Default Server")}
+                </div>
+                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px" }}>
+                  {activeServerUrl.includes("demo")
+                    ? "🟡 Connected to Demo Cloud Server (Test Database)"
+                    : activeServerUrl.includes("localhost")
+                    ? "💻 Connected to Localhost (Local Machine Server)"
+                    : "🟢 Connected to Live Restaurant Cloud Server"}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "0.75rem" }}>
+                <button
+                  type="button"
+                  onClick={() => setIsServerModalOpen(true)}
+                  className="btn btn-outline"
+                  style={{ fontSize: "0.85rem" }}
+                >
+                  ⚙️ Change URL
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="glass-card" style={{ marginBottom: "1.5rem" }}>
             <h2 style={{ marginBottom: "1.5rem" }}>Printer Configuration</h2>
 
@@ -1151,6 +1226,14 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      <ServerSwitcherModal
+        isOpen={isServerModalOpen}
+        onClose={() => {
+          setIsServerModalOpen(false);
+          getServerUrl().then((u) => u && setActiveServerUrl(u));
+        }}
+      />
     </main>
   );
 }

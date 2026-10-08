@@ -301,6 +301,60 @@ export async function setLocalSetting(key: string, value: string): Promise<boole
 }
 
 /**
+ * Get current configured server / cloud URL
+ */
+export async function getServerUrl(): Promise<string | null> {
+  const invoke = await getInvoker();
+  if (!invoke) {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tauri_server_url') || window.location.origin;
+    }
+    return null;
+  }
+  try {
+    const url = await invoke<string | null>('get_server_url');
+    if (url) return url;
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('tauri_server_url') || window.location.origin;
+    }
+    return null;
+  } catch (err) {
+    console.error('[TauriBridge] get_server_url error:', err);
+    return typeof window !== 'undefined' ? window.location.origin : null;
+  }
+}
+
+/**
+ * Switch the app to connect to a different server URL (Demo vs Production vs Local)
+ */
+export async function switchServerUrl(url: string): Promise<boolean> {
+  const cleanUrl = url.trim().replace(/\/+$/, '');
+  if (!cleanUrl) return false;
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('tauri_server_url', cleanUrl);
+  }
+
+  const invoke = await getInvoker();
+  if (invoke) {
+    try {
+      await invoke<boolean>('switch_server_url', { url: cleanUrl });
+      return true;
+    } catch (err) {
+      console.warn('[TauriBridge] switch_server_url native error:', err);
+    }
+  }
+
+  // Fallback for web / reload
+  if (typeof window !== 'undefined') {
+    const target = cleanUrl.endsWith('/admin/orders') ? cleanUrl : `${cleanUrl}/admin/orders`;
+    window.location.href = target;
+  }
+
+  return true;
+}
+
+/**
  * Save an offline order to local SQLite (Tauri Desktop)
  */
 export async function saveLocalOrder(order: any): Promise<boolean> {
