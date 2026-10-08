@@ -12,6 +12,7 @@ import {
   generateOfflineOrderNumber,
   syncOfflineOrders,
 } from "@/lib/offlineManager";
+import { isTauri, printOrderBill, printOrderKOT } from "@/lib/tauriBridge";
 
 interface MenuItem {
   id: number;
@@ -323,6 +324,15 @@ export default function QuickBillPage() {
     setPrintingOrderId(order.id);
 
     try {
+      if (isTauri()) {
+        try {
+          const ok = await printOrderBill(order, settings);
+          if (ok) return;
+        } catch (tauriErr) {
+          console.warn("Tauri silent bill print failed, falling back:", tauriErr);
+        }
+      }
+
       // @ts-ignore
       if (!navigator.usb) {
         // If WebUSB is not supported, fallback immediately
@@ -493,6 +503,15 @@ export default function QuickBillPage() {
   const handlePrintKOT = async (order: any) => {
     setPrintingOrderId(order.id);
     try {
+      if (isTauri()) {
+        try {
+          const ok = await printOrderKOT(order, settings);
+          if (ok) return;
+        } catch (tauriErr) {
+          console.warn("Tauri silent KOT print failed, falling back:", tauriErr);
+        }
+      }
+
       // @ts-ignore
       if (!navigator.usb) {
         printKOTFallback(order, settings);

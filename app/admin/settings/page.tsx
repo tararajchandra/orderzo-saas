@@ -2,6 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import {
+  isTauri,
+  getInstalledPrinters,
+  printSilentBill,
+  openCashDrawer,
+  setLocalSetting,
+  PrinterInfo,
+} from "@/lib/tauriBridge";
 
 interface Settings {
   restaurantName: string;
@@ -51,6 +59,90 @@ export default function SettingsPage() {
   const [parsedZones, setParsedZones] = useState<
     { name: string; count: string }[]
   >([{ name: "", count: "" }]);
+
+  // Desktop POS (Tauri) hardware printer state
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [printersList, setPrintersList] = useState<PrinterInfo[]>([]);
+  const [receiptPrinter, setReceiptPrinter] = useState<string>("");
+  const [kotPrinter, setKotPrinter] = useState<string>("");
+  const [testPrinting, setTestPrinting] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isTauri()) {
+      setIsDesktop(true);
+      getInstalledPrinters().then((list) => {
+        setPrintersList(list);
+        const savedReceipt =
+          localStorage.getItem("tauri_receipt_printer") || list[0]?.name || "";
+        const savedKot =
+          localStorage.getItem("tauri_kot_printer") || savedReceipt;
+        setReceiptPrinter(savedReceipt);
+        setKotPrinter(savedKot);
+      });
+    }
+  }, []);
+
+  const handleUpdatePrinterConfig = (type: "receipt" | "kot", name: string) => {
+    if (type === "receipt") {
+      setReceiptPrinter(name);
+      localStorage.setItem("tauri_receipt_printer", name);
+      setLocalSetting("receipt_printer", name);
+    } else {
+      setKotPrinter(name);
+      localStorage.setItem("tauri_kot_printer", name);
+      setLocalSetting("kot_printer", name);
+    }
+  };
+
+  const handleTestPrintBill = async () => {
+    if (!receiptPrinter) {
+      alert("Please select a Receipt Printer first.");
+      return;
+    }
+    setTestPrinting(true);
+    setTestResult(null);
+    try {
+      await printSilentBill({
+        printer_name: receiptPrinter,
+        restaurant_name: settings.restaurantName || "OrderZo POS",
+        address: settings.restaurantAddress,
+        phone: settings.restaurantPhone,
+        gstin: settings.gstNumber,
+        order_number: "TEST-001",
+        date: new Date().toLocaleDateString(),
+        time: new Date().toLocaleTimeString(),
+        table_or_type: "COUNTER TEST",
+        items: [
+          { name: "Chicken Biryani", qty: 1, rate: 220, amount: 220 },
+          { name: "Cold Drink (500ml)", qty: 2, rate: 40, amount: 80 },
+        ],
+        subtotal: 300,
+        tax: 15,
+        total: 315,
+        payment_mode: "CASH",
+        footer_note: "Test print successful! OrderZo Desktop POS.",
+      });
+      setTestResult("✅ Test receipt printed successfully!");
+    } catch (err: any) {
+      setTestResult(`❌ Print failed: ${err.message || String(err)}`);
+    } finally {
+      setTestPrinting(false);
+    }
+  };
+
+  const handleTestDrawer = async () => {
+    if (!receiptPrinter) {
+      alert("Please select a printer connected to the cash drawer.");
+      return;
+    }
+    try {
+      await openCashDrawer(receiptPrinter);
+      setTestResult("✅ Cash drawer kick command sent!");
+    } catch (err: any) {
+      setTestResult(`❌ Drawer kick failed: ${err.message || String(err)}`);
+    }
+  };
 
   // Parse zones on initial load
   useEffect(() => {
@@ -684,6 +776,170 @@ export default function SettingsPage() {
                   className="input"
                   placeholder="Enter footer text"
                 />
+              </div>
+
+              {/* DESKTOP POS HARDWARE PRINTER SETTINGS */}
+              <div
+                style={{
+                  gridColumn: "1 / -1",
+                  marginTop: "1rem",
+                  padding: "1.25rem",
+                  background: isDesktop
+                    ? "rgba(16, 185, 129, 0.08)"
+                    : "rgba(100, 116, 139, 0.08)",
+                  border: isDesktop
+                    ? "1px solid rgba(16, 185, 129, 0.3)"
+                    : "1px dashed rgba(100, 116, 139, 0.3)",
+                  borderRadius: "8px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <span style={{ fontSize: "1.2rem" }}>🖥️</span>
+                    <strong style={{ fontSize: "1rem" }}>
+                      Desktop Direct Hardware Printing (Tauri POS)
+                    </strong>
+                  </div>
+                  {isDesktop ? (
+                    <span
+                      style={{
+                        padding: "0.25rem 0.6rem",
+                        background: "#10b981",
+                        color: "#fff",
+                        borderRadius: "4px",
+                        fontSize: "0.75rem",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      ACTIVE DESKTOP APP
+                    </span>
+                  ) : (
+                    <span
+                      style={{
+                        padding: "0.25rem 0.6rem",
+                        background: "rgba(100, 116, 139, 0.2)",
+                        color: "var(--text-secondary)",
+                        borderRadius: "4px",
+                        fontSize: "0.75rem",
+                      }}
+                    >
+                      WEB BROWSER MODE
+                    </span>
+                  )}
+                </div>
+
+                {isDesktop ? (
+                  <div>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: "1rem",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      <div>
+                        <label
+                          style={{
+                            display: "block",
+                            marginBottom: "0.5rem",
+                            fontSize: "0.875rem",
+                            fontWeight: 500,
+                          }}
+                        >
+                          Bill / Cash Receipt Printer:
+                        </label>
+                        <select
+                          className="input"
+                          value={receiptPrinter}
+                          onChange={(e) =>
+                            handleUpdatePrinterConfig("receipt", e.target.value)
+                          }
+                        >
+                          {printersList.length === 0 && (
+                            <option value="">No printers detected</option>
+                          )}
+                          {printersList.map((p) => (
+                            <option key={p.name} value={p.name}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label
+                          style={{
+                            display: "block",
+                            marginBottom: "0.5rem",
+                            fontSize: "0.875rem",
+                            fontWeight: 500,
+                          }}
+                        >
+                          Kitchen KOT Thermal Printer:
+                        </label>
+                        <select
+                          className="input"
+                          value={kotPrinter}
+                          onChange={(e) =>
+                            handleUpdatePrinterConfig("kot", e.target.value)
+                          }
+                        >
+                          {printersList.length === 0 && (
+                            <option value="">No printers detected</option>
+                          )}
+                          {printersList.map((p) => (
+                            <option key={p.name} value={p.name}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                      <button
+                        type="button"
+                        onClick={handleTestPrintBill}
+                        disabled={testPrinting}
+                        className="btn btn-primary"
+                        style={{ padding: "0.5rem 1rem", fontSize: "0.875rem" }}
+                      >
+                        {testPrinting ? "Printing..." : "🖨️ Test Receipt Print"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleTestDrawer}
+                        className="btn btn-secondary"
+                        style={{ padding: "0.5rem 1rem", fontSize: "0.875rem" }}
+                      >
+                        💵 Test Cash Drawer Kick
+                      </button>
+                      {testResult && (
+                        <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>
+                          {testResult}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--text-secondary)",
+                      margin: 0,
+                    }}
+                  >
+                    Direct silent hardware printing and cash drawer triggers are enabled automatically when running inside the <strong>OrderZo Counter Desktop App</strong> (no browser popups required).
+                  </p>
+                )}
               </div>
             </div>
           </div>

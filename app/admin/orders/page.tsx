@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ReceiptPrinter } from "@/lib/receipt-printer";
 import { formatDate, formatDateTime, sortOrdersDesc } from "@/lib/utils";
 import { getOfflineOrders, saveOfflineOrder, syncOfflineOrders } from "@/lib/offlineManager";
+import { isTauri, printOrderBill, printOrderKOT } from "@/lib/tauriBridge";
 
 export default function AdminOrdersPage() {
   const router = useRouter();
@@ -911,6 +912,15 @@ export default function AdminOrdersPage() {
     setPrintingOrderId(order.id);
 
     try {
+      if (isTauri()) {
+        try {
+          const ok = await printOrderBill(order, settings);
+          if (ok) return;
+        } catch (tauriErr) {
+          console.warn("Tauri silent bill print failed, falling back:", tauriErr);
+        }
+      }
+
       // @ts-ignore
       if (!navigator.usb) {
         // If WebUSB is not supported, fallback immediately
@@ -1099,6 +1109,15 @@ export default function AdminOrdersPage() {
   const handlePrintKOT = async (order: any) => {
     setPrintingOrderId(order.id);
     try {
+      if (isTauri()) {
+        try {
+          const ok = await printOrderKOT(order, settings);
+          if (ok) return;
+        } catch (tauriErr) {
+          console.warn("Tauri silent KOT print failed, falling back:", tauriErr);
+        }
+      }
+
       // @ts-ignore
       if (!navigator.usb) {
         printKOTFallback(order, settings);
