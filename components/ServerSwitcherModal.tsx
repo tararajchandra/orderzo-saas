@@ -202,8 +202,17 @@ export default function ServerSwitcherModal({
           </div>
           <button
             onClick={onClose}
-            className="btn btn-ghost"
-            style={{ padding: "4px 10px", fontSize: "1.2rem", lineHeight: 1 }}
+            type="button"
+            style={{
+              padding: "6px 12px",
+              fontSize: "1.2rem",
+              lineHeight: 1,
+              color: "#ffffff",
+              background: "rgba(255, 255, 255, 0.1)",
+              border: "1px solid rgba(255, 255, 255, 0.2)",
+              borderRadius: "8px",
+              cursor: "pointer",
+            }}
           >
             ✕
           </button>
@@ -298,28 +307,49 @@ export default function ServerSwitcherModal({
 
         {/* Custom URL Input */}
         <div style={{ marginBottom: "1.25rem" }}>
-          <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem" }}>
+          <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "0.5rem", color: "#f3f4f6" }}>
             Target Server / Cloud URL:
           </label>
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <input
               type="text"
-              className="input"
               value={customUrl}
               onChange={(e) => {
                 setCustomUrl(e.target.value);
                 setSelectedPreset("custom");
                 setTestStatus({ tested: false });
               }}
+              onFocus={(e) => (e.target.style.borderColor = "#f97316")}
+              onBlur={(e) => (e.target.style.borderColor = "rgba(255, 255, 255, 0.25)")}
               placeholder="e.g. https://ruchi.orderzo.in or http://192.168.1.100:3000"
-              style={{ flex: 1, fontSize: "0.9rem" }}
+              style={{
+                flex: 1,
+                fontSize: "0.95rem",
+                color: "#ffffff",
+                backgroundColor: "rgba(255, 255, 255, 0.1)",
+                border: "1.5px solid rgba(255, 255, 255, 0.25)",
+                borderRadius: "10px",
+                padding: "0.75rem 1rem",
+                outline: "none",
+                fontWeight: 500,
+                transition: "border-color 0.2s",
+              }}
             />
             <button
               type="button"
               onClick={handleTestConnection}
-              className="btn btn-outline"
               disabled={testing || !customUrl.trim()}
-              style={{ whiteSpace: "nowrap", padding: "0.5rem 1rem", fontSize: "0.85rem" }}
+              style={{
+                whiteSpace: "nowrap",
+                padding: "0.75rem 1.25rem",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "#fbbf24",
+                background: "rgba(251, 191, 36, 0.12)",
+                border: "1.5px solid rgba(251, 191, 36, 0.4)",
+                borderRadius: "10px",
+                cursor: "pointer",
+              }}
             >
               {testing ? "Testing..." : "⚡ Test"}
             </button>
@@ -349,11 +379,25 @@ export default function ServerSwitcherModal({
 
         {/* Action Buttons */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1.5rem" }}>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-            Tip: Press <kbd style={{ background: "rgba(255,255,255,0.1)", padding: "2px 4px", borderRadius: "4px" }}>Ctrl+Shift+S</kbd> to open anytime.
+          <div style={{ fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.6)" }}>
+            Tip: Press <kbd style={{ background: "rgba(255,255,255,0.15)", color: "#fff", padding: "2px 6px", borderRadius: "4px" }}>Ctrl+Shift+S</kbd> to open anytime.
           </div>
           <div style={{ display: "flex", gap: "0.75rem" }}>
-            <button type="button" onClick={onClose} className="btn btn-ghost" disabled={loading}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              style={{
+                padding: "0.75rem 1.25rem",
+                fontSize: "0.9rem",
+                fontWeight: 600,
+                color: "#e5e7eb",
+                background: "rgba(255, 255, 255, 0.1)",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                borderRadius: "10px",
+                cursor: "pointer",
+              }}
+            >
               Cancel
             </button>
             <button
@@ -361,6 +405,12 @@ export default function ServerSwitcherModal({
               onClick={handleApply}
               className="btn btn-primary"
               disabled={loading || !customUrl.trim()}
+              style={{
+                padding: "0.75rem 1.5rem",
+                fontSize: "0.9rem",
+                fontWeight: 700,
+                borderRadius: "10px",
+              }}
             >
               {loading ? "Switching..." : "Save & Connect"}
             </button>
