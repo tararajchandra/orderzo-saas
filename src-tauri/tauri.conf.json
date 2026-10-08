@@ -14,6 +14,7 @@
       {
         "label": "main",
         "title": "OrderZo POS - Cash Counter",
+        "url": "http://localhost:3000/admin/orders",
         "width": 1280,
         "height": 800,
         "resizable": true,
