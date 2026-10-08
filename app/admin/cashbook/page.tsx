@@ -761,7 +761,11 @@ export default function CashBookPage() {
 
         {/* Print Only Format for Thermal Printer */}
         <div className="print-only thermal-report-print">
-          <h1>Cash Book</h1>
+          <h2 style={{ fontSize: "14px", margin: "2px 0 4px 0", textAlign: "center", textTransform: "uppercase" }}>
+            Cash Book Report
+          </h2>
+          <div className="divider"></div>
+
           <div className="item-row">
             <span>Opening Balance</span>
             <span className="label">₹{openingBalance.toFixed(2)}</span>
@@ -776,26 +780,31 @@ export default function CashBookPage() {
           </div>
           <div className="divider"></div>
           <div className="item-row">
-            <span className="label" style={{ fontSize: "14px" }}>Closing Balance</span>
-            <span className="label" style={{ fontSize: "14px" }}>₹{summary.closingBalance.toFixed(2)}</span>
+            <span className="label" style={{ fontSize: "13px" }}>Closing Balance</span>
+            <span className="label" style={{ fontSize: "13px" }}>₹{summary.closingBalance.toFixed(2)}</span>
           </div>
           <div className="divider"></div>
           
-          <h3 style={{marginTop: "10px", marginBottom: "5px", textAlign: "left"}}>Transactions</h3>
+          <div className="bold" style={{ marginTop: "6px", marginBottom: "4px", textAlign: "left", fontSize: "11px" }}>TRANSACTIONS</div>
           {filteredTransactions.map((txn) => (
              <div key={txn.id} className="block-row">
-                <div className="item-row">
-                   <span style={{ fontSize: "10px" }}>{new Date(txn.date).toLocaleDateString("en-IN", {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}</span>
-                   <span className="label">{txn.type === "in" ? '+' : '-'}₹{txn.amount.toFixed(2)}</span>
+                <div className="item-row" style={{ fontWeight: 700 }}>
+                   <span style={{ fontSize: "11px" }}>{new Date(txn.date).toLocaleDateString("en-IN", {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}</span>
+                   <span className="label" style={{ fontSize: "12px", color: txn.type === "in" ? "#000" : "#000" }}>{txn.type === "in" ? '+' : '-'}₹{txn.amount.toFixed(2)}</span>
                 </div>
                 <div className="item-row">
-                   <span style={{ maxWidth: "70%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{txn.description}</span>
-                   <span style={{ fontSize: "10px" }}>Bal: ₹{txn.balance.toFixed(2)}</span>
+                   <span style={{ maxWidth: "65%", wordBreak: "break-word", fontSize: "11px" }}>{txn.description}</span>
+                   <span style={{ fontSize: "11px", fontWeight: 700 }}>Bal: ₹{txn.balance.toFixed(2)}</span>
                 </div>
              </div>
           ))}
-          <div className="divider"></div>
-          <div className="text-center">End of Report</div>
+          <div className="divider" style={{ marginTop: "6px" }}></div>
+          <div className="text-center" style={{ fontSize: "9.5px", marginTop: "4px" }}>
+            Printed: {new Date().toLocaleString("en-IN")}
+          </div>
+          <div className="text-center" style={{ fontSize: "9.5px" }}>
+            *** End of Report ***
+          </div>
         </div>
       </div>
     </main>

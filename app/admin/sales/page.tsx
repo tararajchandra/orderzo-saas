@@ -47,6 +47,16 @@ export default function SaleBookPage() {
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [settings, setSettings] = useState<any>(null);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setSettings(data.data);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
@@ -301,6 +311,128 @@ export default function SaleBookPage() {
 
   const totals = calculateTotals();
 
+  const handlePrint = () => {
+    const isThermal = settings?.printerType !== "a4";
+    const paperWidth = settings?.paperWidth === "58mm" ? "48mm" : "72mm";
+    const fontSize = settings?.paperWidth === "58mm" ? "10px" : "11.5px";
+    const printWindow = window.open("", "_blank", "width=400,height=600");
+
+    const dateLabel =
+      dateFilter === "today"
+        ? `Today (${new Date().toLocaleDateString("en-IN")})`
+        : dateFilter === "week"
+        ? "Last 7 Days"
+        : dateFilter === "month"
+        ? "Last 30 Days"
+        : dateFilter === "custom"
+        ? `${customStartDate || "Start"} to ${customEndDate || "End"}`
+        : "All Time";
+
+    const rowsHtml = filteredSales
+      .map(
+        (sale) => `
+        <div style="margin-bottom: 5px; padding-bottom: 4px; border-bottom: 1px dashed #777;">
+          <div style="display: flex; justify-content: space-between; font-weight: 700;">
+            <span>Inv: ${sale.invoice_number}</span>
+            <span>${new Date(sale.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: ${fontSize}; color: #222;">
+            <span style="max-width: 60%; word-break: break-word;">${sale.customer_name || "Customer"}</span>
+            <span style="font-weight: 700;">${(sale.payment_method || "CASH").toUpperCase()}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: ${fontSize};">
+            <span style="text-transform: capitalize; color: #444;">${sale.order_type || "dine_in"}</span>
+            <span style="font-weight: 800; font-size: 12px;">₹${parseFloat(sale.total_amount.toString()).toFixed(2)}</span>
+          </div>
+        </div>
+      `,
+      )
+      .join("");
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Sale Book Report</title>
+        <style>
+          @page { margin: 0; size: auto; }
+          * { box-sizing: border-box; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: ${fontSize};
+            font-weight: 600;
+            color: #000;
+            background: #fff;
+            margin: 0 auto;
+            padding: 2mm 3.5mm;
+            width: ${isThermal ? paperWidth : "100%"};
+            max-width: ${isThermal ? paperWidth : "100%"};
+            line-height: 1.3;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .text-center { text-align: center; }
+          .bold { font-weight: 800; }
+          .divider { border-top: 1.5px dashed #000; margin: 4px 0; }
+          .item-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+        </style>
+      </head>
+      <body>
+        <div class="text-center bold" style="font-size: 15px; margin-bottom: 2px;">
+          ${settings?.restaurantName || "OrderZo"}
+        </div>
+        <div class="text-center bold" style="font-size: 13px; text-transform: uppercase;">
+          Sale Book Report
+        </div>
+        <div class="text-center" style="font-size: 10px; margin-bottom: 3px;">
+          Period: ${dateLabel}
+        </div>
+        <div class="divider"></div>
+
+        <div class="item-row">
+          <span>Total Transactions:</span>
+          <span class="bold">${filteredSales.length}</span>
+        </div>
+        <div class="item-row">
+          <span>Total Sales:</span>
+          <span class="bold">₹${totals.all.toFixed(2)}</span>
+        </div>
+        <div class="divider"></div>
+
+        ${rowsHtml}
+
+        <div class="divider" style="margin-top: 6px;"></div>
+        <div class="item-row bold" style="font-size: 13px; margin: 4px 0;">
+          <span>GRAND TOTAL:</span>
+          <span>₹${totals.all.toFixed(2)}</span>
+        </div>
+        <div class="divider"></div>
+        <div class="text-center" style="font-size: 9.5px; margin-top: 4px;">
+          Printed: ${new Date().toLocaleString("en-IN")}
+        </div>
+        <div class="text-center" style="font-size: 9.5px;">
+          *** End of Report ***
+        </div>
+      </body>
+      </html>
+    `;
+
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+        printWindow.onafterprint = () => {
+          printWindow.close();
+        };
+      }, 300);
+    } else {
+      window.print();
+    }
+  };
+
   if (loading)
     return <div className="text-center p-5">Loading sales data...</div>;
 
@@ -317,7 +449,7 @@ export default function SaleBookPage() {
         >
           <h1>📊 Sale Book</h1>
           <div style={{ display: "flex", gap: "1rem" }} className="no-print">
-            <button onClick={() => window.print()} className="btn btn-primary">
+            <button onClick={handlePrint} className="btn btn-primary">
               🖨️ Print
             </button>
             <button onClick={exportToCSV} className="btn btn-primary">
@@ -684,30 +816,67 @@ export default function SaleBookPage() {
         </div>
         
         {/* Print Only Format for Thermal Printer */}
-        <div className="print-only thermal-report-print">
-          <h1>Sale Book</h1>
-          <div className="text-center">Total Sales: ₹{totals.all.toFixed(2)}</div>
-          <div className="text-center">{filteredSales.length} transactions</div>
+        <div
+          className="print-only thermal-report-print"
+          data-paper={settings?.paperWidth || "80mm"}
+        >
+          <div className="text-center bold" style={{ fontSize: "15px", marginBottom: "2px" }}>
+            {settings?.restaurantName || "OrderZo"}
+          </div>
+          <h2 style={{ fontSize: "13px", margin: "2px 0 4px 0", textAlign: "center", textTransform: "uppercase" }}>
+            Sale Book Report
+          </h2>
+          <div style={{ fontSize: "10px", textAlign: "center", marginBottom: "4px" }}>
+            Period: {dateFilter === "today"
+              ? `Today (${new Date().toLocaleDateString("en-IN")})`
+              : dateFilter === "week"
+              ? "Last 7 Days"
+              : dateFilter === "month"
+              ? "Last 30 Days"
+              : dateFilter === "custom"
+              ? `${customStartDate || "Start"} to ${customEndDate || "End"}`
+              : "All Time"}
+          </div>
+          <div className="divider"></div>
+
+          <div className="item-row">
+            <span>Total Transactions:</span>
+            <span className="label">{filteredSales.length}</span>
+          </div>
+          <div className="item-row">
+            <span>Total Sales:</span>
+            <span className="label">₹{totals.all.toFixed(2)}</span>
+          </div>
           <div className="divider"></div>
           
           {filteredSales.map((sale) => (
              <div key={sale.id} className="block-row">
-                <div className="item-row">
+                <div className="item-row" style={{ fontWeight: 700 }}>
                    <span className="label">Inv: {sale.invoice_number}</span>
                    <span className="val">{new Date(sale.created_at).toLocaleTimeString("en-IN", {hour: '2-digit', minute:'2-digit'})}</span>
                 </div>
                 <div className="item-row">
-                   <span>{sale.customer_name}</span>
-                   <span>{sale.payment_method.toUpperCase()}</span>
+                   <span style={{ maxWidth: "60%", wordBreak: "break-word" }}>{sale.customer_name || "Customer"}</span>
+                   <span style={{ fontWeight: 700 }}>{(sale.payment_method || "CASH").toUpperCase()}</span>
                 </div>
                 <div className="item-row">
-                   <span style={{ fontSize: "10px" }}>{sale.order_type}</span>
-                   <span className="label">₹{parseFloat(sale.total_amount.toString()).toFixed(2)}</span>
+                   <span style={{ textTransform: "capitalize", color: "#333" }}>{sale.order_type || "dine_in"}</span>
+                   <span className="label" style={{ fontSize: "12px" }}>₹{parseFloat(sale.total_amount.toString()).toFixed(2)}</span>
                 </div>
              </div>
           ))}
+          <div className="divider" style={{ marginTop: "6px" }}></div>
+          <div className="item-row bold" style={{ fontSize: "13px", margin: "4px 0" }}>
+            <span>GRAND TOTAL:</span>
+            <span className="label">₹{totals.all.toFixed(2)}</span>
+          </div>
           <div className="divider"></div>
-          <div className="text-center">End of Report</div>
+          <div className="text-center" style={{ fontSize: "9.5px", marginTop: "4px" }}>
+            Printed: {new Date().toLocaleString("en-IN")}
+          </div>
+          <div className="text-center" style={{ fontSize: "9.5px" }}>
+            *** End of Report ***
+          </div>
         </div>
       </div>
     </main>

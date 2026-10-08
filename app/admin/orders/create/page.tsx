@@ -617,7 +617,7 @@ export default function CreateOrderPage() {
         );
         router.push("/admin/orders");
       } else {
-        alert(`Failed: ${data.error}`);
+        alert(`Failed: ${data.details || data.error}`);
       }
     } catch (error) {
       console.error(error);

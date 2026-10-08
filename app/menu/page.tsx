@@ -13,15 +13,27 @@ function MenuContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const { addToCart } = useCart();
   const [addedItems, setAddedItems] = useState<Set<number>>(new Set());
+  const [tableNumber, setTableNumber] = useState<string | null>(null);
+  const [isPosOnline, setIsPosOnline] = useState<boolean>(true);
 
   const searchParams = useSearchParams();
 
   useEffect(() => {
     // Capture table number from URL and save to sessionStorage
-    const table = searchParams.get("table");
+    const table = searchParams.get("table") || (typeof window !== "undefined" ? sessionStorage.getItem("table_number") : null);
     if (table) {
       sessionStorage.setItem("table_number", table);
-      // Optionally, we can dispatch this to a context if needed, but sessionStorage is enough
+      setTableNumber(table);
+
+      // Check POS counter heartbeat
+      fetch("/api/pos/heartbeat", { cache: "no-store" })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            setIsPosOnline(data.is_pos_online);
+          }
+        })
+        .catch(() => {});
     }
 
     fetchMenuItems();
@@ -41,10 +53,14 @@ function MenuContent() {
     }
   };
 
-  const categories = [
+  const categories: string[] = [
     "all",
     ...Array.from(
-      new Set(menuItems.map((item) => item.category_name).filter(Boolean)),
+      new Set(
+        menuItems
+          .map((item) => item.category_name)
+          .filter((name): name is string => Boolean(name)),
+      ),
     ),
   ];
 
@@ -96,6 +112,53 @@ function MenuContent() {
         >
           Discover our delicious selection of authentic dishes
         </p>
+
+        {/* Counter POS Offline Alert for Table Orders */}
+        {tableNumber && !isPosOnline && (
+          <div
+            style={{
+              background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(185, 28, 28, 0.25) 100%)",
+              border: "2px solid #ef4444",
+              borderRadius: "14px",
+              padding: "1.2rem 1.5rem",
+              marginBottom: "2rem",
+              boxShadow: "0 6px 18px rgba(239, 68, 68, 0.2)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "0.6rem" }}>
+              <span style={{ fontSize: "1.8rem" }}>⚠️</span>
+              <div>
+                <h3 style={{ margin: 0, color: "#f87171", fontSize: "1.1rem", fontWeight: 700 }}>
+                  Table {tableNumber}: Counter POS Offline / রেস্তোরাঁ কাউন্টার অফলাইন
+                </h3>
+                <p style={{ margin: 0, fontSize: "0.8rem", opacity: 0.85 }}>
+                  QR Online ordering is temporarily paused because the restaurant counter has no internet.
+                </p>
+              </div>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gap: "0.5rem",
+                background: "rgba(0, 0, 0, 0.35)",
+                padding: "0.85rem 1rem",
+                borderRadius: "10px",
+                fontSize: "0.875rem",
+                lineHeight: "1.4",
+              }}
+            >
+              <div>
+                <strong style={{ color: "#60a5fa" }}>🇬🇧 English:</strong> Restaurant counter has no internet facility right now. Please place your order directly with our waiter / salesman.
+              </div>
+              <div>
+                <strong style={{ color: "#fbbf24" }}>🇮🇳 Hindi:</strong> रेस्तरां काउंटर पर वर्तमान में इंटरनेट सुविधा नहीं है। कृपया अपना ऑर्डर सीधे हमारे वेटर / सेल्सম্যান को दें।
+              </div>
+              <div>
+                <strong style={{ color: "#34d399" }}>🇧🇩 Bengali:</strong> রেস্তোরাঁর কাউন্টারে বর্তমানে ইন্টারনেট সুবিধা নেই। অনুগ্রহ করে আপনার অর্ডারটি সরাসরি আমাদের সেলসম্যান বা ওয়েটারকে দিন।
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Search and Filter */}
         <div style={{ marginBottom: "2rem" }}>

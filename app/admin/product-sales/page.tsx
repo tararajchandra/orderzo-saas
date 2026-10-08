@@ -38,6 +38,7 @@ export default function ProductSalesReportPage() {
   const [sortBy, setSortBy] = useState<"quantity" | "revenue" | "name">(
     "revenue",
   );
+  const [settings, setSettings] = useState<any>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
@@ -46,6 +47,13 @@ export default function ProductSalesReportPage() {
       return;
     }
     fetchProductSales();
+
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setSettings(data.data);
+      })
+      .catch((err) => console.error("Error fetching settings:", err));
   }, []);
 
   // Reprocess data when date filter changes
@@ -215,6 +223,152 @@ export default function ProductSalesReportPage() {
 
   const totals = calculateTotals();
 
+  const handlePrint = () => {
+    const isThermal = settings?.printerType !== "a4";
+    const paperWidth = settings?.paperWidth === "58mm" ? "48mm" : "72mm";
+    const fontSize = settings?.paperWidth === "58mm" ? "10px" : "11.5px";
+    const printWindow = window.open("", "_blank", "width=400,height=600");
+
+    const dateLabel =
+      dateFilter === "today"
+        ? `Today (${new Date().toLocaleDateString("en-IN")})`
+        : dateFilter === "week"
+        ? "Last 7 Days"
+        : dateFilter === "month"
+        ? "Last 30 Days"
+        : dateFilter === "custom"
+        ? `${customStartDate || "Start"} to ${customEndDate || "End"}`
+        : "All Time";
+
+    const rowsHtml = filteredProducts
+      .map(
+        (p) => `
+        <tr style="border-bottom: 1px dashed #777;">
+          <td style="padding: 3px 1px; font-weight: 700; word-break: break-word; line-height: 1.2;">${p.productName}</td>
+          <td style="padding: 3px 1px; font-weight: 700; text-align: center; white-space: nowrap;">${p.totalQuantity} × ${parseFloat(p.avgPrice.toString()).toFixed(0)}</td>
+          <td style="padding: 3px 1px; font-weight: 800; text-align: right; white-space: nowrap;">₹${parseFloat(p.totalRevenue.toString()).toFixed(2)}</td>
+        </tr>
+      `,
+      )
+      .join("");
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Product Sales Report</title>
+        <style>
+          @page {
+            margin: 0;
+            size: auto;
+          }
+          * {
+            box-sizing: border-box;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: ${fontSize};
+            font-weight: 600;
+            color: #000;
+            background: #fff;
+            margin: 0 auto;
+            padding: 2mm 3.5mm;
+            width: ${isThermal ? paperWidth : "100%"};
+            max-width: ${isThermal ? paperWidth : "100%"};
+            line-height: 1.3;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .bold { font-weight: 800; }
+          .divider { border-top: 1.5px dashed #000; margin: 4px 0; }
+          .item-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+          table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 4px 0; }
+          th {
+            font-size: ${fontSize};
+            font-weight: 800;
+            padding: 3px 1px;
+            border-top: 1.5px dashed #000;
+            border-bottom: 1.5px dashed #000;
+          }
+          td {
+            font-size: ${fontSize};
+            vertical-align: top;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="text-center bold" style="font-size: 15px; margin-bottom: 2px;">
+          ${settings?.restaurantName || "OrderZo"}
+        </div>
+        <div class="text-center bold" style="font-size: 13px; text-transform: uppercase;">
+          Product Sales Report
+        </div>
+        <div class="text-center" style="font-size: 10px; margin-bottom: 3px;">
+          Period: ${dateLabel}
+        </div>
+        <div class="divider"></div>
+
+        <div class="item-row">
+          <span>Total Qty Sold:</span>
+          <span class="bold">${totals.totalQuantity} items</span>
+        </div>
+        <div class="item-row">
+          <span>Total Revenue:</span>
+          <span class="bold">₹${totals.totalRevenue.toFixed(2)}</span>
+        </div>
+        <div class="item-row">
+          <span>Total Products:</span>
+          <span class="bold">${totals.totalProducts}</span>
+        </div>
+        <div class="divider"></div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 44%; text-align: left;">ITEM</th>
+              <th style="width: 29%; text-align: center;">QTY × PRICE</th>
+              <th style="width: 27%; text-align: right;">TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+
+        <div class="divider" style="margin-top: 6px;"></div>
+        <div class="item-row bold" style="font-size: 13px; margin: 4px 0;">
+          <span>GRAND TOTAL:</span>
+          <span>₹${totals.totalRevenue.toFixed(2)}</span>
+        </div>
+        <div class="divider"></div>
+        <div class="text-center" style="font-size: 9.5px; margin-top: 4px;">
+          Printed: ${new Date().toLocaleString("en-IN")}
+        </div>
+        <div class="text-center" style="font-size: 9.5px;">
+          *** End of Report ***
+        </div>
+      </body>
+      </html>
+    `;
+
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+        printWindow.onafterprint = () => {
+          printWindow.close();
+        };
+      }, 300);
+    } else {
+      window.print();
+    }
+  };
+
   if (loading) {
     return (
       <div
@@ -243,7 +397,7 @@ export default function ProductSalesReportPage() {
         >
           <h1>📊 Product Sales Report</h1>
           <div style={{ display: "flex", gap: "1rem" }} className="no-print">
-            <button onClick={() => window.print()} className="btn btn-primary">
+            <button onClick={handlePrint} className="btn btn-primary">
               🖨️ Print
             </button>
             <button onClick={exportToCSV} className="btn btn-primary">
@@ -549,32 +703,104 @@ export default function ProductSalesReportPage() {
         </div>
 
         {/* Print Only Format for Thermal Printer */}
-        <div className="print-only thermal-report-print">
-          <h1>Product Sales</h1>
+        <div
+          className="print-only thermal-report-print"
+          data-paper={settings?.paperWidth || "80mm"}
+        >
+          <div className="text-center bold" style={{ fontSize: "15px", marginBottom: "2px" }}>
+            {settings?.restaurantName || "OrderZo"}
+          </div>
+          <h2 style={{ fontSize: "13px", margin: "2px 0 4px 0", textAlign: "center", textTransform: "uppercase" }}>
+            Product Sales Report
+          </h2>
+          <div style={{ fontSize: "10px", textAlign: "center", marginBottom: "4px" }}>
+            Period: {dateFilter === "today"
+              ? `Today (${new Date().toLocaleDateString("en-IN")})`
+              : dateFilter === "week"
+              ? "Last 7 Days"
+              : dateFilter === "month"
+              ? "Last 30 Days"
+              : dateFilter === "custom"
+              ? `${customStartDate || "Start"} to ${customEndDate || "End"}`
+              : "All Time"}
+          </div>
+          <div className="divider"></div>
+
           <div className="item-row">
-            <span>Total Quantity Sold</span>
-            <span className="label">{totals.totalQuantity}</span>
+            <span>Total Qty Sold:</span>
+            <span className="label">{totals.totalQuantity} items</span>
           </div>
           <div className="item-row">
-            <span>Total Revenue</span>
+            <span>Total Revenue:</span>
+            <span className="label">₹{totals.totalRevenue.toFixed(2)}</span>
+          </div>
+          <div className="item-row">
+            <span>Total Products:</span>
+            <span className="label">{totals.totalProducts}</span>
+          </div>
+          <div className="divider"></div>
+
+          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+            <thead>
+              <tr>
+                <th style={{ width: "44%", textAlign: "left" }}>ITEM</th>
+                <th style={{ width: "29%", textAlign: "center" }}>QTY × PRICE</th>
+                <th style={{ width: "27%", textAlign: "right" }}>TOTAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredProducts.map((product) => (
+                <tr
+                  key={product.productId}
+                  style={{ borderBottom: "1px dashed #777" }}
+                >
+                  <td
+                    style={{
+                      padding: "3px 1px",
+                      fontWeight: 700,
+                      wordBreak: "break-word",
+                      lineHeight: "1.2",
+                    }}
+                  >
+                    {product.productName}
+                  </td>
+                  <td
+                    style={{
+                      padding: "3px 1px",
+                      fontWeight: 700,
+                      textAlign: "center",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {product.totalQuantity} × {parseFloat(product.avgPrice.toString()).toFixed(0)}
+                  </td>
+                  <td
+                    style={{
+                      padding: "3px 1px",
+                      fontWeight: 800,
+                      textAlign: "right",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    ₹{parseFloat(product.totalRevenue.toString()).toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="divider" style={{ marginTop: "6px" }}></div>
+          <div className="item-row bold" style={{ fontSize: "13px", margin: "4px 0" }}>
+            <span>GRAND TOTAL:</span>
             <span className="label">₹{totals.totalRevenue.toFixed(2)}</span>
           </div>
           <div className="divider"></div>
-          
-          <div className="item-row" style={{ borderBottom: '1px solid #000', paddingBottom: '3px', marginBottom: '5px' }}>
-            <span className="label">Item</span>
-            <span className="label">Qty × Price</span>
-            <span className="label">Total</span>
+          <div className="text-center" style={{ fontSize: "9.5px", marginTop: "4px" }}>
+            Printed: {new Date().toLocaleString("en-IN")}
           </div>
-          {filteredProducts.map((product) => (
-             <div key={product.productId} className="item-row" style={{ borderBottom: '1px dashed #ccc', paddingBottom: '2px', marginBottom: '2px' }}>
-                <span style={{ maxWidth: "45%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{product.productName}</span>
-                <span style={{ fontSize: "10px" }}>{product.totalQuantity} × ₹{parseFloat(product.avgPrice.toString()).toFixed(2)}</span>
-                <span className="label">₹{parseFloat(product.totalRevenue.toString()).toFixed(2)}</span>
-             </div>
-          ))}
-          <div className="divider"></div>
-          <div className="text-center">End of Report</div>
+          <div className="text-center" style={{ fontSize: "9.5px" }}>
+            *** End of Report ***
+          </div>
         </div>
       </div>
     </main>

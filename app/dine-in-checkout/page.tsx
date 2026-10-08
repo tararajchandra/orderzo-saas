@@ -12,6 +12,7 @@ export default function DineInCheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<any>(null);
   const [tableNumber, setTableNumber] = useState<string | null>(null);
+  const [isPosOnline, setIsPosOnline] = useState<boolean>(true);
 
   const [formData, setFormData] = useState({
     notes: "",
@@ -26,6 +27,22 @@ export default function DineInCheckoutPage() {
       })
       .catch((err) => console.error("Error fetching settings:", err));
 
+    // Check POS counter heartbeat status
+    const checkPosStatus = async () => {
+      try {
+        const res = await fetch("/api/pos/heartbeat", { cache: "no-store" });
+        const data = await res.json();
+        if (data.success) {
+          setIsPosOnline(data.is_pos_online);
+        }
+      } catch (err) {
+        console.error("Error checking POS heartbeat:", err);
+      }
+    };
+
+    checkPosStatus();
+    const heartbeatInterval = setInterval(checkPosStatus, 10000);
+
     // Get table number
     const storedTable = sessionStorage.getItem("table_number");
     if (storedTable) {
@@ -34,6 +51,8 @@ export default function DineInCheckoutPage() {
       // If somehow they reached here without a table number, redirect to cart
       router.push("/cart");
     }
+
+    return () => clearInterval(heartbeatInterval);
   }, [router]);
 
   const subtotal = getCartTotal();
@@ -53,6 +72,15 @@ export default function DineInCheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isPosOnline) {
+      alert(
+        "Restaurant counter currently has no internet facility. Please place your order directly with our waiter / salesman.\n\n" +
+        "রেস্তোরাঁর কাউন্টারে বর্তমানে ইন্টারনেট সুবিধা নেই। অনুগ্রহ করে আপনার অর্ডারটি সরাসরি সেলসম্যান বা ওয়েটারকে দিন।\n\n" +
+        "रेस्तरां काउंटर पर वर्तमान में इंटरनेट सुविधा नहीं है। कृपया अपना ऑर्डर सीधे हमारे वेटर / सेल्समैन को दें।"
+      );
+      return;
+    }
 
     if (!tableNumber) return;
 
@@ -167,6 +195,55 @@ export default function DineInCheckoutPage() {
         <h1 className="text-center mb-4">Dine-In Checkout</h1>
 
         <form onSubmit={handleSubmit}>
+          {!isPosOnline && (
+            <div
+              style={{
+                background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(185, 28, 28, 0.25) 100%)",
+                border: "2px solid #ef4444",
+                borderRadius: "16px",
+                padding: "1.5rem",
+                marginBottom: "2rem",
+                boxShadow: "0 8px 24px rgba(239, 68, 68, 0.2)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "1rem" }}>
+                <span style={{ fontSize: "2.2rem" }}>⚠️</span>
+                <div>
+                  <h3 style={{ margin: 0, color: "#f87171", fontSize: "1.25rem", fontWeight: 700 }}>
+                    Restaurant Counter Offline / রেস্তোরাঁ অফলাইন
+                  </h3>
+                  <p style={{ margin: 0, fontSize: "0.85rem", opacity: 0.85 }}>
+                    Real-time online table ordering is temporarily unavailable.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gap: "0.85rem",
+                  background: "rgba(0, 0, 0, 0.35)",
+                  padding: "1rem 1.25rem",
+                  borderRadius: "12px",
+                  lineHeight: "1.5",
+                }}
+              >
+                <div>
+                  <strong style={{ color: "#60a5fa" }}>🇬🇧 English:</strong>{" "}
+                  Restaurant counter has no internet facility right now. Please place your order directly with our waiter / salesman.
+                </div>
+                <div>
+                  <strong style={{ color: "#fbbf24" }}>🇮🇳 Hindi:</strong>{" "}
+                  रेस्तरां काउंटर पर वर्तमान में इंटरनेट सुविधा नहीं है। कृपया अपना ऑर्डर सीधे हमारे वेटर / सेल्समैन को दें।
+                </div>
+                <div>
+                  <strong style={{ color: "#34d399" }}>🇧🇩 Bengali:</strong>{" "}
+                  রেস্তোরাঁর কাউন্টারে বর্তমানে ইন্টারনেট সুবিধা নেই। অনুগ্রহ করে আপনার অর্ডারটি সরাসরি সেলসম্যান বা ওয়েটারকে দিন।
+                </div>
+              </div>
+            </div>
+          )}
+
           <div style={{ display: "grid", gap: "2rem" }}>
             {/* Table Information */}
             <div
@@ -310,11 +387,22 @@ export default function DineInCheckoutPage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !isPosOnline}
                 className="btn btn-primary"
-                style={{ width: "100%", fontSize: "1.125rem", padding: "1rem" }}
+                style={{
+                  width: "100%",
+                  fontSize: "1.125rem",
+                  padding: "1rem",
+                  background: !isPosOnline ? "#dc2626" : undefined,
+                  borderColor: !isPosOnline ? "#dc2626" : undefined,
+                  cursor: !isPosOnline ? "not-allowed" : "pointer",
+                }}
               >
-                {loading ? "Placing Order..." : "Place Order"}
+                {loading
+                  ? "Placing Order..."
+                  : !isPosOnline
+                  ? "⚠️ Counter Offline - Please Call Waiter"
+                  : "Place Order"}
               </button>
             </div>
           </div>

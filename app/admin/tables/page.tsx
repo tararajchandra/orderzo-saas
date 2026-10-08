@@ -122,9 +122,17 @@ export default function AdminTablesPage() {
       handleOnline();
     }
 
+    const handleSyncEvent = () => {
+      fetchActiveTableOrders(true);
+    };
+    window.addEventListener("offline-orders-synced", handleSyncEvent);
+    window.addEventListener("offline-orders-updated", handleSyncEvent);
+
     return () => {
       clearInterval(interval);
       window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline-orders-synced", handleSyncEvent);
+      window.removeEventListener("offline-orders-updated", handleSyncEvent);
     };
   }, []);
 

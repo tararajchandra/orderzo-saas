@@ -197,6 +197,29 @@ export async function POST(request: Request) {
             }
         }
         // --- END GEOFENCING ---
+
+        // --- QR TABLE ORDER POS LIVENESS CHECK ---
+        if (order_type === 'dine_in' && (!user_id || requestedPrefix === 'QR')) {
+            const heartbeatRes = await client.query(
+                `SELECT value FROM settings WHERE key = 'pos_last_heartbeat'`
+            );
+            let isPosLive = false;
+            if (heartbeatRes.rows.length > 0 && heartbeatRes.rows[0].value) {
+                const lastSeen = parseInt(heartbeatRes.rows[0].value, 10);
+                if (!isNaN(lastSeen) && (Date.now() - lastSeen) <= 45000) {
+                    isPosLive = true;
+                }
+            }
+
+            if (!isPosLive) {
+                return NextResponse.json({ 
+                    success: false, 
+                    error: "Restaurant counter is currently offline. Please place your order directly with our waiter / salesman.\n\nরেস্তোরাঁর কাউন্টারে বর্তমানে ইন্টারনেট সুবিধা নেই। অনুগ্রহ করে আপনার অর্ডারটি সরাসরি ওয়েটার/সেলসম্যানকে দিন।\n\nरेस्तरां काउंटर पर वर्तमान में इंटरनेट सुविधा नहीं है। कृपया अपना ऑर्डर सीधे हमारे वेटर/सेल्समैन को दें।",
+                    pos_offline: true,
+                }, { status: 503 });
+            }
+        }
+        // --- END QR POS LIVENESS CHECK ---
         
         // START TRANSACTION
         await client.query('BEGIN');
@@ -211,29 +234,54 @@ export async function POST(request: Request) {
         }
 
         // 1. Determine prefix and effective salesman ID
-        let prefix = requestedPrefix ? String(requestedPrefix).trim().toUpperCase() : null;
         let effectiveSalesmanId = salesman_id || null;
+        let validUserId: number | null = null;
+        let prefix: string = (requestedPrefix ? String(requestedPrefix).trim() : '').toUpperCase();
+
+        if (user_id) {
+            const userRes = await client.query('SELECT id, role FROM users WHERE id = $1', [user_id]);
+            if (userRes.rows.length > 0) {
+                validUserId = userRes.rows[0].id;
+                const userRole = userRes.rows[0].role;
+                if (!prefix) {
+                    if (userRole === 'salesman') {
+                        effectiveSalesmanId = user_id;
+                        prefix = `S${user_id}`;
+                    } else if (userRole === 'cashier' || userRole === 'admin') {
+                        prefix = 'POS';
+                    } else if (order_type === 'dine_in') {
+                        prefix = 'QR';
+                    } else {
+                        prefix = 'WEB';
+                    }
+                } else if (userRole === 'salesman' && !effectiveSalesmanId) {
+                    effectiveSalesmanId = user_id;
+                }
+            }
+        }
+
+        if (effectiveSalesmanId) {
+            const smCheck = await client.query('SELECT id FROM users WHERE id = $1', [effectiveSalesmanId]);
+            if (smCheck.rows.length === 0) {
+                effectiveSalesmanId = null;
+            }
+        }
 
         if (!prefix) {
             if (effectiveSalesmanId) {
                 prefix = `S${effectiveSalesmanId}`;
-            } else if (user_id) {
-                const userRes = await client.query('SELECT role FROM users WHERE id = $1', [user_id]);
-                const userRole = userRes.rows[0]?.role;
-                if (userRole === 'salesman') {
-                    effectiveSalesmanId = user_id;
-                    prefix = `S${user_id}`;
-                } else if (userRole === 'cashier' || userRole === 'admin') {
-                    prefix = 'POS';
-                } else if (order_type === 'dine_in') {
-                    prefix = 'QR';
-                } else {
-                    prefix = 'WEB';
-                }
             } else if (order_type === 'dine_in') {
                 prefix = 'QR';
             } else {
-                prefix = 'WEB';
+                prefix = 'POS';
+            }
+        }
+
+        let validLocationId: number | null = null;
+        if (delivery_location_id) {
+            const locCheck = await client.query('SELECT id FROM delivery_locations WHERE id = $1', [delivery_location_id]);
+            if (locCheck.rows.length > 0) {
+                validLocationId = delivery_location_id;
             }
         }
 
@@ -309,9 +357,9 @@ export async function POST(request: Request) {
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
            RETURNING *`,
                 [
-                    orderNumber, user_id || null, customer_name || 'Walk-in Customer', customer_phone || 'N/A', customer_address || null,
+                    orderNumber, validUserId, customer_name || 'Walk-in Customer', customer_phone || 'N/A', customer_address || null,
                     order_type || 'delivery', JSON.stringify(items), subtotal, tax || 0, discount || 0,
-                    delivery_location_id || null, delivery_charge || 0, total_amount, payment_method,
+                    validLocationId, delivery_charge || 0, total_amount, payment_method,
                     notes || null, table_number || null, order_status || 'pending', payment_status || 'pending',
                     customer_lat || null, customer_lng || null, distance || null, financial_year_id, effectiveSalesmanId,
                 ]
@@ -332,9 +380,9 @@ export async function POST(request: Request) {
                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
                    RETURNING *`,
                         [
-                            orderNumber, user_id || null, customer_name || 'Walk-in Customer', customer_phone || 'N/A', customer_address || null,
+                            orderNumber, validUserId, customer_name || 'Walk-in Customer', customer_phone || 'N/A', customer_address || null,
                             order_type || 'delivery', JSON.stringify(items), subtotal, tax || 0, discount || 0,
-                            delivery_location_id || null, delivery_charge || 0, total_amount, payment_method,
+                            validLocationId, delivery_charge || 0, total_amount, payment_method,
                             notes || null, table_number || null, order_status || 'pending', payment_status || 'pending', financial_year_id, effectiveSalesmanId,
                         ]
                     );
@@ -347,9 +395,9 @@ export async function POST(request: Request) {
                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
                        RETURNING *`,
                             [
-                                orderNumber, user_id || null, customer_name || 'Walk-in Customer', customer_phone || 'N/A', customer_address || null,
+                                orderNumber, validUserId, customer_name || 'Walk-in Customer', customer_phone || 'N/A', customer_address || null,
                                 order_type || 'delivery', JSON.stringify(items), subtotal, tax || 0, discount || 0,
-                                delivery_location_id || null, delivery_charge || 0, total_amount, payment_method,
+                                validLocationId, delivery_charge || 0, total_amount, payment_method,
                                 notes || null, table_number || null, order_status || 'pending', payment_status || 'pending', financial_year_id,
                             ]
                         );

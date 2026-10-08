@@ -101,14 +101,26 @@ export default function AdminDashboard() {
       loadOfflineStats();
     };
 
+    const handleSyncEvent = () => {
+      if (typeof navigator !== "undefined" && navigator.onLine) {
+        fetchDashboardData();
+      } else {
+        loadOfflineStats();
+      }
+    };
+
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
+    window.addEventListener("offline-orders-synced", handleSyncEvent);
+    window.addEventListener("offline-orders-updated", handleSyncEvent);
 
     if (selectedFY) fetchDashboardData();
 
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("offline-orders-synced", handleSyncEvent);
+      window.removeEventListener("offline-orders-updated", handleSyncEvent);
     };
   }, [selectedFY]);
 

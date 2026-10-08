@@ -119,6 +119,7 @@ export default function SalesmanDashboard() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [isCounterPosOnline, setIsCounterPosOnline] = useState<boolean>(true);
 
   useEffect(() => {
     if (user && user.role !== "salesman" && user.role !== "admin") {
@@ -134,6 +135,20 @@ export default function SalesmanDashboard() {
 
   useEffect(() => {
     fetchSettings();
+
+    // Check Counter POS liveness
+    const checkCounterPosStatus = async () => {
+      try {
+        const res = await fetch("/api/pos/heartbeat", { cache: "no-store" });
+        const data = await res.json();
+        if (data.success) {
+          setIsCounterPosOnline(data.is_pos_online);
+        }
+      } catch (err) {}
+    };
+
+    checkCounterPosStatus();
+    const heartbeatInterval = setInterval(checkCounterPosStatus, 12000);
 
     // Close context menu on any click
     const handleClick = () => setContextMenu(null);
@@ -154,9 +169,19 @@ export default function SalesmanDashboard() {
       handleOnline();
     }
 
+    const handleSyncEvent = () => {
+      fetchActiveTables();
+      fetchPendingOrders();
+    };
+    window.addEventListener("offline-orders-synced", handleSyncEvent);
+    window.addEventListener("offline-orders-updated", handleSyncEvent);
+
     return () => {
+      clearInterval(heartbeatInterval);
       document.removeEventListener("click", handleClick);
       window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline-orders-synced", handleSyncEvent);
+      window.removeEventListener("offline-orders-updated", handleSyncEvent);
     };
   }, []);
 
@@ -724,6 +749,17 @@ export default function SalesmanDashboard() {
         order_status: status,
       };
 
+      if (!isCounterPosOnline) {
+        alert(
+          "⚠️ Main Cash Counter POS is Offline! / মেইন ক্যাশ কাউন্টার অফলাইন!\n\n" +
+          "🇬🇧 English: Main Cash Counter POS is currently offline (no internet). Please notify the kitchen manually or punch the order directly at the counter.\n\n" +
+          "🇮🇳 Hindi: मुख्य कैश काउंटर पीओएस वर्तमान में ऑफलाइन है (इंटरनेट नहीं है)। कृपया सीधे किचन को सूचित करें या काउंटर से ऑर्डर पंच करें।\n\n" +
+          "🇧🇩 Bengali: মেইন ক্যাশ কাউন্টার POS বর্তমানে অফলাইন রয়েছে (ইন্টারনেট নেই)। অনুগ্রহ করে কিচেনে সরাসরি জানান অথবা কাউন্টার থেকে অর্ডার দিন।"
+        );
+        setSubmitting(false);
+        return;
+      }
+
       if (!navigator.onLine) {
         alert("⚠️ ইন্টারনেট সংযোগ নেই! কোনো ডেটা বা বিলের অমিল এড়াতে অফলাইনে অর্ডার নেওয়া বা আপডেট করার জন্য অনুগ্রহ করে ক্যাশ কাউন্টার ব্যবহার করুন।");
         setSubmitting(false);
@@ -986,6 +1022,55 @@ export default function SalesmanDashboard() {
         </div>
       </div>
 
+      {/* Counter POS Offline Warning Banner */}
+      {!isCounterPosOnline && (
+        <div
+          style={{
+            background: "linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(185, 28, 28, 0.3) 100%)",
+            border: "2px solid #ef4444",
+            borderRadius: "14px",
+            padding: "1rem 1.25rem",
+            marginBottom: "1.5rem",
+            color: "#fff",
+            boxShadow: "0 6px 18px rgba(239, 68, 68, 0.2)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "0.75rem" }}>
+            <span style={{ fontSize: "1.8rem" }}>⚠️</span>
+            <div>
+              <h3 style={{ margin: 0, color: "#f87171", fontSize: "1.15rem", fontWeight: 700 }}>
+                Main Cash Counter POS Offline / মেইন ক্যাশ কাউন্টার অফলাইন
+              </h3>
+              <p style={{ margin: 0, fontSize: "0.8rem", opacity: 0.85 }}>
+                Restaurant counter has no internet. Automatic kitchen printing is paused.
+              </p>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gap: "0.6rem",
+              background: "rgba(0, 0, 0, 0.35)",
+              padding: "0.85rem 1rem",
+              borderRadius: "10px",
+              fontSize: "0.875rem",
+              lineHeight: "1.4",
+            }}
+          >
+            <div>
+              <strong style={{ color: "#60a5fa" }}>🇬🇧 English:</strong> Main Cash Counter POS is currently offline (no internet). Please notify kitchen manually or punch order directly at counter.
+            </div>
+            <div>
+              <strong style={{ color: "#fbbf24" }}>🇮🇳 Hindi:</strong> मुख्य कैश काउंटर पीओएस ऑफलाइन है (इंटरनेट नहीं है)। कृपया सीधे किचन को सूचित करें या काउंटर से ऑर्डर पंच करें।
+            </div>
+            <div>
+              <strong style={{ color: "#34d399" }}>🇧🇩 Bengali:</strong> মেইন ক্যাশ কাউন্টার POS বর্তমানে অফলাইন রয়েছে (ইন্টারনেট নেই)। অনুগ্রহ করে কিচেনে সরাসরি জানান অথবা কাউন্টার থেকে অর্ডার দিন।
+            </div>
+          </div>
+        </div>
+      )}
+
       {viewMode === "tables" ? (
         // ACTIVE TABLES VIEW
         <>
@@ -1048,7 +1133,6 @@ export default function SalesmanDashboard() {
                           style={{
                             height: "100px",
                             borderRadius: "12px",
-                            border: "none",
                             background: isOccupied
                               ? theme.occupied
                               : theme.empty,
@@ -1421,7 +1505,7 @@ export default function SalesmanDashboard() {
                             height: "28px",
                             background: "var(--primary)",
                             borderRadius: "50%",
-                            color: isOccupied ? "white" : "var(--text-primary)",
+                            color: "white",
                             display: "flex",
                             justifyContent: "center",
                             alignItems: "center",
@@ -1685,6 +1769,24 @@ export default function SalesmanDashboard() {
                     <span>₹{grandTotal.toFixed(2)}</span>
                   </div>
 
+                  {!isCounterPosOnline && (
+                    <div
+                      style={{
+                        background: "rgba(239, 68, 68, 0.15)",
+                        border: "1px solid #ef4444",
+                        color: "#ef4444",
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        fontSize: "0.85rem",
+                        fontWeight: 600,
+                        textAlign: "center",
+                        marginBottom: "1rem",
+                      }}
+                    >
+                      ⚠️ কাউন্টার অফলাইন (Counter Offline) - কিচেনে ম্যানুয়ালি জানান
+                    </div>
+                  )}
+
                   <div
                     style={{
                       display: "grid",
@@ -1702,8 +1804,10 @@ export default function SalesmanDashboard() {
                         fontWeight: "bold",
                         border: "1px solid var(--border-color)",
                         background: "transparent",
+                        opacity: !isCounterPosOnline ? 0.6 : 1,
+                        cursor: !isCounterPosOnline ? "not-allowed" : "pointer",
                       }}
-                      disabled={submitting}
+                      disabled={submitting || !isCounterPosOnline}
                     >
                       {submitting ? "Saving..." : "Save Order"}
                     </button>
@@ -1715,10 +1819,17 @@ export default function SalesmanDashboard() {
                         fontSize: "1.2rem",
                         padding: "1rem",
                         fontWeight: "bold",
+                        background: !isCounterPosOnline ? "#dc2626" : undefined,
+                        borderColor: !isCounterPosOnline ? "#dc2626" : undefined,
+                        cursor: !isCounterPosOnline ? "not-allowed" : "pointer",
                       }}
-                      disabled={submitting}
+                      disabled={submitting || !isCounterPosOnline}
                     >
-                      {submitting ? "Placing..." : "Place Order"}
+                      {submitting
+                        ? "Placing..."
+                        : !isCounterPosOnline
+                        ? "⚠️ POS Offline"
+                        : "Place Order"}
                     </button>
                   </div>
                 </div>

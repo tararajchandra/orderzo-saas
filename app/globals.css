@@ -817,53 +817,7 @@ textarea.input {
   min-height: 100px;
 }
 
-@media print {
-  @page { margin: 0; }
-  body { background-color: #fff !important; color: #000 !important; }
-  .no-print, .screen-only { display: none !important; }
-  .print-only { display: block !important; }
-  .glass-card:not(.invoice-container) { box-shadow: none !important; background: transparent !important; border: none !important; padding: 0 !important; margin: 0 !important; }
-  .container:not(.invoice-container) { padding: 0 !important; max-width: 100% !important; margin: 0 !important; }
-  
-  /* Thermal Receipts specific overrides */
-  .thermal-report-print {
-     width: 100%;
-     max-width: 80mm;
-     margin: 0 auto;
-     font-family: 'Courier New', Courier, monospace;
-     font-size: 12px;
-     color: #000;
-  }
-  .thermal-report-print h1, .thermal-report-print h2, .thermal-report-print h3 {
-     text-align: center;
-     margin: 5px 0;
-     font-size: 14px;
-     font-weight: bold;
-  }
-  .thermal-report-print .divider {
-     border-top: 1px dashed #000;
-     margin: 5px 0;
-  }
-  .thermal-report-print .item-row {
-     display: flex;
-     justify-content: space-between;
-     margin-bottom: 3px;
-  }
-  .thermal-report-print .item-row .label { font-weight: bold; }
-  .thermal-report-print .item-row .val { text-align: right; }
-  
-  .thermal-report-print .block-row {
-     margin-bottom: 8px;
-     padding-bottom: 5px;
-     border-bottom: 1px dotted #666;
-  }
-  .thermal-report-print .text-center { text-align: center; }
-  .thermal-report-print .text-right { text-align: right; }
-}
 
-@media screen {
-  .print-only { display: none !important; }
-}
 
 
 /* Cancelled Stamp Style */
@@ -912,44 +866,115 @@ textarea.input {
 }
 
 @media print {
-  @page { margin: 0; }
-  body { background-color: #fff !important; color: #000 !important; }
-  .no-print, .screen-only { display: none !important; }
-  .print-only { display: block !important; }
-  .glass-card:not(.invoice-container) { box-shadow: none !important; background: transparent !important; border: none !important; padding: 0 !important; margin: 0 !important; }
-  .container:not(.invoice-container) { padding: 0 !important; max-width: 100% !important; margin: 0 !important; }
+  @page {
+    margin: 0;
+    size: auto;
+  }
+  body {
+    background-color: #fff !important;
+    color: #000 !important;
+  }
+  .no-print, .screen-only {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .glass-card:not(.invoice-container) {
+    box-shadow: none !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .container:not(.invoice-container) {
+    padding: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
   
   /* Thermal Receipts specific overrides */
   .thermal-report-print {
-     width: 100%;
-     max-width: 80mm;
-     margin: 0 auto;
-     font-family: 'Courier New', Courier, monospace;
-     font-size: 12px;
-     color: #000;
+     width: 100% !important;
+     max-width: 72mm !important; /* Safe printable boundary for 80mm thermal roll */
+     margin: 0 auto !important;
+     padding: 0 3.5mm !important; /* 3.5mm safety buffer prevents clipping on physical roll margins */
+     box-sizing: border-box !important;
+     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+     font-size: 11px !important;
+     font-weight: 600 !important;
+     color: #000000 !important;
+     line-height: 1.3 !important;
+     -webkit-print-color-adjust: exact !important;
+     print-color-adjust: exact !important;
   }
+
+  /* If 58mm narrow roll is configured */
+  .thermal-report-print[data-paper="58mm"] {
+     max-width: 48mm !important;
+     padding: 0 1.5mm !important;
+     font-size: 10px !important;
+  }
+
   .thermal-report-print h1, .thermal-report-print h2, .thermal-report-print h3 {
      text-align: center;
-     margin: 5px 0;
+     margin: 3px 0;
      font-size: 14px;
-     font-weight: bold;
+     font-weight: 800;
+     color: #000;
   }
   .thermal-report-print .divider {
-     border-top: 1px dashed #000;
+     border-top: 1.5px dashed #000;
+     margin: 5px 0;
+  }
+  .thermal-report-print .divider-solid {
+     border-top: 1.5px solid #000;
      margin: 5px 0;
   }
   .thermal-report-print .item-row {
      display: flex;
      justify-content: space-between;
+     align-items: center;
      margin-bottom: 3px;
+     font-size: 11px;
+     color: #000;
   }
-  .thermal-report-print .item-row .label { font-weight: bold; }
-  .thermal-report-print .item-row .val { text-align: right; }
+  .thermal-report-print .item-row .label {
+     font-weight: 700;
+     color: #000;
+  }
+  .thermal-report-print .item-row .val {
+     text-align: right;
+     font-weight: 700;
+     color: #000;
+  }
   
+  .thermal-report-print table {
+     width: 100% !important;
+     border-collapse: collapse !important;
+     table-layout: fixed !important;
+     margin: 4px 0 !important;
+  }
+  .thermal-report-print th {
+     font-size: 11px !important;
+     font-weight: 800 !important;
+     color: #000 !important;
+     padding: 3px 1px !important;
+     border-top: 1.5px dashed #000 !important;
+     border-bottom: 1.5px dashed #000 !important;
+  }
+  .thermal-report-print td {
+     font-size: 11px !important;
+     font-weight: 600 !important;
+     color: #000 !important;
+     padding: 3px 1px !important;
+     vertical-align: top !important;
+  }
+
   .thermal-report-print .block-row {
-     margin-bottom: 8px;
-     padding-bottom: 5px;
-     border-bottom: 1px dotted #666;
+     margin-bottom: 6px;
+     padding-bottom: 4px;
+     border-bottom: 1px dashed #666;
   }
   .thermal-report-print .text-center { text-align: center; }
   .thermal-report-print .text-right { text-align: right; }

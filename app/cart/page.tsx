@@ -12,11 +12,25 @@ export default function CartPage() {
   // Add settings state
   const [settings, setSettings] = useState<any>(null);
   const [checkoutPath, setCheckoutPath] = useState("/checkout");
+  const [isTableOrder, setIsTableOrder] = useState<boolean>(false);
+  const [isPosOnline, setIsPosOnline] = useState<boolean>(true);
 
   useEffect(() => {
     // Check for table number
-    if (sessionStorage.getItem("table_number")) {
+    const table = sessionStorage.getItem("table_number");
+    if (table) {
+      setIsTableOrder(true);
       setCheckoutPath("/dine-in-checkout");
+
+      // Check POS heartbeat
+      fetch("/api/pos/heartbeat", { cache: "no-store" })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            setIsPosOnline(data.is_pos_online);
+          }
+        })
+        .catch(() => {});
     }
 
     // Fetch settings
@@ -265,8 +279,40 @@ export default function CartPage() {
               </div>
             </div>
 
+            {isTableOrder && !isPosOnline && (
+              <div
+                style={{
+                  background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(185, 28, 28, 0.25) 100%)",
+                  border: "2px solid #ef4444",
+                  borderRadius: "12px",
+                  padding: "1rem",
+                  marginBottom: "1.25rem",
+                  fontSize: "0.85rem",
+                  lineHeight: "1.4",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "0.5rem" }}>
+                  <span style={{ fontSize: "1.3rem" }}>⚠️</span>
+                  <strong style={{ color: "#f87171", fontSize: "0.95rem" }}>
+                    Restaurant Counter Offline / রেস্তোরাঁ কাউন্টার অফলাইন
+                  </strong>
+                </div>
+                <div style={{ display: "grid", gap: "0.4rem" }}>
+                  <div>
+                    <strong style={{ color: "#60a5fa" }}>🇬🇧 EN:</strong> Restaurant counter has no internet right now. Please place order directly with our waiter / salesman.
+                  </div>
+                  <div>
+                    <strong style={{ color: "#fbbf24" }}>🇮🇳 HI:</strong> रेस्तरां काउंटर पर इंटरनेट सुविधा नहीं है। कृपया अपना ऑर्डर सीधे हमारे वेटर / सेल्समैन को दें।
+                  </div>
+                  <div>
+                    <strong style={{ color: "#34d399" }}>🇧🇩 BN:</strong> রেস্তোরাঁর কাউন্টারে বর্তমানে ইন্টারনেট নেই। অনুগ্রহ করে আপনার অর্ডারটি সরাসরি সেলসম্যান বা ওয়েটারকে দিন।
+                  </div>
+                </div>
+              </div>
+            )}
+
             <Link
-              href={checkoutPath}
+              href={isTableOrder && !isPosOnline ? "#" : checkoutPath}
               className="btn btn-primary"
               style={{
                 width: "100%",
@@ -275,9 +321,20 @@ export default function CartPage() {
                 textAlign: "center",
                 textDecoration: "none",
                 display: "block",
+                ...(isTableOrder && !isPosOnline
+                  ? {
+                      background: "#dc2626",
+                      borderColor: "#dc2626",
+                      opacity: 0.7,
+                      cursor: "not-allowed",
+                      pointerEvents: "none",
+                    }
+                  : {}),
               }}
             >
-              Proceed to Checkout
+              {isTableOrder && !isPosOnline
+                ? "Table Ordering Blocked (Counter Offline)"
+                : "Proceed to Checkout"}
             </Link>
 
             <Link

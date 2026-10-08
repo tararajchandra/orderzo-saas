@@ -1,5 +1,6 @@
 import localforage from "localforage";
 import { sortOrdersDesc, getLocalDateStr } from "@/lib/utils";
+import { isTauri, saveLocalOrder, markOrderSynced } from "@/lib/tauriBridge";
 
 // Configure localforage
 localforage.config({
@@ -111,6 +112,12 @@ export const saveOfflineOrder = async (
           }
         } catch (e) {}
       }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("offline-orders-updated"));
+      }
+      if (typeof navigator !== "undefined" && navigator.onLine) {
+        syncOfflineOrders().catch(() => {});
+      }
       return null;
     }
 
@@ -219,6 +226,13 @@ export const saveOfflineOrder = async (
           }
         } catch (e) {}
       }
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("offline-orders-updated"));
+      }
+      if (typeof navigator !== "undefined" && navigator.onLine) {
+        syncOfflineOrders().catch(() => {});
+      }
       return null;
     }
 
@@ -286,6 +300,28 @@ export const saveOfflineOrder = async (
       } catch (e) {}
     }
 
+    // Mirror to Tauri SQLite if running in desktop POS
+    if (isTauri()) {
+      saveLocalOrder(updatedBody).catch((e) =>
+        console.warn("[OfflineManager] Tauri SQLite save error:", e)
+      );
+    }
+
+    // Broadcast offline order added event for instant UI updates across the app
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("offline-orders-updated"));
+      window.dispatchEvent(
+        new CustomEvent("offline-order-added", { detail: offlineOrder })
+      );
+    }
+
+    // If online, immediately trigger auto background sync so there's 0 delay
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      syncOfflineOrders().catch((e) =>
+        console.warn("[OfflineManager] Immediate auto-sync error:", e)
+      );
+    }
+
     return offlineOrder;
   } catch (error) {
     console.error("Error saving offline order:", error);
@@ -318,20 +354,38 @@ export const removeOfflineOrder = async (orderId: string) => {
 // Concurrency lock to prevent concurrent sync operations
 let isSyncing = false;
 
+export interface SyncResult {
+  total: number;
+  synced: number;
+  failed: number;
+  remaining: number;
+}
+
 // Sync pending orders to the server
-export const syncOfflineOrders = async () => {
-  if (typeof navigator !== "undefined" && !navigator.onLine) return; // Still offline
+export const syncOfflineOrders = async (): Promise<SyncResult> => {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    const list = await getOfflineOrders();
+    return { total: list.length, synced: 0, failed: 0, remaining: list.length };
+  }
   if (isSyncing) {
-    console.log("Sync already in progress, skipping duplicate call.");
-    return;
+    console.log("[AutoSync] Sync already in progress, skipping duplicate call.");
+    const list = await getOfflineOrders();
+    return { total: list.length, synced: 0, failed: 0, remaining: list.length };
   }
   isSyncing = true;
 
+  let syncedCount = 0;
+  let failedCount = 0;
+  let totalCount = 0;
+
   try {
     const pendingOrders = await getOfflineOrders();
-    if (pendingOrders.length === 0) return; // Nothing to sync
+    totalCount = pendingOrders.length;
+    if (totalCount === 0) {
+      return { total: 0, synced: 0, failed: 0, remaining: 0 };
+    }
 
-    console.log(`Attempting to sync ${pendingOrders.length} offline orders...`);
+    console.log(`[AutoSync] Attempting to background sync ${totalCount} offline orders...`);
 
     for (const order of pendingOrders) {
       try {
@@ -341,15 +395,28 @@ export const syncOfflineOrders = async () => {
           body: JSON.stringify(order.body),
         });
 
-        const data = await response.json();
-        if (
-          (response.ok && data.success !== false) ||
+        let data: any = null;
+        try {
+          data = await response.json();
+        } catch {
+          // Response is non-JSON (e.g., gateway 502/504)
+        }
+
+        const isSuccess =
+          (response.ok && data?.success !== false) ||
           response.status === 404 ||
-          response.status === 409
-        ) {
-          // Successfully synced or already resolved on server
-          console.log(`Synced offline order ${order.id} successfully.`);
+          response.status === 409;
+
+        if (isSuccess) {
+          syncedCount++;
+          console.log(`[AutoSync] Synced offline order ${order.id} successfully.`);
           await removeOfflineOrder(order.id);
+
+          // If running in Tauri Desktop app, mark synced in SQLite
+          if (isTauri()) {
+            const orderNum = String(order.body?.order_number || order.body?.id || order.id);
+            markOrderSynced(orderNum, data?.data?.id ? String(data.data.id) : undefined).catch(() => {});
+          }
 
           // Update cached_admin_orders to mark synced
           if (typeof window !== "undefined") {
@@ -364,7 +431,7 @@ export const syncOfflineOrders = async () => {
                   if (String(item.order_number || item.id) === targetKey) {
                     return {
                       ...item,
-                      ...(data.data || {}),
+                      ...(data?.data || {}),
                       is_offline: false,
                     };
                   }
@@ -387,20 +454,131 @@ export const syncOfflineOrders = async () => {
         ) {
           // Unrecoverable validation error, remove so sync is not stuck forever
           console.warn(
-            `Unrecoverable sync error for order ${order.id}, removing:`,
+            `[AutoSync] Unrecoverable sync error for order ${order.id}, removing:`,
             data
           );
           await removeOfflineOrder(order.id);
+          failedCount++;
         } else {
-          console.warn(`Failed to sync order ${order.id}:`, data);
+          console.warn(`[AutoSync] Temporary failure syncing order ${order.id}:`, data);
+          failedCount++;
+          // If server returns server error (500+), abort loop to avoid hammering server
+          if (response.status >= 500) {
+            break;
+          }
         }
       } catch (error) {
-        console.error(`Error syncing order ${order.id}:`, error);
+        console.error(`[AutoSync] Network error syncing order ${order.id}:`, error);
+        failedCount++;
         // Stop syncing further orders if network drops midway
         break;
       }
     }
+
+    const remainingOrders = await getOfflineOrders();
+    const result: SyncResult = {
+      total: totalCount,
+      synced: syncedCount,
+      failed: failedCount,
+      remaining: remainingOrders.length,
+    };
+
+    if (syncedCount > 0 && typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("offline-orders-synced", {
+          detail: { count: syncedCount, remaining: remainingOrders.length },
+        })
+      );
+      window.dispatchEvent(new CustomEvent("offline-orders-updated"));
+    }
+
+    return result;
   } finally {
     isSyncing = false;
   }
 };
+
+/**
+ * Check if the backend API server is reachable
+ */
+export const checkServerOnline = async (timeoutMs: number = 3000): Promise<boolean> => {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return false;
+  try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch("/api/health", {
+      method: "GET",
+      signal: controller.signal,
+      cache: "no-store",
+    });
+    clearTimeout(id);
+    return res.ok;
+  } catch {
+    return false;
+  }
+};
+
+let autoSyncActive = false;
+let autoSyncTimer: any = null;
+
+/**
+ * Proactive Auto Background Sync Manager
+ * Runs automatically across the entire app:
+ * - Periodic background heartbeat (every intervalMs)
+ * - Auto-triggers on 'online', 'focus', and document 'visibilitychange'
+ * - Auto-triggers immediately whenever an offline order is added
+ * - Registers PWA Service Worker Background Sync if supported
+ */
+export const startAutoBackgroundSync = (intervalMs: number = 5000) => {
+  if (typeof window === "undefined" || autoSyncActive) return;
+  autoSyncActive = true;
+
+  const attemptAutoSync = async () => {
+    try {
+      if (typeof navigator !== "undefined" && !navigator.onLine) return;
+      const pending = await getOfflineOrders();
+      if (pending.length === 0) return;
+      await syncOfflineOrders();
+    } catch (err) {
+      console.warn("[AutoBackgroundSync] Run error:", err);
+    }
+  };
+
+  // 1. Regular background heartbeat
+  autoSyncTimer = setInterval(attemptAutoSync, intervalMs);
+
+  // 2. Connectivity and lifecycle triggers
+  window.addEventListener("online", attemptAutoSync);
+  window.addEventListener("focus", attemptAutoSync);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      attemptAutoSync();
+    }
+  });
+
+  // 3. Immediate trigger when an offline order is created anywhere in the app
+  window.addEventListener("offline-order-added", attemptAutoSync);
+
+  // 4. Register PWA Service Worker Background Sync if supported
+  if ("serviceWorker" in navigator && "SyncManager" in window) {
+    navigator.serviceWorker.ready
+      .then((reg: any) => {
+        if (reg && reg.sync && typeof reg.sync.register === "function") {
+          reg.sync.register("sync-offline-orders").catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }
+
+  // Initial trigger
+  attemptAutoSync();
+};
+
+export const stopAutoBackgroundSync = () => {
+  if (autoSyncTimer) {
+    clearInterval(autoSyncTimer);
+    autoSyncTimer = null;
+  }
+  autoSyncActive = false;
+};
+

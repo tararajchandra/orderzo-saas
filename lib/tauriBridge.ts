@@ -299,3 +299,84 @@ export async function setLocalSetting(key: string, value: string): Promise<boole
     return false;
   }
 }
+
+/**
+ * Save an offline order to local SQLite (Tauri Desktop)
+ */
+export async function saveLocalOrder(order: any): Promise<boolean> {
+  const invoke = await getInvoker();
+  if (!invoke) return false;
+  try {
+    const id = String(order.id || order.order_number || Date.now());
+    const order_number = String(order.order_number || id);
+    const order_type = String(order.order_type || 'takeaway');
+    const table_number = order.table_number ? String(order.table_number) : null;
+    const status = String(order.order_status || order.status || 'pending');
+    const payment_status = String(order.payment_status || 'paid');
+    const payment_method = String(order.payment_method || 'CASH');
+    const subtotal = Number(order.subtotal || 0);
+    const discount = Number(order.discount || 0);
+    const tax = Number(order.tax || 0);
+    const total = Number(order.total_amount || order.total || 0);
+    const items_json = typeof order.items === 'string' ? order.items : JSON.stringify(order.items || []);
+    const created_at = String(order.created_at || new Date().toISOString());
+
+    return await invoke<boolean>('save_local_order', {
+      id,
+      orderNumber: order_number,
+      orderType: order_type,
+      tableNumber: table_number,
+      status,
+      paymentStatus: payment_status,
+      paymentMethod: payment_method,
+      subtotal,
+      discount,
+      tax,
+      total,
+      itemsJson: items_json,
+      createdAt: created_at,
+    });
+  } catch (err) {
+    console.warn('[TauriBridge] save_local_order error:', err);
+    return false;
+  }
+}
+
+/**
+ * Retrieve unsynced orders from local SQLite (Tauri Desktop)
+ */
+export async function getUnsyncedOrders(): Promise<any[]> {
+  const invoke = await getInvoker();
+  if (!invoke) return [];
+  try {
+    const list = await invoke<string[]>('get_unsynced_orders');
+    return (list || []).map((s) => {
+      try {
+        return JSON.parse(s);
+      } catch {
+        return null;
+      }
+    }).filter(Boolean);
+  } catch (err) {
+    console.warn('[TauriBridge] get_unsynced_orders error:', err);
+    return [];
+  }
+}
+
+/**
+ * Mark an order as synced in local SQLite (Tauri Desktop)
+ */
+export async function markOrderSynced(orderNumber: string, serverId?: string): Promise<boolean> {
+  const invoke = await getInvoker();
+  if (!invoke) return false;
+  try {
+    return await invoke<boolean>('mark_order_synced', {
+      orderNumber,
+      serverId: serverId ? String(serverId) : null,
+    });
+  } catch (err) {
+    console.warn('[TauriBridge] mark_order_synced error:', err);
+    return false;
+  }
+}
+
