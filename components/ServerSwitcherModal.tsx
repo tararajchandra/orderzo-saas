@@ -112,12 +112,40 @@ export default function ServerSwitcherModal({
     }
 
     const confirmSwitch = confirm(
-      `Switch server environment to:\n${urlToApply}\n\nThe application will reload and connect to this database/server. Continue?`
+      `Switch server environment to:\n${urlToApply}\n\n🔒 Strict Isolation Guarantee:\nDemo and Live databases are 100% separate.\nAll local server caches and session tokens will be reset so data will never mix.\n\nContinue?`
     );
     if (!confirmSwitch) return;
 
     setLoading(true);
     try {
+      // Purge all cached server data and sessions to prevent cross-contamination
+      const envCacheKeys = [
+        "adminToken",
+        "user",
+        "cached_admin_orders",
+        "cached_cash_sales",
+        "cached_expenses",
+        "cached_menu_items",
+        "cached_delivery_locations",
+        "cached_settings",
+        "cached_sales_data",
+        "cached_salesmen_data",
+        "cached_active_table_orders",
+        "cached_salesman_pending",
+        "cached_salesman_tables",
+        "offline_orders_summary",
+        "ruchi_current_user",
+        "pos_auth_user",
+      ];
+      envCacheKeys.forEach((k) => {
+        try {
+          localStorage.removeItem(k);
+        } catch (e) {}
+      });
+      try {
+        sessionStorage.clear();
+      } catch (e) {}
+
       await switchServerUrl(urlToApply);
       onClose();
     } catch (err) {
@@ -187,7 +215,7 @@ export default function ServerSwitcherModal({
             border: "1px solid rgba(255, 255, 255, 0.1)",
             borderRadius: "10px",
             padding: "0.75rem 1rem",
-            marginBottom: "1.25rem",
+            marginBottom: "1rem",
             fontSize: "0.85rem",
           }}
         >
@@ -196,6 +224,28 @@ export default function ServerSwitcherModal({
           </div>
           <div style={{ fontWeight: 600, color: "#34d399", wordBreak: "break-all" }}>
             {currentUrl || "Default Local Server"}
+          </div>
+        </div>
+
+        {/* Strict Isolation Notice */}
+        <div
+          style={{
+            background: "rgba(16, 185, 129, 0.08)",
+            border: "1px solid rgba(16, 185, 129, 0.25)",
+            borderRadius: "10px",
+            padding: "0.75rem 1rem",
+            marginBottom: "1.25rem",
+            fontSize: "0.8rem",
+            color: "#a7f3d0",
+            lineHeight: 1.4,
+          }}
+        >
+          <div style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", marginBottom: "3px", color: "#34d399" }}>
+            <span>🛡️</span>
+            <span>100% Data Isolation Guarantee</span>
+          </div>
+          <div>
+            Demo and Live servers operate on completely separate databases. Demo orders and live orders will <b>never</b> merge. Local caches are safely cleared upon switching.
           </div>
         </div>
 

@@ -357,7 +357,7 @@ export async function switchServerUrl(url: string): Promise<boolean> {
 /**
  * Save an offline order to local SQLite (Tauri Desktop)
  */
-export async function saveLocalOrder(order: any): Promise<boolean> {
+export async function saveLocalOrder(order: any, originServer?: string): Promise<boolean> {
   const invoke = await getInvoker();
   if (!invoke) return false;
   try {
@@ -374,6 +374,7 @@ export async function saveLocalOrder(order: any): Promise<boolean> {
     const total = Number(order.total_amount || order.total || 0);
     const items_json = typeof order.items === 'string' ? order.items : JSON.stringify(order.items || []);
     const created_at = String(order.created_at || new Date().toISOString());
+    const origin_server = originServer || (typeof window !== 'undefined' ? (localStorage.getItem('tauri_server_url') || window.location.origin) : null);
 
     return await invoke<boolean>('save_local_order', {
       id,
@@ -389,6 +390,7 @@ export async function saveLocalOrder(order: any): Promise<boolean> {
       total,
       itemsJson: items_json,
       createdAt: created_at,
+      originServer: origin_server,
     });
   } catch (err) {
     console.warn('[TauriBridge] save_local_order error:', err);
@@ -399,11 +401,12 @@ export async function saveLocalOrder(order: any): Promise<boolean> {
 /**
  * Retrieve unsynced orders from local SQLite (Tauri Desktop)
  */
-export async function getUnsyncedOrders(): Promise<any[]> {
+export async function getUnsyncedOrders(originServer?: string): Promise<any[]> {
   const invoke = await getInvoker();
   if (!invoke) return [];
   try {
-    const list = await invoke<string[]>('get_unsynced_orders');
+    const origin_server = originServer || (typeof window !== 'undefined' ? (localStorage.getItem('tauri_server_url') || window.location.origin) : null);
+    const list = await invoke<string[]>('get_unsynced_orders', { originServer: origin_server });
     return (list || []).map((s) => {
       try {
         return JSON.parse(s);

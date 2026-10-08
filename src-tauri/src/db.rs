@@ -37,14 +37,19 @@ pub fn init_db(app_dir: PathBuf) -> Result<DbState, String> {
             items_json TEXT NOT NULL,
             created_at TEXT NOT NULL,
             sync_status TEXT NOT NULL DEFAULT 'pending',
-            server_id TEXT
+            server_id TEXT,
+            origin_server TEXT
         );
 
         CREATE INDEX IF NOT EXISTS idx_sync_status ON offline_orders(sync_status);
         CREATE INDEX IF NOT EXISTS idx_created_at ON offline_orders(created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_origin_server ON offline_orders(origin_server);
         ",
     )
     .map_err(|e| format!("Failed to initialize database tables: {}", e))?;
+
+    // Migration: add origin_server column if table was created in an older version
+    let _ = conn.execute("ALTER TABLE offline_orders ADD COLUMN origin_server TEXT", []);
 
     Ok(DbState {
         conn: Mutex::new(conn),
@@ -99,13 +104,14 @@ pub fn save_local_order(
     total: f64,
     items_json: String,
     created_at: String,
+    origin_server: Option<String>,
 ) -> Result<bool, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     conn.execute(
         "INSERT INTO offline_orders (
             id, order_number, order_type, table_number, status, payment_status,
-            payment_method, subtotal, discount, tax, total, items_json, created_at, sync_status
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, 'pending')
+            payment_method, subtotal, discount, tax, total, items_json, created_at, sync_status, origin_server
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, 'pending', ?14)
         ON CONFLICT(order_number) DO UPDATE SET
             status = excluded.status,
             payment_status = excluded.payment_status,
@@ -115,7 +121,8 @@ pub fn save_local_order(
             tax = excluded.tax,
             total = excluded.total,
             items_json = excluded.items_json,
-            sync_status = 'pending'",
+            sync_status = 'pending',
+            origin_server = COALESCE(excluded.origin_server, offline_orders.origin_server)",
         params![
             id,
             order_number,
@@ -129,7 +136,8 @@ pub fn save_local_order(
             tax,
             total,
             items_json,
-            created_at
+            created_at,
+            origin_server
         ],
     )
     .map_err(|e| e.to_string())?;
@@ -137,20 +145,36 @@ pub fn save_local_order(
 }
 
 #[tauri::command]
-pub fn get_unsynced_orders(state: tauri::State<'_, DbState>) -> Result<Vec<String>, String> {
+pub fn get_unsynced_orders(
+    state: tauri::State<'_, DbState>,
+    origin_server: Option<String>,
+) -> Result<Vec<String>, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
-    let mut stmt = conn
-        .prepare("SELECT items_json FROM offline_orders WHERE sync_status = 'pending' ORDER BY created_at ASC")
-        .map_err(|e| e.to_string())?;
-
-    let rows = stmt
-        .query_map([], |row| row.get(0))
-        .map_err(|e| e.to_string())?;
-
+    
     let mut result = Vec::new();
-    for r in rows {
-        if let Ok(json_str) = r {
-            result.push(json_str);
+    if let Some(ref origin) = origin_server {
+        let mut stmt = conn
+            .prepare("SELECT items_json FROM offline_orders WHERE sync_status = 'pending' AND (origin_server IS NULL OR origin_server = ?1) ORDER BY created_at ASC")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map(params![origin], |row| row.get(0))
+            .map_err(|e| e.to_string())?;
+        for r in rows {
+            if let Ok(json_str) = r {
+                result.push(json_str);
+            }
+        }
+    } else {
+        let mut stmt = conn
+            .prepare("SELECT items_json FROM offline_orders WHERE sync_status = 'pending' ORDER BY created_at ASC")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| row.get(0))
+            .map_err(|e| e.to_string())?;
+        for r in rows {
+            if let Ok(json_str) = r {
+                result.push(json_str);
+            }
         }
     }
     Ok(result)

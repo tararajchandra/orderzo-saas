@@ -16,7 +16,22 @@ export interface OfflineOrder {
   body: any;
   timestamp: number;
   status: "pending" | "syncing" | "failed";
+  origin_server?: string; // Origin server URL where this offline order was created
 }
+
+// Get normalized current active server origin for strict environment isolation
+export const getCurrentServerOrigin = (): string => {
+  if (typeof window === "undefined") return "";
+  try {
+    const tauriUrl = localStorage.getItem("tauri_server_url");
+    if (tauriUrl && tauriUrl.trim()) {
+      return tauriUrl.trim().replace(/\/+$/, "");
+    }
+    return (window.location.origin || "").trim().replace(/\/+$/, "");
+  } catch {
+    return "";
+  }
+};
 
 // Generate conflict-free offline order number based on salesman/device prefix
 export const generateOfflineOrderNumber = (prefix: string = "POS"): string => {
@@ -93,6 +108,7 @@ export const saveOfflineOrder = async (
           body: body || {},
           timestamp,
           status: "pending",
+          origin_server: getCurrentServerOrigin(),
         });
         await localforage.setItem("pending_orders", existingOrders);
       }
@@ -175,6 +191,9 @@ export const saveOfflineOrder = async (
             ...body,
             created_at: existingOrders[putIndex].body?.created_at || body?.created_at,
           };
+          if (!existingOrders[putIndex].origin_server) {
+            existingOrders[putIndex].origin_server = getCurrentServerOrigin();
+          }
         } else {
           existingOrders.push({
             id: `offline_put_${timestamp}_${Math.random().toString(36).substr(2, 9)}`,
@@ -189,6 +208,7 @@ export const saveOfflineOrder = async (
             },
             timestamp,
             status: "pending",
+            origin_server: getCurrentServerOrigin(),
           });
         }
         await localforage.setItem("pending_orders", existingOrders);
@@ -255,10 +275,14 @@ export const saveOfflineOrder = async (
         )
       : -1;
 
+    const currentOrigin = getCurrentServerOrigin();
     let offlineOrder: OfflineOrder;
     if (existingIndex !== -1) {
       existingOrders[existingIndex].body = updatedBody;
       existingOrders[existingIndex].timestamp = timestamp;
+      if (!existingOrders[existingIndex].origin_server) {
+        existingOrders[existingIndex].origin_server = currentOrigin;
+      }
       offlineOrder = existingOrders[existingIndex];
     } else {
       offlineOrder = {
@@ -268,6 +292,7 @@ export const saveOfflineOrder = async (
         body: updatedBody,
         timestamp,
         status: "pending",
+        origin_server: currentOrigin,
       };
       existingOrders.push(offlineOrder);
     }
@@ -302,7 +327,7 @@ export const saveOfflineOrder = async (
 
     // Mirror to Tauri SQLite if running in desktop POS
     if (isTauri()) {
-      saveLocalOrder(updatedBody).catch((e) =>
+      saveLocalOrder(updatedBody, currentOrigin).catch((e) =>
         console.warn("[OfflineManager] Tauri SQLite save error:", e)
       );
     }
@@ -329,10 +354,16 @@ export const saveOfflineOrder = async (
   }
 };
 
-// Retrieve all offline orders
-export const getOfflineOrders = async (): Promise<OfflineOrder[]> => {
+// Retrieve offline orders, optionally filtered by active server environment
+export const getOfflineOrders = async (currentServerOnly: boolean = false): Promise<OfflineOrder[]> => {
   try {
-    return (await localforage.getItem("pending_orders")) || [];
+    const list: OfflineOrder[] = (await localforage.getItem("pending_orders")) || [];
+    if (!currentServerOnly) return list;
+    const currentOrigin = getCurrentServerOrigin();
+    return list.filter((o) => {
+      if (!o.origin_server) return true; // Legacy orders
+      return o.origin_server.toLowerCase() === currentOrigin.toLowerCase();
+    });
   } catch (error) {
     console.error("Error getting offline orders:", error);
     return [];
@@ -361,15 +392,15 @@ export interface SyncResult {
   remaining: number;
 }
 
-// Sync pending orders to the server
+// Sync pending orders strictly to their matching server environment
 export const syncOfflineOrders = async (): Promise<SyncResult> => {
   if (typeof navigator !== "undefined" && !navigator.onLine) {
-    const list = await getOfflineOrders();
+    const list = await getOfflineOrders(true);
     return { total: list.length, synced: 0, failed: 0, remaining: list.length };
   }
   if (isSyncing) {
     console.log("[AutoSync] Sync already in progress, skipping duplicate call.");
-    const list = await getOfflineOrders();
+    const list = await getOfflineOrders(true);
     return { total: list.length, synced: 0, failed: 0, remaining: list.length };
   }
   isSyncing = true;
@@ -379,17 +410,24 @@ export const syncOfflineOrders = async (): Promise<SyncResult> => {
   let totalCount = 0;
 
   try {
-    const pendingOrders = await getOfflineOrders();
+    const currentOrigin = getCurrentServerOrigin();
+    // STRICT DATA ISOLATION: Only sync orders belonging to the active server environment!
+    // Orders created on Demo server will NEVER sync to Live server, and vice versa!
+    const pendingOrders = await getOfflineOrders(true);
     totalCount = pendingOrders.length;
     if (totalCount === 0) {
       return { total: 0, synced: 0, failed: 0, remaining: 0 };
     }
 
-    console.log(`[AutoSync] Attempting to background sync ${totalCount} offline orders...`);
+    console.log(`[AutoSync] Attempting to background sync ${totalCount} offline orders to ${currentOrigin || 'current host'}...`);
 
     for (const order of pendingOrders) {
       try {
-        const response = await fetch(order.url, {
+        let syncUrl = order.url;
+        if (syncUrl.startsWith("/") && currentOrigin && currentOrigin.startsWith("http")) {
+          syncUrl = `${currentOrigin}${syncUrl}`;
+        }
+        const response = await fetch(syncUrl, {
           method: order.method,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(order.body),
@@ -475,7 +513,7 @@ export const syncOfflineOrders = async (): Promise<SyncResult> => {
       }
     }
 
-    const remainingOrders = await getOfflineOrders();
+    const remainingOrders = await getOfflineOrders(true);
     const result: SyncResult = {
       total: totalCount,
       synced: syncedCount,
@@ -536,7 +574,7 @@ export const startAutoBackgroundSync = (intervalMs: number = 5000) => {
   const attemptAutoSync = async () => {
     try {
       if (typeof navigator !== "undefined" && !navigator.onLine) return;
-      const pending = await getOfflineOrders();
+      const pending = await getOfflineOrders(true);
       if (pending.length === 0) return;
       await syncOfflineOrders();
     } catch (err) {
