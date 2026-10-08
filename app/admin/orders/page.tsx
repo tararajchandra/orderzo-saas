@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ReceiptPrinter } from "@/lib/receipt-printer";
 import { formatDate, formatDateTime, sortOrdersDesc } from "@/lib/utils";
 import { getOfflineOrders, saveOfflineOrder, syncOfflineOrders } from "@/lib/offlineManager";
-import { isTauri, printOrderBill, printOrderKOT } from "@/lib/tauriBridge";
+import { isTauri, printOrderBill, printOrderKOT, setLocalSetting } from "@/lib/tauriBridge";
 
 export default function AdminOrdersPage() {
   const router = useRouter();
@@ -159,9 +159,18 @@ export default function AdminOrdersPage() {
       const data = await response.json();
       if (data.success) {
         setSettings(data.data);
+        localStorage.setItem("cached_settings", JSON.stringify(data.data));
+        localStorage.setItem("printerSettings", JSON.stringify(data.data));
+        if (isTauri()) {
+          setLocalSetting("cached_settings", JSON.stringify(data.data)).catch(() => {});
+        }
       }
     } catch (error) {
       console.error("Error fetching settings:", error);
+      try {
+        const cached = localStorage.getItem("cached_settings");
+        if (cached) setSettings(JSON.parse(cached));
+      } catch (e) {}
     }
   };
 

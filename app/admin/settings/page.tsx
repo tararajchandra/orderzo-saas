@@ -204,10 +204,18 @@ export default function SettingsPage() {
       const data = await response.json();
       if (data.success) {
         setSettings({ ...defaultSettings, ...data.data });
+        localStorage.setItem("cached_settings", JSON.stringify(data.data));
         localStorage.setItem("printerSettings", JSON.stringify(data.data));
+        if (isTauri()) {
+          setLocalSetting("cached_settings", JSON.stringify(data.data)).catch(() => {});
+        }
       }
     } catch (error) {
       console.error("Failed to load settings", error);
+      try {
+        const cached = localStorage.getItem("cached_settings");
+        if (cached) setSettings({ ...defaultSettings, ...JSON.parse(cached) });
+      } catch (e) {}
     } finally {
       setLoading(false);
     }
@@ -224,8 +232,12 @@ export default function SettingsPage() {
 
       if (response.ok) {
         setSaved(true);
-        // Update local storage as well for sync in other pages that might still read it
+        // Update local storage and SQLite for immediate offline sync
+        localStorage.setItem("cached_settings", JSON.stringify(settings));
         localStorage.setItem("printerSettings", JSON.stringify(settings));
+        if (isTauri()) {
+          setLocalSetting("cached_settings", JSON.stringify(settings)).catch(() => {});
+        }
         setTimeout(() => setSaved(false), 3000);
       } else {
         const errorData = await response.json();
