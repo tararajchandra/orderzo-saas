@@ -43,13 +43,15 @@ pub fn init_db(app_dir: PathBuf) -> Result<DbState, String> {
 
         CREATE INDEX IF NOT EXISTS idx_sync_status ON offline_orders(sync_status);
         CREATE INDEX IF NOT EXISTS idx_created_at ON offline_orders(created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_origin_server ON offline_orders(origin_server);
         ",
     )
     .map_err(|e| format!("Failed to initialize database tables: {}", e))?;
 
     // Migration: add origin_server column if table was created in an older version
     let _ = conn.execute("ALTER TABLE offline_orders ADD COLUMN origin_server TEXT", []);
+
+    // Create index on origin_server after column is guaranteed to exist
+    let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_origin_server ON offline_orders(origin_server)", []);
 
     Ok(DbState {
         conn: Mutex::new(conn),
