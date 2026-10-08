@@ -26,13 +26,6 @@ pub fn run() {
             
             app.manage(db_state);
 
-            #[cfg(debug_assertions)]
-            {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.open_devtools();
-                }
-            }
-
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
