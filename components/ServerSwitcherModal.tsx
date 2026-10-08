@@ -128,6 +128,7 @@ export default function ServerSwitcherModal({
         "cached_menu_items",
         "cached_delivery_locations",
         "cached_settings",
+        "printerSettings",
         "cached_sales_data",
         "cached_salesmen_data",
         "cached_active_table_orders",
