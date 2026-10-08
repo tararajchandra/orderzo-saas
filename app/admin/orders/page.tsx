@@ -167,10 +167,11 @@ export default function AdminOrdersPage() {
   const fetchOrders = async (isPolling = false) => {
     // 1. Always load pending offline orders from IndexedDB first
     let pendingOffline: any[] = [];
+    let pendingPuts: any[] = [];
     try {
       const offlineList = await getOfflineOrders();
       pendingOffline = offlineList
-        .filter((o) => o.body && (o.method === "POST" || o.method === "PUT"))
+        .filter((o) => o.body && o.method === "POST")
         .map((o) => {
           const b = o.body;
           return {
@@ -181,6 +182,7 @@ export default function AdminOrdersPage() {
             is_offline: true,
           };
         });
+      pendingPuts = offlineList.filter((o) => o.body && o.method === "PUT");
     } catch (e) {
       console.warn("Error reading pending offline orders:", e);
     }
@@ -199,6 +201,19 @@ export default function AdminOrdersPage() {
         localList.forEach((item) => {
           const key = String(item.order_number || item.id);
           if (!map.has(key)) map.set(key, item);
+        });
+        // Apply any pending PUT updates
+        pendingPuts.forEach((put) => {
+          const targetKey = String(
+            put.body?.order_number ||
+            put.body?.id ||
+            put.url.replace(/^\/api\/orders\/?/, "") ||
+            ""
+          );
+          if (targetKey && map.has(targetKey)) {
+            const existing = map.get(targetKey);
+            map.set(targetKey, { ...existing, ...put.body, is_offline: true });
+          }
         });
         const merged = Array.from(map.values()).sort(
           (a: any, b: any) =>
@@ -273,7 +288,26 @@ export default function AdminOrdersPage() {
             (po: any) => !serverKeys.has(String(po.order_number || po.id))
           );
 
-          const merged = [...unsyncedPending, ...newOrders].sort(
+          let merged = [...unsyncedPending, ...newOrders];
+          if (pendingPuts.length > 0) {
+            merged = merged.map((order) => {
+              const matchedPut = pendingPuts.find((put) => {
+                const targetKey = String(
+                  put.body?.order_number ||
+                  put.body?.id ||
+                  put.url.replace(/^\/api\/orders\/?/, "") ||
+                  ""
+                );
+                return (
+                  targetKey &&
+                  (String(order.order_number) === targetKey ||
+                    String(order.id) === targetKey)
+                );
+              });
+              return matchedPut ? { ...order, ...matchedPut.body, is_offline: true } : order;
+            });
+          }
+          merged.sort(
             (a: any, b: any) =>
               new Date(b.created_at || 0).getTime() -
               new Date(a.created_at || 0).getTime()
@@ -303,6 +337,18 @@ export default function AdminOrdersPage() {
         localList.forEach((item) => {
           const key = String(item.order_number || item.id);
           if (!map.has(key)) map.set(key, item);
+        });
+        pendingPuts.forEach((put) => {
+          const targetKey = String(
+            put.body?.order_number ||
+            put.body?.id ||
+            put.url.replace(/^\/api\/orders\/?/, "") ||
+            ""
+          );
+          if (targetKey && map.has(targetKey)) {
+            const existing = map.get(targetKey);
+            map.set(targetKey, { ...existing, ...put.body, is_offline: true });
+          }
         });
         const merged = Array.from(map.values()).sort(
           (a: any, b: any) =>
@@ -561,6 +607,8 @@ export default function AdminOrdersPage() {
 
     const orderIdToUpdate = editingOrderItems.id;
     const payload = {
+      id: editingOrderItems.id,
+      order_number: editingOrderItems.order_number,
       items: editingOrderItems.items,
       subtotal: newSubtotal,
       tax: newTax,
@@ -570,7 +618,9 @@ export default function AdminOrdersPage() {
     // 1. Optimistically update local orders state & cache
     setOrders((prev) => {
       const next = prev.map((o) =>
-        o.id === orderIdToUpdate
+        String(o.id) === String(orderIdToUpdate) ||
+        String(o.order_number) === String(orderIdToUpdate) ||
+        (editingOrderItems.order_number && String(o.order_number) === String(editingOrderItems.order_number))
           ? { ...o, items: editingOrderItems.items, subtotal: newSubtotal, tax: newTax, total_amount: newTotalAmount }
           : o,
       );

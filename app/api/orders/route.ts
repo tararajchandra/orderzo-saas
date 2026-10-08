@@ -244,10 +244,38 @@ export async function POST(request: Request) {
 
         // If client passed an order number (e.g. offline queue), verify it does not already exist
         if (orderNumber) {
-            const checkExisting = await client.query('SELECT id FROM orders WHERE order_number = $1', [orderNumber]);
+            const checkExisting = await client.query('SELECT * FROM orders WHERE order_number = $1', [orderNumber]);
             if (checkExisting.rows.length > 0) {
-                // If already exists, re-generate with prefix
-                orderNumber = null;
+                const existing = checkExisting.rows[0];
+                // If newer data (items or total_amount) is supplied from offline queue, update the existing order
+                if (items && Array.isArray(items)) {
+                    await client.query(
+                        `UPDATE orders 
+                         SET items = $1, subtotal = $2, tax = $3, discount = $4, total_amount = $5, updated_at = CURRENT_TIMESTAMP
+                         WHERE id = $6`,
+                        [
+                            JSON.stringify(items),
+                            subtotal ?? existing.subtotal,
+                            tax ?? existing.tax,
+                            discount ?? existing.discount,
+                            total_amount ?? existing.total_amount,
+                            existing.id
+                        ]
+                    );
+                    const updated = await client.query('SELECT * FROM orders WHERE id = $1', [existing.id]);
+                    await client.query('COMMIT');
+                    return NextResponse.json({
+                        success: true,
+                        data: updated.rows[0],
+                        message: 'Existing offline order updated',
+                    });
+                }
+                await client.query('COMMIT');
+                return NextResponse.json({
+                    success: true,
+                    data: existing,
+                    message: 'Order already exists',
+                });
             }
         }
 

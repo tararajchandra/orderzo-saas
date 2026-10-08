@@ -61,6 +61,7 @@ export default function CashBookPage() {
       const offlineOrders = await getOfflineOrders();
       const offlineCashSales = offlineOrders
         .filter((o: any) => {
+          if (o.method !== "POST") return false;
           const body = o.body;
           if (!body) return false;
           const isCash =

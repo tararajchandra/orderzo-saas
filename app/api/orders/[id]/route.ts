@@ -116,7 +116,7 @@ export async function PUT(
            driver_commission = COALESCE($4, driver_commission),
            customer_name = COALESCE($5, customer_name),
            customer_phone = COALESCE($6, customer_phone),
-           items = COALESCE($7, items),
+           items = COALESCE($7::jsonb, items),
            subtotal = COALESCE($8, subtotal),
            tax = COALESCE($9, tax),
            discount = COALESCE($10, discount),
@@ -132,21 +132,21 @@ export async function PUT(
        WHERE id = $19
        RETURNING *`,
             [
-                order_status,
-                payment_status,
-                delivery_boy_id,
-                driverCommission,
-                customer_name,
-                customer_phone,
-                items ? JSON.stringify(items) : null,
-                subtotal,
-                tax,
-                discount,
-                total_amount,
-                payment_method,
-                table_number,
-                notes,
-                order_type,
+                order_status ?? null,
+                payment_status ?? null,
+                delivery_boy_id ?? null,
+                driverCommission ?? null,
+                customer_name ?? null,
+                customer_phone ?? null,
+                items !== undefined && items !== null ? JSON.stringify(items) : null,
+                subtotal ?? null,
+                tax ?? null,
+                discount ?? null,
+                total_amount ?? null,
+                payment_method ?? null,
+                table_number ?? null,
+                notes ?? null,
+                order_type ?? null,
                 split_cash !== undefined ? split_cash : null,
                 split_upi !== undefined ? split_upi : null,
                 split_card !== undefined ? split_card : null,
@@ -219,7 +219,7 @@ export async function PUT(
                      total = EXCLUDED.total,
                      delivery_charge = EXCLUDED.delivery_charge`,
                 [
-                    params.id, 
+                    effectiveId, 
                     invoiceNumber, 
                     subtotal ?? updatedOrder.subtotal ?? 0, 
                     tax ?? updatedOrder.tax ?? 0, 
@@ -238,7 +238,7 @@ export async function PUT(
                  discount = COALESCE($3, discount),
                  total = COALESCE($4, total)
                  WHERE order_id = $5`,
-                [subtotal ?? null, tax ?? null, discount ?? null, total_amount ?? null, params.id]
+                [subtotal ?? null, tax ?? null, discount ?? null, total_amount ?? null, effectiveId]
             );
         }
 
@@ -246,10 +246,10 @@ export async function PUT(
             success: true,
             data: result.rows[0],
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error updating order:', error);
         return NextResponse.json(
-            { success: false, error: 'Failed to update order: ' + (error.message || error) },
+            { success: false, error: 'Failed to update order: ' + (error?.message || error) },
             { status: 500 }
         );
     }

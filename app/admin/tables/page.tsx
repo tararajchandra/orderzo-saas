@@ -172,6 +172,7 @@ export default function AdminTablesPage() {
         const offlineDineIn = offlineList
           .filter(
             (o) =>
+              o.method === "POST" &&
               o.body &&
               (o.body.order_type === "dine_in" || o.body.order_type === "dine-in") &&
               o.body.table_number &&
@@ -228,6 +229,7 @@ export default function AdminTablesPage() {
         const offlineDineIn = offlineList
           .filter(
             (o) =>
+              o.method === "POST" &&
               o.body &&
               (o.body.order_type === "dine_in" || o.body.order_type === "dine-in") &&
               o.body.table_number &&

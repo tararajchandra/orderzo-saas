@@ -64,7 +64,7 @@ export default function SaleBookPage() {
       // Also get any pending offline orders
       const offlineOrders = await getOfflineOrders();
       const offlineSales = offlineOrders
-        .filter((o: any) => o.body && o.body.order_status !== "cancelled")
+        .filter((o: any) => o.method === "POST" && o.body && o.body.order_status !== "cancelled")
         .map((o: any) => {
           const b = o.body;
           return {
