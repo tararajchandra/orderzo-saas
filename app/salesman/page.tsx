@@ -639,7 +639,7 @@ export default function SalesmanDashboard() {
       // Delete the duplicate separated orders since they are now merged
       if (otherOrders.length > 0) {
         const deletePromises = otherOrders.map((o: any) =>
-          fetch(`/api/orders/${o.id}`, { method: "DELETE" }),
+          fetch(`/api/orders/${o.id}?is_table_merge=true`, { method: "DELETE" }),
         );
         await Promise.all(deletePromises);
       }

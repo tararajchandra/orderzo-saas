@@ -339,9 +339,12 @@ export async function DELETE(
         const effectiveId = orderRes.rows[0].id;
         const invoicePrinted = orderRes.rows[0].invoice_printed;
 
-        // Guard: Prevent deletion if invoice has already been issued or printed
+        const { searchParams } = new URL(request.url);
+        const isTableMerge = searchParams.get('is_table_merge') === 'true';
+
+        // Guard: Prevent deletion if invoice has already been issued or printed (unless merging sub-orders into master table bill)
         const checkInvoice = await query('SELECT id, invoice_number FROM invoices WHERE order_id = $1', [effectiveId]);
-        if (invoicePrinted || checkInvoice.rows.length > 0) {
+        if (!isTableMerge && (invoicePrinted || checkInvoice.rows.length > 0)) {
             return NextResponse.json(
                 {
                     success: false,
@@ -349,6 +352,11 @@ export async function DELETE(
                 },
                 { status: 400 }
             );
+        }
+
+        // Clean up duplicate invoice record if sub-order was merged into master order
+        if (isTableMerge && checkInvoice.rows.length > 0) {
+            await query('DELETE FROM invoices WHERE order_id = $1', [effectiveId]);
         }
 
         // Delete order

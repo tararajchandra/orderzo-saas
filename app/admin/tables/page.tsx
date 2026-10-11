@@ -487,12 +487,13 @@ export default function AdminTablesPage() {
         tax: totalTax,
         discount: effectiveDiscount,
         total_amount: finalTotal,
+        invoice_printed: true,
       };
 
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         await saveOfflineOrder(`/api/orders/${masterOrder.id}`, "PUT", masterPayload);
         for (const o of otherOrders) {
-          await saveOfflineOrder(`/api/orders/${o.id}`, "DELETE", {});
+          await saveOfflineOrder(`/api/orders/${o.id}?is_table_merge=true`, "DELETE", {});
         }
 
         const settledIds = new Set([masterOrder.id, ...otherOrders.map((o: any) => o.id)]);
@@ -503,6 +504,8 @@ export default function AdminTablesPage() {
           } catch (e) {}
           return next;
         });
+
+        handlePrintBill(tableNo, effectiveDiscount, paymentMethod, tableGroups[tableNo], splits);
 
         alert(`Table ${tableNo} settled offline! Will sync when back online.`);
         setShowModal(false);
@@ -520,10 +523,13 @@ export default function AdminTablesPage() {
       // Delete the duplicate separated orders since they are now merged
       if (otherOrders.length > 0) {
         const deletePromises = otherOrders.map((o: any) =>
-          fetch(`/api/orders/${o.id}`, { method: "DELETE" }),
+          fetch(`/api/orders/${o.id}?is_table_merge=true`, { method: "DELETE" }),
         );
         await Promise.all(deletePromises);
       }
+
+      // Auto-print Master Bill on settlement
+      handlePrintBill(tableNo, effectiveDiscount, paymentMethod, tableGroups[tableNo], splits);
 
       alert(`Table ${tableNo} settled successfully!`);
       setShowModal(false);
@@ -539,9 +545,10 @@ export default function AdminTablesPage() {
           payment_status: "paid",
           payment_method: paymentMethod,
           order_status: "delivered",
+          invoice_printed: true,
         });
         for (const o of otherOrders) {
-          await saveOfflineOrder(`/api/orders/${o.id}`, "DELETE", {});
+          await saveOfflineOrder(`/api/orders/${o.id}?is_table_merge=true`, "DELETE", {});
         }
         const settledIds = new Set([masterOrder.id, ...otherOrders.map((o: any) => o.id)]);
         setOrders((prev) => {
@@ -650,13 +657,19 @@ export default function AdminTablesPage() {
   };
 
   // Print Bill functionality - combining all orders for the table
-  const handlePrintBill = (tableNo: string, discountOverride?: number) => {
+  const handlePrintBill = (
+    tableNo: string,
+    discountOverride?: number,
+    paymentMethod?: string,
+    providedGroup?: any,
+    splits?: any
+  ) => {
     if (!settings) {
       alert("Settings not loaded yet.");
       return;
     }
 
-    const group = tableGroups[tableNo];
+    const group = providedGroup || tableGroups[tableNo];
     if (!group) return;
 
     const isThermal = settings.printerType === "thermal";
@@ -746,6 +759,7 @@ export default function AdminTablesPage() {
                     <div class="bold" style="font-size: 18px; margin-bottom: 5px;">Table No: ${tableNo}</div>
                     <div>Date: ${orderDate}</div>
                     <div>Orders: ${group.orders.map((o: any) => "#" + (o.order_number || o.id)).join(", ")}</div>
+                    ${paymentMethod ? `<div class="bold" style="margin-top: 3px;">Payment: ${paymentMethod === 'split' ? `SPLIT (Cash: ₹${splits?.cash || 0}, UPI: ₹${splits?.upi || 0}${splits?.card ? `, Card: ₹${splits?.card}` : ''})` : paymentMethod.toUpperCase()} (PAID)</div>` : `<div style="margin-top: 3px; font-style: italic;">Status: DRAFT / UNPAID</div>`}
                 </div>
 
                 <table>
@@ -821,15 +835,6 @@ export default function AdminTablesPage() {
         `;
 
     printHtmlSafely(html);
-
-    // Flag all printed orders for this table as invoice_printed
-    group.orders.forEach((o: any) => {
-      fetch(`/api/orders/${o.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoice_printed: true }),
-      }).catch(() => {});
-    });
   };
 
   if (loading) {
@@ -1453,7 +1458,31 @@ export default function AdminTablesPage() {
               </div>
 
               <button
-                onClick={() => handlePrintBill(selectedTable, tableDiscount)}
+                onClick={() => {
+                  const choice = prompt(
+                    `টেবিল ${selectedTable}-এর মাস্টার বিল কীভাবে Settle ও প্রিন্ট করতে চান?\n\n` +
+                    `১ লিখুন = 💵 Cash দিয়ে Settle ও প্রিন্ট\n` +
+                    `২ লিখুন = 📱 UPI দিয়ে Settle ও প্রিন্ট\n` +
+                    `৩ লিখুন = ✂️ Split (Cash + UPI) দিয়ে Settle ও প্রিন্ট\n` +
+                    `Cancel চাপুন = 🖨️ শুধুমাত্র ড্রাফট বিল প্রিন্ট (টেবিল চালু থাকবে)\n\n` +
+                    `পছন্দ অনুযায়ী 1, 2, বা 3 লিখুন:`,
+                    "1"
+                  );
+                  if (choice === "1") {
+                    handleSettleTable(selectedTable, "cash", undefined, tableDiscount);
+                  } else if (choice === "2") {
+                    handleSettleTable(selectedTable, "upi", undefined, tableDiscount);
+                  } else if (choice === "3") {
+                    const netBill = Math.max(0, tableGroups[selectedTable].total - tableDiscount);
+                    setSplitPaymentModal({ tableNo: selectedTable, total: netBill, discount: tableDiscount });
+                    setSplitAmounts({ cash: netBill, upi: 0, card: 0 });
+                  } else if (choice === null) {
+                    // User canceled prompt -> print draft check without settling or locking
+                    handlePrintBill(selectedTable, tableDiscount);
+                  } else {
+                    handlePrintBill(selectedTable, tableDiscount);
+                  }
+                }}
                 className="btn btn-ghost"
                 style={{
                   width: "100%",
@@ -1462,9 +1491,10 @@ export default function AdminTablesPage() {
                   display: "flex",
                   justifyContent: "center",
                   gap: "0.5rem",
+                  fontWeight: 600,
                 }}
               >
-                🖨️ Print Master Bill
+                🖨️ Print Master Bill (Auto Settle)
               </button>
 
               <div
@@ -1484,7 +1514,7 @@ export default function AdminTablesPage() {
                     gap: "0.5rem",
                   }}
                 >
-                  {settlingTable === selectedTable ? "..." : "💵 Settle Cash"}
+                  {settlingTable === selectedTable ? "..." : "💵 Settle Cash & Print"}
                 </button>
                 <button
                   onClick={() => handleSettleTable(selectedTable, "upi", undefined, tableDiscount)}
@@ -1499,27 +1529,26 @@ export default function AdminTablesPage() {
                     border: "none",
                   }}
                 >
-                  {settlingTable === selectedTable ? "..." : "📱 Settle UPI"}
+                  {settlingTable === selectedTable ? "..." : "📱 Settle UPI & Print"}
                 </button>
-                  <button
-                    onClick={() => {
-                      const netBill = Math.max(0, tableGroups[selectedTable].total - tableDiscount);
-                      setSplitPaymentModal({ tableNo: selectedTable, total: netBill, discount: tableDiscount });
-                      setSplitAmounts({ cash: netBill, upi: 0, card: 0 });
-                    }}
-                    disabled={settlingTable === selectedTable}
-                    className="btn btn-warning"
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      gap: "0.5rem",
-                      gridColumn: "1 / -1",
-                      marginTop: "0.5rem"
-                    }}
-                  >
-                    ✂️ Split Payment
-                  </button>
-
+                <button
+                  onClick={() => {
+                    const netBill = Math.max(0, tableGroups[selectedTable].total - tableDiscount);
+                    setSplitPaymentModal({ tableNo: selectedTable, total: netBill, discount: tableDiscount });
+                    setSplitAmounts({ cash: netBill, upi: 0, card: 0 });
+                  }}
+                  disabled={settlingTable === selectedTable}
+                  className="btn btn-warning"
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: "0.5rem",
+                    gridColumn: "1 / -1",
+                    marginTop: "0.5rem"
+                  }}
+                >
+                  ✂️ Split Payment (Cash + UPI) & Print
+                </button>
               </div>
             </div>
           </div>
