@@ -471,6 +471,21 @@ export default function AdminOrdersPage() {
   };
 
   const updateOrderStatus = async (orderId: number, status: string) => {
+    // Check if order is being cancelled and invoice is already printed / issued
+    const targetOrder = orders.find(
+      (o) => String(o.id) === String(orderId) || String(o.order_number) === String(orderId)
+    );
+    const isInvoicePrinted = Boolean(
+      targetOrder?.is_invoice_printed ||
+      targetOrder?.invoice_printed ||
+      targetOrder?.invoice_number
+    );
+
+    if (status === "cancelled" && isInvoicePrinted) {
+      alert("❌ এই অর্ডারের ইনভয়েস ইতিমধ্যে প্রিন্ট / ইস্যু হয়ে গেছে! ইনভয়েস প্রিন্ট হওয়ার পর অর্ডার বাতিল (Cancel) করা যাবে না।");
+      return;
+    }
+
     // Optimistically update local state & cache
     setOrders((prev) => {
       const isCurrentlyOffline = typeof navigator !== "undefined" && !navigator.onLine;
@@ -505,6 +520,11 @@ export default function AdminOrdersPage() {
         fetchOrders();
         alert(`Order status updated to: ${status}`);
       } else {
+        if (data.error && data.error.includes("Invoice already printed")) {
+          alert(`❌ ${data.error}`);
+          fetchOrders();
+          return;
+        }
         await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
         alert(`অফলাইনে স্ট্যাটাস সংরক্ষিত হয়েছে (${status})`);
       }
@@ -918,6 +938,33 @@ export default function AdminOrdersPage() {
     printHtmlSafely(htmlContent);
   };
 
+  const markOrderInvoicePrinted = async (order: any) => {
+    // 1. Optimistically update local state & cache
+    setOrders((prev) => {
+      const next = prev.map((o) =>
+        String(o.id) === String(order.id) || String(o.order_number) === String(order.id)
+          ? { ...o, is_invoice_printed: true, invoice_printed: true }
+          : o
+      );
+      try {
+        localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
+      } catch (e) {}
+      return next;
+    });
+
+    // 2. Sync to server
+    try {
+      await fetch(`/api/orders/${order.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoice_printed: true }),
+      });
+      fetchOrders(true);
+    } catch (err) {
+      console.warn("Could not sync invoice_printed flag:", err);
+    }
+  };
+
   const handlePrintBill = async (order: any) => {
     setPrintingOrderId(order.id);
 
@@ -925,7 +972,10 @@ export default function AdminOrdersPage() {
       if (isTauri()) {
         try {
           const ok = await printOrderBill(order, settings);
-          if (ok) return;
+          if (ok) {
+            await markOrderInvoicePrinted(order);
+            return;
+          }
         } catch (tauriErr: any) {
           console.warn("Tauri silent bill print failed:", tauriErr);
           alert(tauriErr?.message || "Desktop silent bill print failed. Please check printer in Settings.");
@@ -937,6 +987,7 @@ export default function AdminOrdersPage() {
       if (!navigator.usb) {
         // If WebUSB is not supported, fallback immediately
         printReceiptFallback(order, settings);
+        await markOrderInvoicePrinted(order);
         return;
       }
 
@@ -1045,9 +1096,11 @@ export default function AdminOrdersPage() {
       await device.transferOut(1, data);
       // @ts-ignore
       await device.close();
+      await markOrderInvoicePrinted(order);
     } catch (error: any) {
       console.warn("USB Bill Print failed, falling back:", error);
       printReceiptFallback(order, settings);
+      await markOrderInvoicePrinted(order);
     } finally {
       setPrintingOrderId(null);
     }
@@ -1397,6 +1450,24 @@ export default function AdminOrdersPage() {
                     <h3 style={{ margin: 0 }}>
                       Order #{order.order_number || order.id}
                     </h3>
+                    {(order.is_invoice_printed || order.invoice_printed || order.invoice_number) && (
+                      <span
+                        className="badge"
+                        style={{
+                          background: "rgba(16, 185, 129, 0.15)",
+                          color: "#10b981",
+                          border: "1px solid rgba(16, 185, 129, 0.4)",
+                          fontWeight: 700,
+                          fontSize: "0.75rem",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                        title="ইনভয়েস প্রিন্ট সম্পন্ন। এই অর্ডারটি আর বাতিল করা যাবে না।"
+                      >
+                        🧾 Invoice Printed {order.invoice_number ? `(${order.invoice_number})` : ""}
+                      </span>
+                    )}
                     {order.is_offline && (
                       <span
                         className="badge"
@@ -1731,22 +1802,37 @@ export default function AdminOrdersPage() {
                   >
                     Order Status
                   </label>
-                  <select
-                    value={order.order_status}
-                    onChange={(e) =>
-                      updateOrderStatus(order.id, e.target.value)
-                    }
-                    className="input"
-                    style={{ textTransform: "capitalize" }}
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="preparing">Preparing</option>
-                    <option value="ready">Ready</option>
-                    <option value="out_for_delivery">Out for Delivery</option>
-                    <option value="delivered">Delivered</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
+                  {(() => {
+                    const isOrderInvoiced = Boolean(
+                      order.is_invoice_printed ||
+                      order.invoice_printed ||
+                      order.invoice_number
+                    );
+                    return (
+                      <select
+                        value={order.order_status}
+                        onChange={(e) =>
+                          updateOrderStatus(order.id, e.target.value)
+                        }
+                        className="input"
+                        style={{ textTransform: "capitalize" }}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="preparing">Preparing</option>
+                        <option value="ready">Ready</option>
+                        <option value="out_for_delivery">Out for Delivery</option>
+                        <option value="delivered">Delivered</option>
+                        <option
+                          value="cancelled"
+                          disabled={isOrderInvoiced}
+                          style={isOrderInvoiced ? { color: "#9ca3af", fontStyle: "italic" } : {}}
+                        >
+                          Cancelled {isOrderInvoiced ? "🔒 (Invoice Printed)" : ""}
+                        </option>
+                      </select>
+                    );
+                  })()}
                 </div>
 
                 <div>

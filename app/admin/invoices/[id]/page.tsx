@@ -99,7 +99,17 @@ export default function InvoicePage() {
     }
   };
 
+  const markInvoicePrinted = () => {
+    if (!invoice?.order_id) return;
+    fetch(`/api/orders/${invoice.order_id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoice_printed: true }),
+    }).catch((err) => console.warn("Could not mark invoice printed:", err));
+  };
+
   const handlePrint = () => {
+    markInvoicePrinted();
     window.print();
   };
 
@@ -361,7 +371,10 @@ export default function InvoicePage() {
             },
             settings
           );
-          if (ok) return;
+          if (ok) {
+            markInvoicePrinted();
+            return;
+          }
         } catch (tauriErr: any) {
           console.warn("Tauri silent bill print failed:", tauriErr);
           alert(tauriErr?.message || "Desktop silent bill print failed. Please check printer in Settings.");
@@ -373,6 +386,7 @@ export default function InvoicePage() {
       if (!navigator.usb) {
         // Fallback immediately if WebUSB not supported
         printReceiptFallback(invoice, settings);
+        markInvoicePrinted();
         return;
       }
 
@@ -486,12 +500,14 @@ export default function InvoicePage() {
 
       // @ts-ignore
       await device.close();
+      markInvoicePrinted();
     } catch (error: any) {
       console.warn(
         "USB Printing failed, falling back to browser print:",
         error,
       );
       printReceiptFallback(invoice, settings);
+      markInvoicePrinted();
     } finally {
       setIsPrinting(false);
     }

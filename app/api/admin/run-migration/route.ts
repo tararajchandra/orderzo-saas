@@ -8,7 +8,8 @@ export async function POST(request: Request) {
             { id: 'lng', sql: `ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_lng NUMERIC;` },
             { id: 'dist', sql: `ALTER TABLE orders ADD COLUMN IF NOT EXISTS distance NUMERIC;` },
             { id: 'exp_notes', sql: `ALTER TABLE expenses ADD COLUMN IF NOT EXISTS notes TEXT;` },
-            { id: 'exp_date', sql: `ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_date DATE NOT NULL DEFAULT CURRENT_DATE;` }
+            { id: 'exp_date', sql: `ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_date DATE NOT NULL DEFAULT CURRENT_DATE;` },
+            { id: 'invoice_printed', sql: `ALTER TABLE orders ADD COLUMN IF NOT EXISTS invoice_printed BOOLEAN DEFAULT false;` }
         ];
 
         const results = [];

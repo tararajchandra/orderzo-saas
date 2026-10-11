@@ -32,9 +32,13 @@ export async function GET(request: Request) {
                 o.delivery_boy_id, o.driver_commission,
                 o.notes, o.created_at, o.updated_at,
                 ${itemsCol}
-                dl.location_name as delivery_location_name
+                dl.location_name as delivery_location_name,
+                i.invoice_number,
+                COALESCE(o.invoice_printed, false) as invoice_printed,
+                (i.id IS NOT NULL OR COALESCE(o.invoice_printed, false) = true) AS is_invoice_printed
             FROM orders o
             LEFT JOIN delivery_locations dl ON o.delivery_location_id = dl.id
+            LEFT JOIN invoices i ON o.id = i.order_id
             WHERE 1=1
         `;
         const params: any[] = [];
@@ -86,7 +90,19 @@ export async function GET(request: Request) {
         queryText += ` ORDER BY o.created_at DESC LIMIT $${paramCount}`;
         params.push(limit);
 
-        const result = await query(queryText, params);
+        let result;
+        try {
+            result = await query(queryText, params);
+        } catch (queryErr: any) {
+            if (queryErr?.code === '42703' && queryText.includes('o.invoice_printed')) {
+                const fallbackText = queryText
+                    .replace('COALESCE(o.invoice_printed, false) as invoice_printed,', 'false as invoice_printed,')
+                    .replace('(i.id IS NOT NULL OR COALESCE(o.invoice_printed, false) = true) AS is_invoice_printed', '(i.id IS NOT NULL) AS is_invoice_printed');
+                result = await query(fallbackText, params);
+            } else {
+                throw queryErr;
+            }
+        }
 
         return NextResponse.json({
             success: true,
@@ -132,6 +148,7 @@ export async function POST(request: Request) {
             table_number,
             order_status,
             payment_status,
+            invoice_printed,
         } = body;
 
         // Validate required fields
@@ -461,6 +478,14 @@ export async function POST(request: Request) {
             } catch (invErr) {
                 await client.query('ROLLBACK TO SAVEPOINT invoice_insert_probe');
                 console.warn('⚠️ Invoice insert skipped or warning:', invErr);
+            }
+        }
+
+        if (invoice_printed) {
+            try {
+                await client.query('UPDATE orders SET invoice_printed = true WHERE id = $1', [order.id]);
+            } catch (invPrintErr) {
+                console.warn('Could not update invoice_printed on new order:', invPrintErr);
             }
         }
 

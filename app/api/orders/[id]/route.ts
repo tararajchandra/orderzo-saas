@@ -7,10 +7,31 @@ export async function GET(
     { params }: { params: { id: string } }
 ) {
     try {
-        const result = await query(
-            'SELECT * FROM orders WHERE id = $1',
-            [params.id]
-        );
+        const isNumeric = /^\d+$/.test(params.id);
+        const queryText = `
+            SELECT o.*, i.id as invoice_id, i.invoice_number,
+                   (i.id IS NOT NULL OR COALESCE(o.invoice_printed, false) = true) AS is_invoice_printed
+            FROM orders o
+            LEFT JOIN invoices i ON o.id = i.order_id
+            WHERE ${isNumeric ? 'o.id = $1' : 'o.order_number = $1'}
+        `;
+        let result;
+        try {
+            result = await query(queryText, [isNumeric ? parseInt(params.id, 10) : params.id]);
+        } catch (err: any) {
+            if (err?.code === '42703') {
+                const fallbackText = `
+                    SELECT o.*, i.id as invoice_id, i.invoice_number,
+                           (i.id IS NOT NULL) AS is_invoice_printed
+                    FROM orders o
+                    LEFT JOIN invoices i ON o.id = i.order_id
+                    WHERE ${isNumeric ? 'o.id = $1' : 'o.order_number = $1'}
+                `;
+                result = await query(fallbackText, [isNumeric ? parseInt(params.id, 10) : params.id]);
+            } else {
+                throw err;
+            }
+        }
 
         if (result.rows.length === 0) {
             return NextResponse.json(
@@ -57,7 +78,8 @@ export async function PUT(
             order_type,
             split_cash,
             split_upi,
-            split_card
+            split_card,
+            invoice_printed
         } = body;
 
         let driverCommission = null;
@@ -74,6 +96,37 @@ export async function PUT(
         }
         const existing = existingCheck.rows[0];
         const effectiveId = existing.id;
+
+        // Guard: Once an invoice is printed/issued, the order CANNOT be cancelled!
+        if (order_status === 'cancelled') {
+            const invoiceCheckBefore = await query('SELECT id, invoice_number FROM invoices WHERE order_id = $1', [effectiveId]);
+            const isAlreadyInvoiced = existing.invoice_printed === true || invoiceCheckBefore.rows.length > 0;
+            if (isAlreadyInvoiced) {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        error: 'Invoice already printed! This order cannot be cancelled once an invoice has been issued or printed.'
+                    },
+                    { status: 400 }
+                );
+            }
+        }
+
+        // If invoice_printed flag passed, record it in database
+        if (invoice_printed === true) {
+            try {
+                await query('UPDATE orders SET invoice_printed = true WHERE id = $1', [effectiveId]);
+            } catch (err: any) {
+                if (err?.code === '42703') {
+                    try {
+                        await query('ALTER TABLE orders ADD COLUMN IF NOT EXISTS invoice_printed BOOLEAN DEFAULT false;');
+                        await query('UPDATE orders SET invoice_printed = true WHERE id = $1', [effectiveId]);
+                    } catch (migrationErr) {
+                        console.warn('Could not add or update invoice_printed column:', migrationErr);
+                    }
+                }
+            }
+        }
 
         // Guard: If order was already settled/paid by cashier, keep cashier's final payment details
         if (existing.payment_status === 'paid' && payment_status === 'paid') {
@@ -161,11 +214,11 @@ export async function PUT(
             );
         }
 
-        // Handle Invoice Generation/Update
+        // Handle Invoice Generation/Update (when order is paid OR invoice was printed)
         const invoiceCheck = await query('SELECT * FROM invoices WHERE order_id = $1', [effectiveId]);
         
-        if (invoiceCheck.rows.length === 0 && payment_status === 'paid') {
-            // Generate invoice if paid and doesn't exist yet
+        if (invoiceCheck.rows.length === 0 && (payment_status === 'paid' || invoice_printed === true)) {
+            // Generate invoice if paid or printed and doesn't exist yet
             const updatedOrder = result.rows[0];
 
             // Get active financial year
@@ -263,8 +316,8 @@ export async function DELETE(
     try {
         const isNumeric = /^\d+$/.test(params.id);
         const orderRes = isNumeric
-            ? await query('SELECT id FROM orders WHERE id = $1', [parseInt(params.id, 10)])
-            : await query('SELECT id FROM orders WHERE order_number = $1', [params.id]);
+            ? await query('SELECT id, invoice_printed FROM orders WHERE id = $1', [parseInt(params.id, 10)])
+            : await query('SELECT id, invoice_printed FROM orders WHERE order_number = $1', [params.id]);
 
         if (orderRes.rows.length === 0) {
             return NextResponse.json({
@@ -273,11 +326,21 @@ export async function DELETE(
             });
         }
         const effectiveId = orderRes.rows[0].id;
+        const invoicePrinted = orderRes.rows[0].invoice_printed;
 
-        // First delete related invoice
-        await query('DELETE FROM invoices WHERE order_id = $1', [effectiveId]);
+        // Guard: Prevent deletion if invoice has already been issued or printed
+        const checkInvoice = await query('SELECT id, invoice_number FROM invoices WHERE order_id = $1', [effectiveId]);
+        if (invoicePrinted || checkInvoice.rows.length > 0) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: 'Cannot delete order: An invoice has already been issued or printed for this order.'
+                },
+                { status: 400 }
+            );
+        }
 
-        // Then delete the order
+        // Delete order
         const result = await query(
             'DELETE FROM orders WHERE id = $1 RETURNING id',
             [effectiveId]
@@ -292,7 +355,7 @@ export async function DELETE(
 
         return NextResponse.json({
             success: true,
-            message: 'Order and related invoice deleted successfully'
+            message: 'Order deleted successfully'
         });
     } catch (error) {
         console.error('Error deleting order:', error);

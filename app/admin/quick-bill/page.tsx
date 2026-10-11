@@ -313,6 +313,15 @@ export default function QuickBillPage() {
     printHtmlSafely(htmlContent);
   };
 
+  const markQuickBillPrinted = (orderId: any) => {
+    if (!orderId) return;
+    fetch(`/api/orders/${orderId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoice_printed: true }),
+    }).catch(() => {});
+  };
+
   const handlePrintBill = async (order: any) => {
     setPrintingOrderId(order.id);
 
@@ -320,7 +329,10 @@ export default function QuickBillPage() {
       if (isTauri()) {
         try {
           const ok = await printOrderBill(order, settings);
-          if (ok) return;
+          if (ok) {
+            markQuickBillPrinted(order.id);
+            return;
+          }
         } catch (tauriErr: any) {
           console.warn("Tauri silent bill print failed:", tauriErr);
           alert(tauriErr?.message || "Desktop silent bill print failed. Please check printer in Settings.");
@@ -332,6 +344,7 @@ export default function QuickBillPage() {
       if (!navigator.usb) {
         // If WebUSB is not supported, fallback immediately
         printReceiptFallback(order, settings);
+        markQuickBillPrinted(order.id);
         return;
       }
 
@@ -429,9 +442,11 @@ export default function QuickBillPage() {
       await device.transferOut(1, data);
       // @ts-ignore
       await device.close();
+      markQuickBillPrinted(order.id);
     } catch (error: any) {
       console.warn("USB Bill Print failed, falling back:", error);
       printReceiptFallback(order, settings);
+      markQuickBillPrinted(order.id);
     } finally {
       setPrintingOrderId(null);
     }
@@ -589,6 +604,7 @@ export default function QuickBillPage() {
         discount: discount,
         delivery_charge: manualDeliveryCharge,
         prefix: "POS",
+        invoice_printed: action === "print",
         created_at: new Date().toISOString(),
       };
 

@@ -821,6 +821,15 @@ export default function AdminTablesPage() {
         `;
 
     printHtmlSafely(html);
+
+    // Flag all printed orders for this table as invoice_printed
+    group.orders.forEach((o: any) => {
+      fetch(`/api/orders/${o.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoice_printed: true }),
+      }).catch(() => {});
+    });
   };
 
   if (loading) {
