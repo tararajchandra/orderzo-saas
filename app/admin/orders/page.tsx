@@ -520,18 +520,17 @@ export default function AdminOrdersPage() {
         fetchOrders();
         alert(`Order status updated to: ${status}`);
       } else {
-        if (data.error && data.error.includes("Invoice already printed")) {
-          alert(`❌ ${data.error}`);
-          fetchOrders();
-          return;
-        }
-        await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
-        alert(`অফলাইনে স্ট্যাটাস সংরক্ষিত হয়েছে (${status})`);
+        alert(`❌ ${data.error || "স্ট্যাটাস আপডেট করা সম্ভব হয়নি"}`);
+        fetchOrders();
       }
     } catch (error) {
       console.warn("Status update network error, saved offline:", error);
-      await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
-      alert(`নেটওয়ার্ক সমস্যার কারণে অফলাইনে সংরক্ষিত হয়েছে (${status})`);
+      if (status !== "cancelled") {
+        await saveOfflineOrder(`/api/orders/${orderId}`, "PUT", payload);
+        alert(`নেটওয়ার্ক সমস্যার কারণে অফলাইনে সংরক্ষিত হয়েছে (${status})`);
+      } else {
+        fetchOrders();
+      }
     }
   };
 
@@ -954,12 +953,25 @@ export default function AdminOrdersPage() {
 
     // 2. Sync to server
     try {
-      await fetch(`/api/orders/${order.id}`, {
+      const res = await fetch(`/api/orders/${order.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ invoice_printed: true }),
       });
-      fetchOrders(true);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setOrders((prev) => {
+          const next = prev.map((o) =>
+            String(o.id) === String(order.id) || String(o.order_number) === String(order.id)
+              ? { ...o, ...data.data, is_invoice_printed: true, invoice_printed: true }
+              : o
+          );
+          try {
+            localStorage.setItem("cached_admin_orders", JSON.stringify(next.slice(0, 100)));
+          } catch (e) {}
+          return next;
+        });
+      }
     } catch (err) {
       console.warn("Could not sync invoice_printed flag:", err);
     }

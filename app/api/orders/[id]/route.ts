@@ -181,8 +181,9 @@ export async function PUT(
            split_cash = COALESCE($16, split_cash),
            split_upi = COALESCE($17, split_upi),
            split_card = COALESCE($18, split_card),
+           invoice_printed = COALESCE($19, invoice_printed),
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $19
+       WHERE id = $20
        RETURNING *`,
             [
                 order_status ?? null,
@@ -203,6 +204,7 @@ export async function PUT(
                 split_cash !== undefined ? split_cash : null,
                 split_upi !== undefined ? split_upi : null,
                 split_card !== undefined ? split_card : null,
+                invoice_printed !== undefined ? invoice_printed : null,
                 effectiveId
             ]
         );
@@ -216,6 +218,7 @@ export async function PUT(
 
         // Handle Invoice Generation/Update (when order is paid OR invoice was printed)
         const invoiceCheck = await query('SELECT * FROM invoices WHERE order_id = $1', [effectiveId]);
+        let finalInvoiceNumber = invoiceCheck.rows[0]?.invoice_number || null;
         
         if (invoiceCheck.rows.length === 0 && (payment_status === 'paid' || invoice_printed === true)) {
             // Generate invoice if paid or printed and doesn't exist yet
@@ -262,26 +265,27 @@ export async function PUT(
                 invoiceNumber = `${prefix}${String(invoiceCount).padStart(4, '0')}`;
             }
 
-            await query(
-                `INSERT INTO invoices (order_id, invoice_number, subtotal, tax, discount, total, delivery_charge, financial_year_id)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                 ON CONFLICT (order_id) DO UPDATE 
-                 SET subtotal = EXCLUDED.subtotal,
-                     tax = EXCLUDED.tax,
-                     discount = EXCLUDED.discount,
-                     total = EXCLUDED.total,
-                     delivery_charge = EXCLUDED.delivery_charge`,
-                [
-                    effectiveId, 
-                    invoiceNumber, 
-                    subtotal ?? updatedOrder.subtotal ?? 0, 
-                    tax ?? updatedOrder.tax ?? 0, 
-                    discount ?? updatedOrder.discount ?? 0, 
-                    total_amount ?? updatedOrder.total_amount ?? 0,
-                    updatedOrder.delivery_charge ?? 0,
-                    financial_year_id
-                ]
-            );
+            finalInvoiceNumber = invoiceNumber;
+
+            try {
+                await query(
+                    `INSERT INTO invoices (order_id, invoice_number, subtotal, tax, discount, total, delivery_charge, financial_year_id)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                     ON CONFLICT (invoice_number) DO NOTHING`,
+                    [
+                        effectiveId, 
+                        invoiceNumber, 
+                        subtotal ?? updatedOrder.subtotal ?? 0, 
+                        tax ?? updatedOrder.tax ?? 0, 
+                        discount ?? updatedOrder.discount ?? 0, 
+                        total_amount ?? updatedOrder.total_amount ?? 0,
+                        updatedOrder.delivery_charge ?? 0,
+                        financial_year_id
+                    ]
+                );
+            } catch (invErr) {
+                console.warn('⚠️ Invoice insert skipped or warning:', invErr);
+            }
         } else if (invoiceCheck.rows.length > 0 && (discount !== undefined || subtotal !== undefined || tax !== undefined || total_amount !== undefined)) {
             // Update existing invoice
             await query(
@@ -295,9 +299,16 @@ export async function PUT(
             );
         }
 
+        const isMarkedPrinted = invoice_printed === true || result.rows[0].invoice_printed === true || Boolean(finalInvoiceNumber);
+
         return NextResponse.json({
             success: true,
-            data: result.rows[0],
+            data: {
+                ...result.rows[0],
+                invoice_number: finalInvoiceNumber,
+                invoice_printed: isMarkedPrinted,
+                is_invoice_printed: isMarkedPrinted,
+            },
         });
     } catch (error: any) {
         console.error('Error updating order:', error);
