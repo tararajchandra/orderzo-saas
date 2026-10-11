@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { isRouteSupportedOffline, showOfflineRouteWarning } from "@/lib/offlineRoutes";
 import { getOfflineOrders } from "@/lib/offlineManager";
 import PrinterConfigModal from "@/components/PrinterConfigModal";
+import { isTauri } from "@/lib/tauriBridge";
 
 function DashboardCard({
   href,
@@ -85,8 +86,10 @@ export default function AdminDashboard() {
   const { selectedFY } = useFinancialYear();
   const { isCashier } = useAuth();
   const [isPrinterModalOpen, setIsPrinterModalOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
+    setIsDesktop(isTauri());
     const token = localStorage.getItem("adminToken");
     if (!token) {
       router.push("/admin");
@@ -294,23 +297,25 @@ export default function AdminDashboard() {
         >
           <h1>Admin Dashboard</h1>
           <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-            <button
-              type="button"
-              onClick={() => setIsPrinterModalOpen(true)}
-              className="btn btn-secondary"
-              style={{
-                cursor: "pointer",
-                position: "relative",
-                zIndex: 20,
-                display: "flex",
-                alignItems: "center",
-                gap: "0.4rem",
-                fontWeight: 600,
-              }}
-              title="Configure Cashier & KOT Thermal Printers"
-            >
-              <span>🖨️</span> Printer Setup
-            </button>
+            {(!isCashier || isDesktop) && (
+              <button
+                type="button"
+                onClick={() => setIsPrinterModalOpen(true)}
+                className="btn btn-secondary"
+                style={{
+                  cursor: "pointer",
+                  position: "relative",
+                  zIndex: 20,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                  fontWeight: 600,
+                }}
+                title="Configure Cashier & KOT Thermal Printers"
+              >
+                <span>🖨️</span> Printer Setup
+              </button>
+            )}
             <button
               onClick={handleLogout}
               className="btn btn-ghost"
@@ -393,22 +398,24 @@ export default function AdminDashboard() {
             isOnline={isOnline}
           />
           {isCashier ? (
-            <div
-              className="glass-card text-center"
-              onClick={() => setIsPrinterModalOpen(true)}
-              style={{
-                textDecoration: "none",
-                cursor: "pointer",
-                position: "relative",
-                zIndex: 1,
-                borderColor: "var(--primary, #3b82f6)",
-                borderWidth: "2px",
-              }}
-            >
-              <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>🖨️</div>
-              <h3 style={{ color: "var(--primary, #3b82f6)" }}>Printer Setup</h3>
-              <p className="text-muted">Configure Counter & KOT</p>
-            </div>
+            isDesktop ? (
+              <div
+                className="glass-card text-center"
+                onClick={() => setIsPrinterModalOpen(true)}
+                style={{
+                  textDecoration: "none",
+                  cursor: "pointer",
+                  position: "relative",
+                  zIndex: 1,
+                  borderColor: "var(--primary, #3b82f6)",
+                  borderWidth: "2px",
+                }}
+              >
+                <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>🖨️</div>
+                <h3 style={{ color: "var(--primary, #3b82f6)" }}>Printer Setup</h3>
+                <p className="text-muted">Configure Counter & KOT</p>
+              </div>
+            ) : null
           ) : (
             <DashboardCard
               href="/admin/settings"

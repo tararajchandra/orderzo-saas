@@ -33,7 +33,8 @@ interface CartItem {
 
 export default function QuickBillPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isCashier } = useAuth();
+  const [isDesktop, setIsDesktop] = useState(false);
 
   // Data
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -47,6 +48,10 @@ export default function QuickBillPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [isPrinterModalOpen, setIsPrinterModalOpen] = useState(false);
+
+  useEffect(() => {
+    setIsDesktop(isTauri());
+  }, []);
 
   // Customer Details (Optional for Quick Bill)
   const [customerName, setCustomerName] = useState("");
@@ -749,15 +754,17 @@ export default function QuickBillPage() {
         >
           <h1>Quick Bill</h1>
           <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-            <button
-              type="button"
-              onClick={() => setIsPrinterModalOpen(true)}
-              className="btn btn-secondary"
-              style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontWeight: 600 }}
-              title="Configure Cashier & KOT Thermal Printers"
-            >
-              <span>🖨️</span> Printer Setup
-            </button>
+            {(!isCashier || isDesktop) && (
+              <button
+                type="button"
+                onClick={() => setIsPrinterModalOpen(true)}
+                className="btn btn-secondary"
+                style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontWeight: 600 }}
+                title="Configure Cashier & KOT Thermal Printers"
+              >
+                <span>🖨️</span> Printer Setup
+              </button>
+            )}
             <button
               onClick={() => router.push("/admin/dashboard")}
               className="btn btn-ghost"

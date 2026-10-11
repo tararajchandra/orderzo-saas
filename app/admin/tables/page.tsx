@@ -12,6 +12,8 @@ import {
 } from "@/lib/offlineManager";
 import { printHtmlSafely } from "@/lib/printFallback";
 import PrinterConfigModal from "@/components/PrinterConfigModal";
+import { useAuth } from "@/contexts/AuthContext";
+import { isTauri } from "@/lib/tauriBridge";
 
 // Zone Color Palette
 const ZONE_COLORS = [
@@ -76,6 +78,8 @@ export default function AdminTablesPage() {
   // Modal state for showing table details
   const [showModal, setShowModal] = useState(false);
 
+  const { isCashier } = useAuth();
+  const [isDesktop, setIsDesktop] = useState(false);
   // For printing
   const [settings, setSettings] = useState<any>(null);
   const [isPrinterModalOpen, setIsPrinterModalOpen] = useState(false);
@@ -101,6 +105,7 @@ export default function AdminTablesPage() {
   }, []);
 
   useEffect(() => {
+    setIsDesktop(isTauri());
     const token = localStorage.getItem("adminToken");
     if (!token) {
       router.push("/admin");
@@ -852,15 +857,17 @@ export default function AdminTablesPage() {
             <p className="text-muted">Manage table orders & billing</p>
           </div>
           <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-            <button
-              type="button"
-              onClick={() => setIsPrinterModalOpen(true)}
-              className="btn btn-secondary"
-              style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontWeight: 600 }}
-              title="Configure Cashier & KOT Thermal Printers"
-            >
-              <span>🖨️</span> Printer Setup
-            </button>
+            {(!isCashier || isDesktop) && (
+              <button
+                type="button"
+                onClick={() => setIsPrinterModalOpen(true)}
+                className="btn btn-secondary"
+                style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontWeight: 600 }}
+                title="Configure Cashier & KOT Thermal Printers"
+              >
+                <span>🖨️</span> Printer Setup
+              </button>
+            )}
             <Link href="/admin/dashboard" className="btn btn-ghost">
               ← Back to Dashboard
             </Link>

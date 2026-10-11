@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ServerSwitcherModal from "@/components/ServerSwitcherModal";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   isTauri,
   getInstalledPrinters,
@@ -53,10 +54,12 @@ const defaultSettings: Settings = {
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { isCashier } = useAuth();
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [cashierPrinterSaved, setCashierPrinterSaved] = useState(false);
 
   const [parsedZones, setParsedZones] = useState<
     { name: string; count: string }[]
@@ -71,6 +74,13 @@ export default function SettingsPage() {
   const [testResult, setTestResult] = useState<string | null>(null);
   const [isServerModalOpen, setIsServerModalOpen] = useState(false);
   const [activeServerUrl, setActiveServerUrl] = useState<string>("");
+
+  useEffect(() => {
+    // If cashier in web app, deny access to settings and redirect to dashboard
+    if (isCashier && !isTauri()) {
+      router.replace("/admin/dashboard");
+    }
+  }, [isCashier, router]);
 
   useEffect(() => {
     getServerUrl().then((url) => {
@@ -91,6 +101,37 @@ export default function SettingsPage() {
       });
     }
   }, []);
+
+  const handleSaveCashierPrinter = async () => {
+    try {
+      if (receiptPrinter) {
+        localStorage.setItem("tauri_receipt_printer", receiptPrinter);
+        if (isTauri()) {
+          await setLocalSetting("receipt_printer", receiptPrinter).catch(() => {});
+        }
+      }
+      if (kotPrinter) {
+        localStorage.setItem("tauri_kot_printer", kotPrinter);
+        if (isTauri()) {
+          await setLocalSetting("kot_printer", kotPrinter).catch(() => {});
+        }
+      }
+      // Save paper width and printer type locally
+      const cached = localStorage.getItem("printerSettings");
+      const obj = cached ? JSON.parse(cached) : {};
+      obj.printerType = settings.printerType;
+      obj.paperWidth = settings.paperWidth;
+      localStorage.setItem("printerSettings", JSON.stringify(obj));
+      localStorage.setItem("cached_settings", JSON.stringify(obj));
+      if (isTauri()) {
+        await setLocalSetting("cached_settings", JSON.stringify(obj)).catch(() => {});
+      }
+      setCashierPrinterSaved(true);
+      setTimeout(() => setCashierPrinterSaved(false), 3000);
+    } catch (e: any) {
+      alert("Failed to save printer settings: " + (e?.message || String(e)));
+    }
+  };
 
   const handleUpdatePrinterConfig = (type: "receipt" | "kot", name: string) => {
     if (type === "receipt") {
@@ -274,6 +315,21 @@ export default function SettingsPage() {
     );
   }
 
+  if (isCashier && !isDesktop) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "80vh",
+        }}
+      >
+        <p className="text-muted">Redirecting to Dashboard...</p>
+      </div>
+    );
+  }
+
   return (
     <main className="container" style={{ padding: "2rem 1.5rem" }}>
       <div className="fade-in">
@@ -286,14 +342,16 @@ export default function SettingsPage() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-            <h1>Settings</h1>
-            <button
-              onClick={() => router.push("/admin/settings/financial-years")}
-              className="btn btn-secondary"
-              style={{ padding: "0.4rem 0.8rem", fontSize: "0.9rem" }}
-            >
-              📅 Manage Financial Years
-            </button>
+            <h1>{isCashier ? "Counter Printer Settings" : "Settings"}</h1>
+            {!isCashier && (
+              <button
+                onClick={() => router.push("/admin/settings/financial-years")}
+                className="btn btn-secondary"
+                style={{ padding: "0.4rem 0.8rem", fontSize: "0.9rem" }}
+              >
+                📅 Manage Financial Years
+              </button>
+            )}
           </div>
           <button
             onClick={() => router.push("/admin/dashboard")}
@@ -304,8 +362,10 @@ export default function SettingsPage() {
         </div>
 
         <div style={{ maxWidth: "800px", margin: "0 auto" }}>
-          <div className="glass-card" style={{ marginBottom: "1.5rem" }}>
-            <h2 style={{ marginBottom: "1.5rem" }}>Restaurant Information</h2>
+          {!isCashier && (
+            <>
+              <div className="glass-card" style={{ marginBottom: "1.5rem" }}>
+                <h2 style={{ marginBottom: "1.5rem" }}>Restaurant Information</h2>
 
             <div style={{ display: "grid", gap: "1rem" }}>
               <div>
@@ -748,9 +808,12 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+        </>
+      )}
 
           <div className="glass-card" style={{ marginBottom: "1.5rem" }}>
             <h2 style={{ marginBottom: "1.5rem" }}>Printer Configuration</h2>
+
 
             <div style={{ display: "grid", gap: "1rem" }}>
               <div>
@@ -1033,8 +1096,38 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="glass-card" style={{ marginBottom: "1.5rem" }}>
+          {isCashier && (
             <div
+              style={{
+                marginTop: "1rem",
+                marginBottom: "2rem",
+                display: "flex",
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                type="button"
+                onClick={handleSaveCashierPrinter}
+                className="btn btn-primary"
+                style={{
+                  minWidth: "180px",
+                  padding: "0.75rem 1.5rem",
+                  fontSize: "1rem",
+                  fontWeight: 600,
+                }}
+              >
+                {cashierPrinterSaved
+                  ? "✓ Printer Settings Saved!"
+                  : "💾 Save Printer Settings"}
+              </button>
+            </div>
+          )}
+
+          {!isCashier && (
+            <>
+              <div className="glass-card" style={{ marginBottom: "1.5rem" }}>
+                <div
+
               style={{
                 display: "flex",
                 justifyContent: "space-between",
@@ -1238,10 +1331,12 @@ export default function SettingsPage() {
               {saving ? "Saving..." : saved ? "✓ Saved!" : "Save Settings"}
             </button>
           </div>
+        </>
+      )}
         </div>
       </div>
 
-      {isDesktop && (
+      {isDesktop && !isCashier && (
         <ServerSwitcherModal
           isOpen={isServerModalOpen}
           onClose={() => {

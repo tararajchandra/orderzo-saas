@@ -9,6 +9,7 @@ import { getOfflineOrders, saveOfflineOrder, syncOfflineOrders } from "@/lib/off
 import { isTauri, printOrderBill, printOrderKOT, setLocalSetting } from "@/lib/tauriBridge";
 import { printHtmlSafely } from "@/lib/printFallback";
 import PrinterConfigModal from "@/components/PrinterConfigModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AdminOrdersPage() {
   const router = useRouter();
@@ -32,6 +33,8 @@ export default function AdminOrdersPage() {
   });
   const [filter, setFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("today");
+  const { isCashier } = useAuth();
+  const [isDesktop, setIsDesktop] = useState(false);
   const [printingOrderId, setPrintingOrderId] = useState<number | null>(null);
   const [isPrinterModalOpen, setIsPrinterModalOpen] = useState(false);
   const [editingOrderItems, setEditingOrderItems] = useState<any | null>(null);
@@ -112,6 +115,7 @@ export default function AdminOrdersPage() {
   }, []);
 
   useEffect(() => {
+    setIsDesktop(isTauri());
     const token = localStorage.getItem("adminToken");
     if (!token) {
       router.push("/admin");
@@ -1271,15 +1275,17 @@ export default function AdminOrdersPage() {
             </div>
           </div>
           <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-            <button
-              type="button"
-              onClick={() => setIsPrinterModalOpen(true)}
-              className="btn btn-secondary"
-              style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontWeight: 600 }}
-              title="Configure Cashier & KOT Thermal Printers"
-            >
-              <span>🖨️</span> Printer Setup
-            </button>
+            {(!isCashier || isDesktop) && (
+              <button
+                type="button"
+                onClick={() => setIsPrinterModalOpen(true)}
+                className="btn btn-secondary"
+                style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontWeight: 600 }}
+                title="Configure Cashier & KOT Thermal Printers"
+              >
+                <span>🖨️</span> Printer Setup
+              </button>
+            )}
             <button
               onClick={() => router.push("/admin/orders/create")}
               className="btn btn-primary"
