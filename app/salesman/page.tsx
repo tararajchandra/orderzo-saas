@@ -9,6 +9,8 @@ import {
   getOfflineOrders,
   syncOfflineOrders,
 } from "@/lib/offlineManager";
+import { isTauri, printOrderKOT } from "@/lib/tauriBridge";
+import { printHtmlSafely } from "@/lib/printFallback";
 
 interface MenuItem {
   id: number;
@@ -810,12 +812,6 @@ export default function SalesmanDashboard() {
   };
 
   const printKOTFallback = (order: any, settings: any) => {
-    const printWindow = window.open("", "_blank", "width=400,height=600");
-    if (!printWindow) {
-      alert("Please allow popups to print the KOT.");
-      return;
-    }
-
     const itemsHtml = (
       Array.isArray(order.items)
         ? order.items
@@ -855,21 +851,23 @@ export default function SalesmanDashboard() {
         : "") +
       '<div style="height: 10px;"></div></body></html>';
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-      printWindow.onafterprint = () => {
-        printWindow.close();
-      };
-    }, 500);
+    printHtmlSafely(htmlContent);
   };
 
   const handlePrintKOT = async (order: any) => {
     setPrintingOrderId(order.id);
     try {
+      if (isTauri()) {
+        try {
+          const ok = await printOrderKOT(order, settings);
+          if (ok) return;
+        } catch (tauriErr: any) {
+          console.warn("Tauri silent KOT print failed:", tauriErr);
+          alert(tauriErr?.message || "Desktop silent KOT print failed. Please check printer in Settings.");
+          return;
+        }
+      }
+
       // @ts-ignore
       if (!navigator.usb) {
         printKOTFallback(order, settings);

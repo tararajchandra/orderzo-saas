@@ -10,6 +10,8 @@ import {
   saveOfflineOrder,
   syncOfflineOrders,
 } from "@/lib/offlineManager";
+import { printHtmlSafely } from "@/lib/printFallback";
+import PrinterConfigModal from "@/components/PrinterConfigModal";
 
 // Zone Color Palette
 const ZONE_COLORS = [
@@ -76,6 +78,7 @@ export default function AdminTablesPage() {
 
   // For printing
   const [settings, setSettings] = useState<any>(null);
+  const [isPrinterModalOpen, setIsPrinterModalOpen] = useState(false);
 
   // Context Menu State
   const [contextMenu, setContextMenu] = useState<{
@@ -609,11 +612,7 @@ export default function AdminTablesPage() {
         <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/script>
       </body></html>`;
 
-      const win = window.open("", "_blank", "width=400,height=600");
-      if (win) {
-        win.document.write(html);
-        win.document.close();
-      }
+      printHtmlSafely(html);
     });
   };
 
@@ -816,11 +815,7 @@ export default function AdminTablesPage() {
             </html>
         `;
 
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-    }
+    printHtmlSafely(html);
   };
 
   if (loading) {
@@ -856,9 +851,20 @@ export default function AdminTablesPage() {
             <h1 style={{ marginBottom: "0.5rem" }}>Active Tables (Dine-in)</h1>
             <p className="text-muted">Manage table orders & billing</p>
           </div>
-          <Link href="/admin/dashboard" className="btn btn-ghost">
-            ← Back to Dashboard
-          </Link>
+          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={() => setIsPrinterModalOpen(true)}
+              className="btn btn-secondary"
+              style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontWeight: 600 }}
+              title="Configure Cashier & KOT Thermal Printers"
+            >
+              <span>🖨️</span> Printer Setup
+            </button>
+            <Link href="/admin/dashboard" className="btn btn-ghost">
+              ← Back to Dashboard
+            </Link>
+          </div>
         </div>
 
         <div>
@@ -1647,6 +1653,11 @@ export default function AdminTablesPage() {
           </div>
         </div>
       )}
+
+      <PrinterConfigModal
+        isOpen={isPrinterModalOpen}
+        onClose={() => setIsPrinterModalOpen(false)}
+      />
     </main>
   );
 }

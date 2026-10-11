@@ -7,5 +7,13 @@
   ],
   "permissions": [
     "core:default"
-  ]
+  ],
+  "remote": {
+    "urls": [
+      "https://app.orderzo.in/**",
+      "https://*.orderzo.in/**",
+      "http://localhost:*/**"
+    ]
+  }
 }
+

@@ -8,6 +8,7 @@ import { useFinancialYear } from "@/contexts/FinancialYearContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { isRouteSupportedOffline, showOfflineRouteWarning } from "@/lib/offlineRoutes";
 import { getOfflineOrders } from "@/lib/offlineManager";
+import PrinterConfigModal from "@/components/PrinterConfigModal";
 
 function DashboardCard({
   href,
@@ -83,6 +84,7 @@ export default function AdminDashboard() {
   const [isOnline, setIsOnline] = useState(true);
   const { selectedFY } = useFinancialYear();
   const { isCashier } = useAuth();
+  const [isPrinterModalOpen, setIsPrinterModalOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
@@ -291,7 +293,24 @@ export default function AdminDashboard() {
           }}
         >
           <h1>Admin Dashboard</h1>
-          <div style={{ display: "flex", gap: "1rem" }}>
+          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={() => setIsPrinterModalOpen(true)}
+              className="btn btn-secondary"
+              style={{
+                cursor: "pointer",
+                position: "relative",
+                zIndex: 20,
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                fontWeight: 600,
+              }}
+              title="Configure Cashier & KOT Thermal Printers"
+            >
+              <span>🖨️</span> Printer Setup
+            </button>
             <button
               onClick={handleLogout}
               className="btn btn-ghost"
@@ -373,7 +392,24 @@ export default function AdminDashboard() {
             subtitle="Invoices & reports"
             isOnline={isOnline}
           />
-          {!isCashier && (
+          {isCashier ? (
+            <div
+              className="glass-card text-center"
+              onClick={() => setIsPrinterModalOpen(true)}
+              style={{
+                textDecoration: "none",
+                cursor: "pointer",
+                position: "relative",
+                zIndex: 1,
+                borderColor: "var(--primary, #3b82f6)",
+                borderWidth: "2px",
+              }}
+            >
+              <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>🖨️</div>
+              <h3 style={{ color: "var(--primary, #3b82f6)" }}>Printer Setup</h3>
+              <p className="text-muted">Configure Counter & KOT</p>
+            </div>
+          ) : (
             <DashboardCard
               href="/admin/settings"
               icon="⚙️"
@@ -661,6 +697,11 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+
+      <PrinterConfigModal
+        isOpen={isPrinterModalOpen}
+        onClose={() => setIsPrinterModalOpen(false)}
+      />
     </main>
   );
 }

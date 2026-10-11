@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { isTauri, printOrderBill, printOrderKOT } from "@/lib/tauriBridge";
+import { printHtmlSafely } from "@/lib/printFallback";
 
 interface InvoiceData {
   id: number;
@@ -102,12 +104,6 @@ export default function InvoicePage() {
   };
 
   const printReceiptFallback = (invoice: InvoiceData, settings: any) => {
-    const printWindow = window.open("", "_blank", "width=400,height=600");
-    if (!printWindow) {
-      alert("Please allow popups to print the receipt.");
-      return;
-    }
-
     const itemsHtml = invoice.items
       .map((item: any) => {
         const total = (Number(item.menuItem.price) * item.quantity).toFixed(2);
@@ -192,25 +188,10 @@ export default function InvoicePage() {
             </html>
         `;
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-      printWindow.onafterprint = () => {
-        printWindow.close();
-      };
-    }, 500);
+    printHtmlSafely(htmlContent);
   };
 
   const printKOTFallback = (invoice: InvoiceData) => {
-    const printWindow = window.open("", "_blank", "width=400,height=600");
-    if (!printWindow) {
-      alert("Please allow popups to print the KOT.");
-      return;
-    }
-
     const itemsHtml = invoice.items
       .map(
         (item: any) => `
@@ -274,22 +255,34 @@ export default function InvoicePage() {
             </html>
         `;
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-      printWindow.onafterprint = () => {
-        printWindow.close();
-      };
-    }, 500);
+    printHtmlSafely(htmlContent);
   };
 
   const handlePrintKOT = async () => {
     if (!invoice) return;
 
     try {
+      if (isTauri()) {
+        try {
+          const ok = await printOrderKOT(
+            {
+              id: invoice.order_id,
+              order_number: invoice.order_number || String(invoice.order_id),
+              table_number: invoice.table_number,
+              order_type: invoice.order_type,
+              created_at: invoice.order_date,
+              items: invoice.items,
+            },
+            settings
+          );
+          if (ok) return;
+        } catch (tauriErr: any) {
+          console.warn("Tauri silent KOT print failed:", tauriErr);
+          alert(tauriErr?.message || "Desktop silent KOT print failed. Please check printer in Settings.");
+          return;
+        }
+      }
+
       // @ts-ignore
       if (!navigator.usb) {
         printKOTFallback(invoice);
@@ -348,6 +341,34 @@ export default function InvoicePage() {
     setIsPrinting(true);
 
     try {
+      if (isTauri()) {
+        try {
+          const ok = await printOrderBill(
+            {
+              id: invoice.order_id,
+              order_number: invoice.order_number || invoice.invoice_number || String(invoice.order_id),
+              table_number: invoice.table_number,
+              order_type: invoice.order_type,
+              created_at: invoice.order_date,
+              customer_name: invoice.customer_name,
+              customer_phone: invoice.customer_phone,
+              items: invoice.items,
+              subtotal: invoice.subtotal,
+              tax: invoice.tax,
+              discount: invoice.discount,
+              total: invoice.total,
+              payment_method: invoice.payment_method,
+            },
+            settings
+          );
+          if (ok) return;
+        } catch (tauriErr: any) {
+          console.warn("Tauri silent bill print failed:", tauriErr);
+          alert(tauriErr?.message || "Desktop silent bill print failed. Please check printer in Settings.");
+          return;
+        }
+      }
+
       // @ts-ignore - Navigator.usb is experimental and may not be in TS definitions
       if (!navigator.usb) {
         // Fallback immediately if WebUSB not supported

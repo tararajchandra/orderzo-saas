@@ -5,6 +5,8 @@ import { useFinancialYear } from "@/contexts/FinancialYearContext";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { getGroupedTableList } from "@/lib/utils";
+import { isTauri, printOrderBill } from "@/lib/tauriBridge";
+import { printHtmlSafely } from "@/lib/printFallback";
 
 interface MenuItem {
   id: number;
@@ -259,12 +261,6 @@ export default function CreateOrderPage() {
 
   // PRINTING LOGIC
   const printReceiptFallback = (order: any, settings: any) => {
-    const printWindow = window.open("", "_blank", "width=400,height=600");
-    if (!printWindow) {
-      alert("Please allow popups to print the receipt.");
-      return;
-    }
-
     const itemsHtml = (Array.isArray(order.items) ? order.items : [])
       .map((item: any) => {
         const total = (Number(item.menuItem.price) * item.quantity).toFixed(2);
@@ -352,22 +348,24 @@ export default function CreateOrderPage() {
             </html>
         `;
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-      printWindow.onafterprint = () => {
-        printWindow.close();
-      };
-    }, 500);
+    printHtmlSafely(htmlContent);
   };
 
   const handlePrintBill = async (order: any) => {
     setPrintingOrderId(order.id);
 
     try {
+      if (isTauri()) {
+        try {
+          const ok = await printOrderBill(order, settings);
+          if (ok) return;
+        } catch (tauriErr: any) {
+          console.warn("Tauri silent bill print failed:", tauriErr);
+          alert(tauriErr?.message || "Desktop silent bill print failed. Please check printer in Settings.");
+          return;
+        }
+      }
+
       // @ts-ignore
       if (!navigator.usb) {
         // If WebUSB is not supported, fallback immediately

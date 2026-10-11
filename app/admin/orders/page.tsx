@@ -7,6 +7,8 @@ import { ReceiptPrinter } from "@/lib/receipt-printer";
 import { formatDate, formatDateTime, sortOrdersDesc } from "@/lib/utils";
 import { getOfflineOrders, saveOfflineOrder, syncOfflineOrders } from "@/lib/offlineManager";
 import { isTauri, printOrderBill, printOrderKOT, setLocalSetting } from "@/lib/tauriBridge";
+import { printHtmlSafely } from "@/lib/printFallback";
+import PrinterConfigModal from "@/components/PrinterConfigModal";
 
 export default function AdminOrdersPage() {
   const router = useRouter();
@@ -31,6 +33,7 @@ export default function AdminOrdersPage() {
   const [filter, setFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("today");
   const [printingOrderId, setPrintingOrderId] = useState<number | null>(null);
+  const [isPrinterModalOpen, setIsPrinterModalOpen] = useState(false);
   const [editingOrderItems, setEditingOrderItems] = useState<any | null>(null);
   const [splitPaymentModal, setSplitPaymentModal] = useState<{orderId: number, total: number} | null>(null);
   const [splitAmounts, setSplitAmounts] = useState({ cash: 0, upi: 0, card: 0 });
@@ -808,12 +811,6 @@ export default function AdminOrdersPage() {
   };
 
   const printReceiptFallback = (order: any, settings: any) => {
-    const printWindow = window.open("", "_blank", "width=400,height=600");
-    if (!printWindow) {
-      alert("Please allow popups to print the receipt.");
-      return;
-    }
-
     let rawItems: any[] = [];
     try {
       rawItems = Array.isArray(order.items)
@@ -914,16 +911,7 @@ export default function AdminOrdersPage() {
             </html>
         `;
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-      printWindow.onafterprint = () => {
-        printWindow.close();
-      };
-    }, 500);
+    printHtmlSafely(htmlContent);
   };
 
   const handlePrintBill = async (order: any) => {
@@ -934,8 +922,10 @@ export default function AdminOrdersPage() {
         try {
           const ok = await printOrderBill(order, settings);
           if (ok) return;
-        } catch (tauriErr) {
-          console.warn("Tauri silent bill print failed, falling back:", tauriErr);
+        } catch (tauriErr: any) {
+          console.warn("Tauri silent bill print failed:", tauriErr);
+          alert(tauriErr?.message || "Desktop silent bill print failed. Please check printer in Settings.");
+          return;
         }
       }
 
@@ -1060,12 +1050,6 @@ export default function AdminOrdersPage() {
   };
 
   const printKOTFallback = (order: any, settings: any) => {
-    const printWindow = window.open("", "_blank", "width=400,height=600");
-    if (!printWindow) {
-      alert("Please allow popups to print the KOT.");
-      return;
-    }
-
     let rawItems: any[] = [];
     try {
       rawItems = Array.isArray(order.items)
@@ -1112,16 +1096,7 @@ export default function AdminOrdersPage() {
         : "") +
       '<div style="height: 10px;"></div></body></html>';
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-      printWindow.onafterprint = () => {
-        printWindow.close();
-      };
-    }, 500);
+    printHtmlSafely(htmlContent);
   };
 
   const handlePrintKOT = async (order: any) => {
@@ -1131,8 +1106,10 @@ export default function AdminOrdersPage() {
         try {
           const ok = await printOrderKOT(order, settings);
           if (ok) return;
-        } catch (tauriErr) {
-          console.warn("Tauri silent KOT print failed, falling back:", tauriErr);
+        } catch (tauriErr: any) {
+          console.warn("Tauri silent KOT print failed:", tauriErr);
+          alert(tauriErr?.message || "Desktop silent KOT print failed. Please check printer in Settings.");
+          return;
         }
       }
 
@@ -1293,7 +1270,16 @@ export default function AdminOrdersPage() {
               </span>
             </div>
           </div>
-          <div style={{ display: "flex", gap: "1rem" }}>
+          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={() => setIsPrinterModalOpen(true)}
+              className="btn btn-secondary"
+              style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontWeight: 600 }}
+              title="Configure Cashier & KOT Thermal Printers"
+            >
+              <span>🖨️</span> Printer Setup
+            </button>
             <button
               onClick={() => router.push("/admin/orders/create")}
               className="btn btn-primary"
@@ -2070,6 +2056,11 @@ export default function AdminOrdersPage() {
           </div>
         </div>
       )}
+
+      <PrinterConfigModal
+        isOpen={isPrinterModalOpen}
+        onClose={() => setIsPrinterModalOpen(false)}
+      />
     </main>
   );
 }
