@@ -63,16 +63,18 @@ export default function PrinterConfigModal({
       getInstalledPrinters()
         .then((list) => {
           setPrintersList(list);
-          if (!savedReceipt && list.length > 0) {
-            setReceiptPrinter(list[0].name);
+          const defaultPr = list.find((p) => p.is_default) || list[0];
+          if (!savedReceipt && defaultPr) {
+            setReceiptPrinter(defaultPr.name);
           }
-          if (!savedKot && list.length > 0) {
-            setKotPrinter(list[0].name);
+          if (!savedKot && defaultPr) {
+            setKotPrinter(defaultPr.name);
           }
         })
         .catch((err) => {
           console.error("Error loading printers in modal:", err);
         });
+
     }
   }, [isOpen]);
 
@@ -408,7 +410,7 @@ export default function PrinterConfigModal({
                   gap: "0.4rem",
                 }}
               >
-                <span>🧾</span> Bill / Cash Receipt Thermal Printer:
+                <span>🧾</span> Bill / Receipt Printer (Thermal / Wi-Fi / USB):
               </label>
               {isDesktop && (
                 <button
@@ -447,7 +449,7 @@ export default function PrinterConfigModal({
             ) : (
               <input
                 className="input"
-                placeholder="e.g. POS-80 or TVS RP 3160"
+                placeholder="e.g. POS-80, EPSON L3150, or TVS RP 3160"
                 value={receiptPrinter}
                 onChange={(e) => setReceiptPrinter(e.target.value)}
                 style={{ width: "100%" }}
@@ -460,7 +462,7 @@ export default function PrinterConfigModal({
                 margin: "4px 0 0 0",
               }}
             >
-              Thermal printer at the cash counter for customer tax invoice/bill.
+              Any connected printer (Thermal POS, Wi-Fi Epson/HP, or Windows Spooler) for customer bills.
             </p>
           </div>
 
@@ -475,7 +477,7 @@ export default function PrinterConfigModal({
                 marginBottom: "0.4rem",
               }}
             >
-              <span>🍳</span> Kitchen KOT Thermal Printer:
+              <span>🍳</span> Kitchen KOT Printer (Thermal / Wi-Fi):
             </label>
             {isDesktop ? (
               <select

@@ -62,6 +62,11 @@ mod winspool {
             pcb_needed: *mut u32,
             pc_returned: *mut u32,
         ) -> i32;
+
+        pub fn GetDefaultPrinterW(
+            p_printer_name: *mut u16,
+            pcch_buffer: *mut u32,
+        ) -> i32;
     }
 }
 
@@ -98,6 +103,24 @@ pub fn list_printers() -> Result<Vec<PrinterInfo>, String> {
     #[cfg(windows)]
     {
         use winspool::*;
+
+        // 1. Detect Default Printer Name
+        let mut def_len: u32 = 0;
+        unsafe {
+            GetDefaultPrinterW(ptr::null_mut(), &mut def_len);
+        }
+        let mut default_printer_name = String::new();
+        if def_len > 0 {
+            let mut def_buf: Vec<u16> = vec![0; def_len as usize];
+            let res = unsafe {
+                GetDefaultPrinterW(def_buf.as_mut_ptr(), &mut def_len)
+            };
+            if res != 0 {
+                default_printer_name = unsafe { from_wide_ptr(def_buf.as_ptr()) };
+            }
+        }
+
+        // 2. Enumerate Local and Connected Network Printers
         let flags = PRINTER_ENUM_LOCAL | PRINTER_ENUM_CONNECTIONS;
         let mut needed: u32 = 0;
         let mut returned: u32 = 0;
@@ -129,14 +152,17 @@ pub fn list_printers() -> Result<Vec<PrinterInfo>, String> {
 
         let printer_infos = buffer.as_ptr() as *const PRINTER_INFO_1_W;
         let mut list = Vec::new();
+        let mut seen = std::collections::HashSet::new();
 
         for i in 0..returned {
             let info = unsafe { &*printer_infos.add(i as usize) };
             let name = unsafe { from_wide_ptr(info.p_name) };
-            if !name.is_empty() {
+            if !name.is_empty() && seen.insert(name.clone()) {
+                let is_default = !default_printer_name.is_empty()
+                    && name.eq_ignore_ascii_case(&default_printer_name);
                 list.push(PrinterInfo {
                     name,
-                    is_default: false,
+                    is_default,
                 });
             }
         }
@@ -526,3 +552,19 @@ pub fn kick_cash_drawer(printer_name: String) -> Result<bool, String> {
     esc.cash_drawer();
     send_raw_bytes_to_printer(&printer_name, &esc.build())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_list_printers() {
+        let printers = list_printers().expect("Failed to list printers");
+        println!("\n=== FOUND {} PRINTERS ===", printers.len());
+        for p in &printers {
+            println!("Printer: '{}' (default: {})", p.name, p.is_default);
+        }
+        assert!(!printers.is_empty(), "Expected at least one printer");
+    }
+}
+

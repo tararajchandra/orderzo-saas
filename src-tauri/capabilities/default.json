@@ -6,8 +6,20 @@
     "main"
   ],
   "permissions": [
-    "core:default"
+    "core:default",
+    "allow-list-printers",
+    "allow-print-bill",
+    "allow-print-kot",
+    "allow-kick-cash-drawer",
+    "allow-get-setting",
+    "allow-set-setting",
+    "allow-save-local-order",
+    "allow-get-unsynced-orders",
+    "allow-mark-order-synced",
+    "allow-get-server-url",
+    "allow-switch-server-url"
   ],
+
   "remote": {
     "urls": [
       "https://app.orderzo.in/**",

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-get-unsynced-orders"
+description = "Enables the get_unsynced_orders command without any pre-configured scope."
+commands.allow = ["get_unsynced_orders"]
+
+[[permission]]
+identifier = "deny-get-unsynced-orders"
+description = "Denies the get_unsynced_orders command without any pre-configured scope."
+commands.deny = ["get_unsynced_orders"]

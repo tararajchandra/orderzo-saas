@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-print-bill"
+description = "Enables the print_bill command without any pre-configured scope."
+commands.allow = ["print_bill"]
+
+[[permission]]
+identifier = "deny-print-bill"
+description = "Denies the print_bill command without any pre-configured scope."
+commands.deny = ["print_bill"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-print-kot"
+description = "Enables the print_kot command without any pre-configured scope."
+commands.allow = ["print_kot"]
+
+[[permission]]
+identifier = "deny-print-kot"
+description = "Denies the print_kot command without any pre-configured scope."
+commands.deny = ["print_kot"]
