@@ -170,14 +170,23 @@ export async function printOrderBill(order: any, settings: any): Promise<boolean
 
   const items: BillPrintItem[] = rawItems.map((item: any) => {
     const qty = Number(item.quantity || item.qty || 1);
-    const rate = Number(item.price || item.menuItem?.price || 0);
+    const rate = Number(item.price || item.menuItem?.price || item.rate || 0);
+    const amount = Number(item.total || item.amount || (rate * qty));
     return {
       name: item.menuItem?.name || item.name || 'Item',
       qty,
       rate,
-      amount: rate * qty,
+      amount,
     };
   });
+
+  const rawSubtotal = Number(order.subtotal || 0);
+  const itemsSum = items.reduce((acc, it) => acc + (it.amount || 0), 0);
+  const subtotal = rawSubtotal > 0 ? rawSubtotal : (itemsSum > 0 ? itemsSum : Number(order.total_amount || order.total || 0));
+  const discount = Number(order.discount || 0);
+  const tax = Number(order.tax || 0);
+  const calculatedTotal = subtotal - discount + tax;
+  const total = Number(order.total_amount || order.total || order.grand_total || (calculatedTotal > 0 ? calculatedTotal : subtotal));
 
   const payload: BillPrintPayload = {
     printer_name: printerName,
@@ -192,10 +201,10 @@ export async function printOrderBill(order: any, settings: any): Promise<boolean
       ? `Table ${order.table_number}`
       : String(order.order_type || 'Takeaway').toUpperCase(),
     items,
-    subtotal: Number(order.subtotal || order.total || 0),
-    discount: Number(order.discount || 0),
-    tax: Number(order.tax || 0),
-    total: Number(order.total || 0),
+    subtotal,
+    discount,
+    tax,
+    total,
     payment_mode:
       order.payment_method ||
       (order.payment_status === 'PAID' ? 'PAID' : 'PENDING'),

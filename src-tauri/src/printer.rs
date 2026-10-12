@@ -319,6 +319,7 @@ impl EscPosBuilder {
         self
     }
 
+    #[allow(dead_code)]
     pub fn align_right(&mut self) -> &mut Self {
         self.bytes.extend_from_slice(&[ESC, b'a', 2]);
         self
@@ -384,7 +385,7 @@ impl EscPosBuilder {
 pub fn print_bill(payload: BillPrintPayload) -> Result<bool, String> {
     let mut esc = EscPosBuilder::new();
 
-    // Header
+    // 1. Restaurant Header
     esc.align_center();
     esc.double_size();
     esc.bold_on();
@@ -392,19 +393,30 @@ pub fn print_bill(payload: BillPrintPayload) -> Result<bool, String> {
     esc.normal_size();
     esc.bold_off();
 
+    // Address (Word-wrapped cleanly at 30 chars to prevent slicing PIN code)
     if let Some(addr) = &payload.address {
-        if !addr.is_empty() {
-            esc.text_ln(addr);
+        let clean_addr = addr.trim();
+        if !clean_addr.is_empty() {
+            let addr_lines = wrap_text(clean_addr, 30);
+            for l in addr_lines {
+                esc.text_ln(&l);
+            }
         }
     }
+
+    // Phone (Only print if it contains actual digits beyond "+91")
     if let Some(ph) = &payload.phone {
-        if !ph.is_empty() {
-            esc.text_ln(&format!("Tel: {}", ph));
+        let clean_ph = ph.trim();
+        if !clean_ph.is_empty() && clean_ph != "+91" && clean_ph != "+91 " && clean_ph.len() > 4 {
+            esc.text_ln(&format!("Tel: {}", clean_ph));
         }
     }
+
+    // GSTIN
     if let Some(gst) = &payload.gstin {
-        if !gst.is_empty() {
-            esc.text_ln(&format!("GSTIN: {}", gst));
+        let clean_gst = gst.trim();
+        if !clean_gst.is_empty() {
+            esc.text_ln(&format!("GSTIN: {}", clean_gst));
         }
     }
 
@@ -415,53 +427,73 @@ pub fn print_bill(payload: BillPrintPayload) -> Result<bool, String> {
     esc.text_ln(&format!("Type : {}", payload.table_or_type));
     esc.text_ln("--------------------------------");
 
-    // Item Table (32 chars line for standard 58mm/80mm)
-    // Item (18) Qty (4) Total (10)
+    // 2. Item Table Header
+    // Column layout: Item (16) Qty (4) Amount (10) = 30 chars total (safe on all 58mm/80mm)
     esc.bold_on();
-    esc.text_ln("Item              Qty     Amount");
+    esc.text_ln("Item                Qty   Amount");
     esc.bold_off();
     esc.text_ln("--------------------------------");
 
     for item in &payload.items {
-        let name_display = if item.name.len() > 16 {
-            &item.name[0..16]
+        let name_trimmed = item.name.trim();
+        if name_trimmed.chars().count() <= 16 {
+            let line = format!(
+                "{:<16} {:>4.0} {:>9.2}",
+                name_trimmed, item.qty, item.amount
+            );
+            esc.text_ln(&line);
         } else {
-            &item.name
-        };
-        let line = format!(
-            "{:<16} {:>4.0} {:>10.2}",
-            name_display, item.qty, item.amount
-        );
-        esc.text_ln(&line);
+            // Long item name: print full name cleanly (wrapping at 30 if needed)
+            let name_lines = wrap_text(name_trimmed, 30);
+            for n_line in name_lines {
+                esc.text_ln(&n_line);
+            }
+            // Indented Qty and Amount aligned under columns
+            let line = format!(
+                "{:>21.0} {:>9.2}",
+                item.qty, item.amount
+            );
+            esc.text_ln(&line);
+        }
+    }
+
+    // 3. Totals Section (Left-aligned fixed 30-char block so numbers never get clipped on the right)
+    let disc = payload.discount.unwrap_or(0.0);
+    let tax = payload.tax.unwrap_or(0.0);
+    let calculated_total = payload.subtotal - disc + tax;
+    let effective_total = if payload.total > 0.0 {
+        payload.total
+    } else if calculated_total > 0.0 {
+        calculated_total
+    } else {
+        payload.subtotal
+    };
+
+    esc.text_ln("--------------------------------");
+    esc.text_ln(&format!("{:<18}{:>12.2}", "Sub Total:", payload.subtotal));
+
+    if disc > 0.0 {
+        esc.text_ln(&format!("{:<18}{:>12.2}", "Discount:", -disc));
+    }
+
+    if tax > 0.0 {
+        esc.text_ln(&format!("{:<18}{:>12.2}", "Tax/GST:", tax));
     }
 
     esc.text_ln("--------------------------------");
-    esc.align_right();
-    esc.text_ln(&format!("Sub Total: {:>10.2}", payload.subtotal));
-
-    if let Some(disc) = payload.discount {
-        if disc > 0.0 {
-            esc.text_ln(&format!("Discount: -{:>9.2}", disc));
-        }
-    }
-
-    if let Some(tax) = payload.tax {
-        if tax > 0.0 {
-            esc.text_ln(&format!("Tax/GST : {:>10.2}", tax));
-        }
-    }
-
     esc.bold_on();
-    esc.double_size();
-    esc.text_ln(&format!("NET: INR {:.2}", payload.total));
-    esc.normal_size();
+    esc.text_ln(&format!("{:<15}{:>15.2}", "TOTAL (INR):", effective_total));
     esc.bold_off();
 
+    // 4. Payment Mode
     if let Some(pay) = &payload.payment_mode {
-        esc.align_left();
-        esc.text_ln(&format!("Payment: {}", pay));
+        let clean_pay = pay.trim().to_uppercase();
+        if !clean_pay.is_empty() {
+            esc.text_ln(&format!("Payment Mode: {}", clean_pay));
+        }
     }
 
+    // 5. Footer Note
     esc.align_center();
     esc.text_ln("================================");
     let note = payload.footer_note.unwrap_or_else(|| "Thank You! Visit Again".to_string());
@@ -477,6 +509,53 @@ pub fn print_bill(payload: BillPrintPayload) -> Result<bool, String> {
     esc.cut();
 
     send_raw_bytes_to_printer(&payload.printer_name, &esc.build())
+}
+
+fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut current_line = String::new();
+
+    for word in text.split_whitespace() {
+        if current_line.is_empty() {
+            if word.len() > max_width {
+                let mut remaining = word;
+                while remaining.len() > max_width {
+                    lines.push(remaining[..max_width].to_string());
+                    remaining = &remaining[max_width..];
+                }
+                if !remaining.is_empty() {
+                    current_line = remaining.to_string();
+                }
+            } else {
+                current_line = word.to_string();
+            }
+        } else if current_line.len() + 1 + word.len() <= max_width {
+            current_line.push(' ');
+            current_line.push_str(word);
+        } else {
+            lines.push(current_line);
+            if word.len() > max_width {
+                let mut remaining = word;
+                while remaining.len() > max_width {
+                    lines.push(remaining[..max_width].to_string());
+                    remaining = &remaining[max_width..];
+                }
+                current_line = remaining.to_string();
+            } else {
+                current_line = word.to_string();
+            }
+        }
+    }
+
+    if !current_line.is_empty() {
+        lines.push(current_line);
+    }
+
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+
+    lines
 }
 
 #[tauri::command]
@@ -507,17 +586,22 @@ pub fn print_kot(payload: KotPrintPayload) -> Result<bool, String> {
 
     esc.text_ln("--------------------------------");
     esc.bold_on();
-    esc.text_ln("Qty  Item Description");
+    esc.text_ln("Qty   Item Description");
     esc.bold_off();
     esc.text_ln("--------------------------------");
 
     for item in &payload.items {
         esc.bold_on();
-        esc.double_size();
         let qty_str = format!("{:.0}x", item.qty);
-        esc.text_ln(&format!("{:<4} {}", qty_str, item.name));
-        esc.normal_size();
-        esc.bold_off();
+        // Clean word wrap at 26 chars to prevent raw printer cutting
+        let name_lines = wrap_text(&item.name, 26);
+        for (i, line) in name_lines.iter().enumerate() {
+            if i == 0 {
+                esc.text_ln(&format!("{:<5}{}", qty_str, line));
+            } else {
+                esc.text_ln(&format!("     {}", line));
+            }
+        }
 
         if let Some(v) = &item.variant {
             if !v.is_empty() {
@@ -529,6 +613,7 @@ pub fn print_kot(payload: KotPrintPayload) -> Result<bool, String> {
                 esc.text_ln(&format!("     Note: {}", n));
             }
         }
+        esc.bold_off();
     }
 
     esc.text_ln("--------------------------------");

@@ -13,7 +13,7 @@ import {
 import { printHtmlSafely } from "@/lib/printFallback";
 import PrinterConfigModal from "@/components/PrinterConfigModal";
 import { useAuth } from "@/contexts/AuthContext";
-import { isTauri } from "@/lib/tauriBridge";
+import { isTauri, printOrderBill, printOrderKOT } from "@/lib/tauriBridge";
 
 // Zone Color Palette
 const ZONE_COLORS = [
@@ -646,11 +646,20 @@ export default function AdminTablesPage() {
   };
 
   // Print all KOTs for a table (one popup window per order)
-  const handlePrintAllKOTs = (tableNo: string) => {
+  const handlePrintAllKOTs = async (tableNo: string) => {
     const group = tableGroups[tableNo];
     if (!group || group.orders.length === 0) return;
 
-    group.orders.forEach((order: any) => {
+    for (const order of group.orders) {
+      if (isTauri()) {
+        try {
+          const ok = await printOrderKOT(order, settings);
+          if (ok) continue;
+        } catch (tauriErr) {
+          console.warn("Tauri silent KOT print failed:", tauriErr);
+        }
+      }
+
       const items = (() => {
         try {
           return typeof order.items === "string"
@@ -701,7 +710,7 @@ export default function AdminTablesPage() {
       </body></html>`;
 
       printHtmlSafely(html);
-    });
+    }
   };
 
   // Save a kitchen note for a table (updates the latest order's notes field)
@@ -789,6 +798,29 @@ export default function AdminTablesPage() {
       }
     });
     const finalItems = Array.from(mergedItemsMap.values());
+
+    if (isTauri()) {
+      try {
+        const orderNumber = group.orders.map((o: any) => o.order_number || o.id).join(", ");
+        const printableOrder = {
+          order_number: orderNumber || `TBL-${tableNo}`,
+          table_number: tableNo,
+          items: finalItems,
+          subtotal: totalSubtotal,
+          discount: effectiveDiscount,
+          tax: totalTax,
+          total_amount: grandTotal,
+          payment_method: paymentMethod || "UNPAID",
+          created_at: new Date().toISOString(),
+        };
+        printOrderBill(printableOrder, settings).catch((err) => {
+          console.warn("Tauri silent master bill print failed:", err);
+        });
+        return;
+      } catch (tauriErr) {
+        console.warn("Tauri silent print error:", tauriErr);
+      }
+    }
 
     const orderDate = formatDateTime(new Date().toISOString());
 
