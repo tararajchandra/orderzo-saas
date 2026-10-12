@@ -14,21 +14,22 @@ interface Command {
 }
 
 const ALL_COMMANDS: Command[] = [
-    { id: 'dashboard', title: 'Dashboard', route: '/admin/dashboard', icon: '📊', roles: ['admin'] },
-    { id: 'billing', title: 'Billing', route: '/admin/billing', icon: '🧾', roles: ['admin'] },
-    { id: 'quick-bill', title: 'Quick Bill', route: '/admin/quick-bill', icon: '⚡', roles: ['admin'] },
-    { id: 'tables', title: 'Active Tables', route: '/admin/tables', icon: '🍽️', roles: ['admin'] },
-    { id: 'create-order', title: 'Create Order', route: '/admin/orders/create', icon: '➕', roles: ['admin'] },
-    { id: 'sales', title: 'Sales Report', route: '/admin/sales', icon: '📈', roles: ['admin'] },
-    { id: 'product-sales', title: 'Product Sales', route: '/admin/product-sales', icon: '🍔', roles: ['admin'] },
-    { id: 'cashbook', title: 'Cashbook (Expenses)', route: '/admin/cashbook', icon: '💰', roles: ['admin'] },
+    { id: 'tables', title: 'Active Tables', route: '/admin/tables', icon: '🍽️', roles: ['admin', 'cashier'] },
+    { id: 'orders', title: 'Order Management', route: '/admin/orders', icon: '📋', roles: ['admin', 'cashier'] },
+    { id: 'create-order', title: 'Create Order', route: '/admin/orders/create', icon: '➕', roles: ['admin', 'cashier'] },
+    { id: 'quick-bill', title: 'Quick Bill', route: '/admin/quick-bill', icon: '⚡', roles: ['admin', 'cashier'] },
+    { id: 'billing', title: 'Billing', route: '/admin/billing', icon: '🧾', roles: ['admin', 'cashier'] },
+    { id: 'dashboard', title: 'Dashboard', route: '/admin/dashboard', icon: '📊', roles: ['admin', 'cashier'] },
+    { id: 'sales', title: 'Sales Report', route: '/admin/sales', icon: '📈', roles: ['admin', 'cashier'] },
+    { id: 'product-sales', title: 'Product Sales', route: '/admin/product-sales', icon: '🍔', roles: ['admin', 'cashier'] },
+    { id: 'cashbook', title: 'Cashbook (Expenses)', route: '/admin/cashbook', icon: '💰', roles: ['admin', 'cashier'] },
+    { id: 'attendance', title: 'Staff Attendance', route: '/admin/attendance', icon: '⏱️', roles: ['admin', 'cashier'] },
+    { id: 'pos', title: 'Salesman POS', route: '/salesman', icon: '📱', roles: ['admin', 'salesman', 'cashier'] },
+    { id: 'kitchen', title: 'Kitchen Display', route: '/kitchen', icon: '👨‍🍳', roles: ['admin', 'kitchen', 'kitchen_staff', 'cashier'] },
+    { id: 'menu', title: 'Customer Menu', route: '/menu', icon: '📖', roles: ['admin', 'salesman', 'customer', 'guest', 'cashier'] },
     { id: 'gst-report', title: 'GST Report', route: '/admin/gst-report', icon: '📑', roles: ['admin'] },
-    { id: 'attendance', title: 'Staff Attendance', route: '/admin/attendance', icon: '⏱️', roles: ['admin'] },
     { id: 'settings', title: 'Settings', route: '/admin/settings', icon: '⚙️', roles: ['admin'] },
     { id: 'financial-years', title: 'Financial Years', route: '/admin/settings/financial-years', icon: '📅', roles: ['admin'] },
-    { id: 'pos', title: 'Salesman POS', route: '/salesman', icon: '📱', roles: ['admin', 'salesman'] },
-    { id: 'kitchen', title: 'Kitchen Display', route: '/kitchen', icon: '👨‍🍳', roles: ['admin', 'kitchen', 'kitchen_staff'] },
-    { id: 'menu', title: 'Customer Menu', route: '/menu', icon: '📖', roles: ['admin', 'salesman', 'customer', 'guest'] }
 ];
 
 export default function CommandPalette() {
@@ -41,7 +42,7 @@ export default function CommandPalette() {
 
     // Filter commands based on role and search query
     const filteredCommands = ALL_COMMANDS.filter(cmd => {
-        const userRole = user?.role || 'guest';
+        const userRole = user?.role || 'cashier'; // Cashier / Admin in admin portal
         const hasRole = cmd.roles.includes(userRole) || userRole === 'admin';
         const matchesQuery = cmd.title.toLowerCase().includes(query.toLowerCase()) || cmd.id.includes(query.toLowerCase());
         return hasRole && matchesQuery;
@@ -49,7 +50,7 @@ export default function CommandPalette() {
 
     useEffect(() => {
         const down = (e: KeyboardEvent) => {
-            if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+            if (e.key?.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
                 setIsOpen((open) => !open);
             }

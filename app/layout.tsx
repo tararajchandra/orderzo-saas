@@ -6,6 +6,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { FinancialYearProvider } from "@/contexts/FinancialYearContext";
 import Navbar from "@/components/Navbar";
 import CommandPalette from "@/components/CommandPalette";
+import KeyboardShortcuts from "@/components/KeyboardShortcuts";
 import Footer from "@/components/Footer";
 import OfflineIndicator from "@/components/OfflineIndicator";
 
@@ -39,6 +40,7 @@ export default function RootLayout({
               <FinancialYearProvider>
                 <Navbar />
                 <CommandPalette />
+                <KeyboardShortcuts />
                 <OfflineIndicator />
                 <div style={{ minHeight: "calc(100vh - 200px)" }}>
                   {children}

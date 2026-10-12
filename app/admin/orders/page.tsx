@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { ReceiptPrinter } from "@/lib/receipt-printer";
 import { formatDate, formatDateTime, sortOrdersDesc } from "@/lib/utils";
@@ -159,6 +160,39 @@ export default function AdminOrdersPage() {
       window.removeEventListener("offline-orders-updated", handleSyncEvent);
     };
   }, []);
+
+  // In-Page Keyboard Shortcuts for Orders
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+      const isInput = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
+
+      if (!isInput) {
+        // 'N' -> New Order
+        if (e.key.toLowerCase() === 'n' && !e.altKey && !e.ctrlKey) {
+          e.preventDefault();
+          router.push('/admin/orders/create');
+          return;
+        }
+
+        // 'R' -> Refresh orders
+        if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.altKey) {
+          e.preventDefault();
+          fetchOrders(true);
+          return;
+        }
+      }
+
+      if (e.key === 'Escape') {
+        if (splitPaymentModal) {
+          setSplitPaymentModal(null);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [router, splitPaymentModal]);
 
   const fetchSettings = async () => {
     try {
@@ -1339,7 +1373,37 @@ export default function AdminOrdersPage() {
               </span>
             </div>
           </div>
-          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-keyboard-shortcuts'))}
+              className="btn btn-ghost"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                fontWeight: 600,
+                border: "1px solid var(--border-color)",
+                padding: "0.5rem 0.75rem",
+              }}
+              title="View all Keyboard Shortcuts (F1 / ?)"
+            >
+              <span>⌨️</span> Shortcuts <kbd className="kbd" style={{ fontSize: "0.7rem", marginLeft: "2px" }}>F1</kbd>
+            </button>
+            <Link
+              href="/admin/tables"
+              className="btn btn-secondary"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                fontWeight: 600,
+                padding: "0.5rem 0.85rem",
+              }}
+              title="Go to Active Tables (Alt + T / F2)"
+            >
+              <span>🍽️</span> Active Tables <kbd className="kbd" style={{ fontSize: "0.7rem", marginLeft: "2px", background: "rgba(255,255,255,0.2)", color: "#fff" }}>Alt+T</kbd>
+            </Link>
             {(!isCashier || isDesktop) && (
               <button
                 type="button"
@@ -1354,8 +1418,17 @@ export default function AdminOrdersPage() {
             <button
               onClick={() => router.push("/admin/orders/create")}
               className="btn btn-primary"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                fontWeight: 700,
+                padding: "0.5rem 0.85rem",
+              }}
+              title="Create New Order (Alt + N / F4)"
             >
-              + Create New Order
+              <span>+ Create New Order</span>
+              <kbd className="kbd" style={{ fontSize: "0.7rem", background: "rgba(255,255,255,0.25)", color: "#fff", borderColor: "rgba(255,255,255,0.4)" }}>Alt+N</kbd>
             </button>
             <button
               onClick={() => router.push("/admin/dashboard")}

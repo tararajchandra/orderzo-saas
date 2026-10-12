@@ -69,8 +69,14 @@ export default function AdminTablesPage() {
   const { selectedFY } = useFinancialYear();
   const [settlingTable, setSettlingTable] = useState<string | null>(null);
   const [tableDiscount, setTableDiscount] = useState<number>(0);
-  const [splitPaymentModal, setSplitPaymentModal] = useState<{tableNo: string, total: number, discount?: number} | null>(null);
-  const [splitAmounts, setSplitAmounts] = useState({ cash: 0, upi: 0, card: 0 });
+  const [settleModal, setSettleModal] = useState<{
+    tableNo: string;
+    total: number;
+    discount: number;
+  } | null>(null);
+  const [settleMethod, setSettleMethod] = useState<"cash" | "upi" | "split">("cash");
+  const [settleCashAmount, setSettleCashAmount] = useState<string>("");
+  const [settleUpiAmount, setSettleUpiAmount] = useState<string>("");
   const [totalTables, setTotalTables] = useState(16);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [editingTableItems, setEditingTableItems] = useState<{tableNo: string, masterOrderId: number, otherOrderIds: number[], items: any[]} | null>(null);
@@ -423,12 +429,20 @@ export default function AdminTablesPage() {
     }
   };
 
-  const handleSettleTable = async (tableNo: string, paymentMethod: string, splits?: any, discountOverride?: number) => {
+  const handleSettleTable = async (
+    tableNo: string,
+    paymentMethod: string,
+    splits?: any,
+    discountOverride?: number,
+    skipConfirm: boolean = false
+  ) => {
     const appliedDiscount = discountOverride !== undefined ? discountOverride : tableDiscount;
-    const confirmSettle = confirm(
-      `Are you sure you want to settle all pending orders for Table ${tableNo} with ${paymentMethod.toUpperCase()}${appliedDiscount > 0 ? ` (Discount: ₹${appliedDiscount.toFixed(2)})` : ''}?`,
-    );
-    if (!confirmSettle) return;
+    if (!skipConfirm) {
+      const confirmSettle = confirm(
+        `Are you sure you want to settle all pending orders for Table ${tableNo} with ${paymentMethod.toUpperCase()}${appliedDiscount > 0 ? ` (Discount: ₹${appliedDiscount.toFixed(2)})` : ''}?`,
+      );
+      if (!confirmSettle) return;
+    }
 
     setSettlingTable(tableNo);
     const tableOrders = tableGroups[tableNo].orders;
@@ -509,6 +523,7 @@ export default function AdminTablesPage() {
 
         alert(`Table ${tableNo} settled offline! Will sync when back online.`);
         setShowModal(false);
+        setSettleModal(null);
         setTableDiscount(0);
         return;
       }
@@ -533,6 +548,7 @@ export default function AdminTablesPage() {
 
       alert(`Table ${tableNo} settled successfully!`);
       setShowModal(false);
+      setSettleModal(null);
       setTableDiscount(0);
       fetchActiveTableOrders();
     } catch (error) {
@@ -560,12 +576,72 @@ export default function AdminTablesPage() {
         });
         alert(`নেটওয়ার্ক সমস্যার কারণে টেবিল ${tableNo} অফলাইনে সেটেল হয়েছে।`);
         setShowModal(false);
+        setSettleModal(null);
         setTableDiscount(0);
       } catch (e) {
         alert("An error occurred while settling the table.");
       }
     } finally {
       setSettlingTable(null);
+    }
+  };
+
+  const openSettleModal = (tableNo: string, defaultMethod: "cash" | "upi" | "split" = "cash") => {
+    const group = tableGroups[tableNo];
+    if (!group) return;
+    const netBill = Math.max(0, group.total - tableDiscount);
+    setSettleMethod(defaultMethod);
+    if (defaultMethod === "cash") {
+      setSettleCashAmount(netBill.toFixed(2));
+      setSettleUpiAmount("0");
+    } else if (defaultMethod === "upi") {
+      setSettleCashAmount("0");
+      setSettleUpiAmount(netBill.toFixed(2));
+    } else {
+      setSettleCashAmount((netBill / 2).toFixed(2));
+      setSettleUpiAmount((netBill / 2).toFixed(2));
+    }
+    setSettleModal({
+      tableNo,
+      total: netBill,
+      discount: tableDiscount,
+    });
+  };
+
+  const handleConfirmSettle = async () => {
+    if (!settleModal) return;
+    const targetTable = settleModal.tableNo;
+    const targetDiscount = settleModal.discount;
+    const total = settleModal.total;
+
+    if (settleMethod === "cash") {
+      const cashVal = parseFloat(settleCashAmount) || 0;
+      if (cashVal < total && total > 0) {
+        const proceed = confirm(`Cash amount entered (₹${cashVal.toFixed(2)}) is less than total bill (₹${total.toFixed(2)}). Settle anyway?`);
+        if (!proceed) return;
+      }
+      const splits = { cash: total, upi: 0, card: 0 };
+      setSettleModal(null);
+      await handleSettleTable(targetTable, "cash", splits, targetDiscount, true);
+    } else if (settleMethod === "upi") {
+      const upiVal = parseFloat(settleUpiAmount) || 0;
+      if (upiVal < total && total > 0) {
+        const proceed = confirm(`UPI amount entered (₹${upiVal.toFixed(2)}) is less than total bill (₹${total.toFixed(2)}). Settle anyway?`);
+        if (!proceed) return;
+      }
+      const splits = { cash: 0, upi: total, card: 0 };
+      setSettleModal(null);
+      await handleSettleTable(targetTable, "upi", splits, targetDiscount, true);
+    } else if (settleMethod === "split") {
+      const c = parseFloat(settleCashAmount) || 0;
+      const u = parseFloat(settleUpiAmount) || 0;
+      if (Math.abs(c + u - total) > 0.05) {
+        alert(`Split total (Cash: ₹${c.toFixed(2)} + UPI: ₹${u.toFixed(2)} = ₹${(c + u).toFixed(2)}) must equal Total Bill ₹${total.toFixed(2)}!`);
+        return;
+      }
+      const splits = { cash: c, upi: u, card: 0 };
+      setSettleModal(null);
+      await handleSettleTable(targetTable, "split", splits, targetDiscount, true);
     }
   };
 
@@ -837,6 +913,149 @@ export default function AdminTablesPage() {
     printHtmlSafely(html);
   };
 
+  // In-Page Keyboard Shortcuts for Active Tables & Settle Modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+      const isInput = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
+
+      // 1. If Auto Settle Modal is OPEN:
+      if (settleModal) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setSettleModal(null);
+          return;
+        }
+
+        // When not typing in an input, switch mode:
+        if (!isInput) {
+          if (e.key === '1' || e.key.toLowerCase() === 'c') {
+            e.preventDefault();
+            setSettleMethod('cash');
+            setSettleCashAmount(settleModal.total.toFixed(2));
+            setSettleUpiAmount('0');
+            return;
+          }
+          if (e.key === '2' || e.key.toLowerCase() === 'u') {
+            e.preventDefault();
+            setSettleMethod('upi');
+            setSettleCashAmount('0');
+            setSettleUpiAmount(settleModal.total.toFixed(2));
+            return;
+          }
+          if (e.key === '3') {
+            e.preventDefault();
+            setSettleMethod('split');
+            return;
+          }
+          if (e.key.toLowerCase() === 'd') {
+            e.preventDefault();
+            handlePrintBill(settleModal.tableNo, settleModal.discount);
+            return;
+          }
+        }
+
+        // Enter key to Confirm Settle
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleConfirmSettle();
+          return;
+        }
+        return;
+      }
+
+      // 2. If Table Details Drawer (showModal) is OPEN:
+      if (showModal && selectedTable) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setShowModal(false);
+          return;
+        }
+
+        if (!isInput) {
+          // 'Enter' or 'S' -> Open Settle Modal
+          if (e.key === 'Enter' || e.key.toLowerCase() === 's') {
+            e.preventDefault();
+            openSettleModal(selectedTable, 'cash');
+            return;
+          }
+          // 'P' -> Print Draft Bill
+          if (e.key.toLowerCase() === 'p') {
+            e.preventDefault();
+            handlePrintBill(selectedTable, tableDiscount);
+            return;
+          }
+          // 'N' -> New Order for this table
+          if (e.key.toLowerCase() === 'n') {
+            e.preventDefault();
+            router.push('/admin/orders/create?table=' + encodeURIComponent(selectedTable));
+            return;
+          }
+          // 'E' -> Edit Items
+          if (e.key.toLowerCase() === 'e') {
+            e.preventDefault();
+            handleEditTableItems(selectedTable);
+            return;
+          }
+          // 'K' -> Print All KOTs
+          if (e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            handlePrintAllKOTs(selectedTable);
+            return;
+          }
+        }
+        return;
+      }
+
+      // 3. If on Tables Grid (no modal open and not typing):
+      if (!isInput && !showModal && !settleModal && !noteModal && !editingTableItems) {
+        // Quick Select Table by digit 1 to 9
+        if (e.key >= '1' && e.key <= '9' && !e.altKey && !e.ctrlKey) {
+          const tableNum = e.key;
+          if (tableGroups[tableNum]) {
+            e.preventDefault();
+            const initialDiscount = (tableGroups[tableNum]?.orders || []).reduce(
+              (sum: number, o: any) => sum + parseFloat(o.discount || 0),
+              0,
+            );
+            setTableDiscount(initialDiscount);
+            setSelectedTable(tableNum);
+            setShowModal(true);
+            return;
+          }
+        }
+
+        // 'N' -> Create New Order
+        if (e.key.toLowerCase() === 'n' && !e.altKey && !e.ctrlKey) {
+          e.preventDefault();
+          router.push('/admin/orders/create');
+          return;
+        }
+
+        // 'R' -> Refresh Tables
+        if (e.key.toLowerCase() === 'r' && !e.ctrlKey) {
+          e.preventDefault();
+          fetchActiveTableOrders();
+          return;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    showModal,
+    selectedTable,
+    settleModal,
+    noteModal,
+    editingTableItems,
+    tableDiscount,
+    tableGroups,
+    settleMethod,
+    settleCashAmount,
+    settleUpiAmount,
+  ]);
+
   if (loading) {
     return (
       <div
@@ -864,13 +1083,45 @@ export default function AdminTablesPage() {
             justifyContent: "space-between",
             alignItems: "center",
             marginBottom: "2rem",
+            flexWrap: "wrap",
+            gap: "1rem",
           }}
         >
           <div>
             <h1 style={{ marginBottom: "0.5rem" }}>Active Tables (Dine-in)</h1>
             <p className="text-muted">Manage table orders & billing</p>
           </div>
-          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-keyboard-shortcuts'))}
+              className="btn btn-ghost"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                fontWeight: 600,
+                border: "1px solid var(--border-color)",
+                padding: "0.5rem 0.75rem",
+              }}
+              title="View all Keyboard Shortcuts (F1 / ?)"
+            >
+              <span>⌨️</span> Shortcuts <kbd className="kbd" style={{ fontSize: "0.7rem", marginLeft: "2px" }}>F1</kbd>
+            </button>
+            <Link
+              href="/admin/orders"
+              className="btn btn-secondary"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                fontWeight: 600,
+                padding: "0.5rem 0.85rem",
+              }}
+              title="Go to Orders (Alt + O / F3)"
+            >
+              <span>📋</span> Orders <kbd className="kbd" style={{ fontSize: "0.7rem", marginLeft: "2px", background: "rgba(255,255,255,0.2)", color: "#fff" }}>Alt+O</kbd>
+            </Link>
             {(!isCashier || isDesktop) && (
               <button
                 type="button"
@@ -1021,7 +1272,7 @@ export default function AdminTablesPage() {
             {contextMenu.tableNo}
           </div>
 
-          {/* New Order — always visible */}
+          {/* 1. New Order — always visible */}
           <button
             onClick={() => {
               setContextMenu(null);
@@ -1039,7 +1290,76 @@ export default function AdminTablesPage() {
             ➕ New Order
           </button>
 
-          {/* Merge/Settle Order — only occupied */}
+          {/* 2. Edit Items */}
+          <button
+            onClick={() => {
+              if (!contextMenu.isOccupied) return;
+              setContextMenu(null);
+              handleEditTableItems(contextMenu.tableNo);
+            }}
+            style={{
+              display: "flex", alignItems: "center", gap: "0.6rem",
+              width: "100%", padding: "0.6rem 1rem",
+              background: "none", border: "none",
+              cursor: contextMenu.isOccupied ? "pointer" : "not-allowed",
+              color: contextMenu.isOccupied ? "var(--text-primary)" : "var(--text-muted)",
+              opacity: contextMenu.isOccupied ? 1 : 0.4,
+              fontSize: "0.95rem", textAlign: "left",
+            }}
+            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "var(--border-color)"; }}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+          >
+            ✏️ Edit Items
+          </button>
+
+          {/* 3. Notes */}
+          <button
+            onClick={() => {
+              if (!contextMenu.isOccupied) return;
+              const tableNo = contextMenu.tableNo;
+              const currentNote = tableGroups[tableNo]?.orders?.[0]?.notes || "";
+              setNoteText(currentNote);
+              setNoteModal({ tableNo });
+              setContextMenu(null);
+            }}
+            style={{
+              display: "flex", alignItems: "center", gap: "0.6rem",
+              width: "100%", padding: "0.6rem 1rem",
+              background: "none", border: "none",
+              cursor: contextMenu.isOccupied ? "pointer" : "not-allowed",
+              color: contextMenu.isOccupied ? "var(--text-primary)" : "var(--text-muted)",
+              opacity: contextMenu.isOccupied ? 1 : 0.4,
+              fontSize: "0.95rem", textAlign: "left",
+            }}
+            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+          >
+            📝 Notes
+          </button>
+
+          {/* 4. Print All KOTs */}
+          <button
+            onClick={() => {
+              if (!contextMenu.isOccupied) return;
+              setContextMenu(null);
+              handlePrintAllKOTs(contextMenu.tableNo);
+            }}
+            style={{
+              display: "flex", alignItems: "center", gap: "0.6rem",
+              width: "100%", padding: "0.6rem 1rem",
+              background: "none", border: "none",
+              cursor: contextMenu.isOccupied ? "pointer" : "not-allowed",
+              color: contextMenu.isOccupied ? "var(--text-primary)" : "var(--text-muted)",
+              opacity: contextMenu.isOccupied ? 1 : 0.4,
+              fontSize: "0.95rem", textAlign: "left",
+            }}
+            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+          >
+            🖨️ Print All KOTs
+          </button>
+
+          {/* 5. Settle Table — only occupied */}
           <button
             onClick={() => {
               if (!contextMenu.isOccupied) return;
@@ -1067,30 +1387,7 @@ export default function AdminTablesPage() {
             🔀 Settle Table
           </button>
 
-
-          {/* Edit Items */}
-          <button
-            onClick={() => {
-              if (!contextMenu.isOccupied) return;
-              setContextMenu(null);
-              handleEditTableItems(contextMenu.tableNo);
-            }}
-            style={{
-              display: "flex", alignItems: "center", gap: "0.6rem",
-              width: "100%", padding: "0.6rem 1rem",
-              background: "none", border: "none",
-              cursor: contextMenu.isOccupied ? "pointer" : "not-allowed",
-              color: contextMenu.isOccupied ? "var(--text-primary)" : "var(--text-muted)",
-              opacity: contextMenu.isOccupied ? 1 : 0.4,
-              fontSize: "0.95rem", textAlign: "left",
-            }}
-            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "var(--border-color)"; }}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-          >
-            ✏️ Edit Items
-          </button>
-
-          {/* Print Bill — only occupied */}
+          {/* 6. Master Bill */}
           <button
             onClick={() => {
               if (!contextMenu.isOccupied) return;
@@ -1109,54 +1406,7 @@ export default function AdminTablesPage() {
             onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "var(--border-color)"; }}
             onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
           >
-            🧾 Print Master Bill
-          </button>
-
-          {/* Print All KOTs */}
-          <button
-            onClick={() => {
-              if (!contextMenu.isOccupied) return;
-              setContextMenu(null);
-              handlePrintAllKOTs(contextMenu.tableNo);
-            }}
-            style={{
-              display: "flex", alignItems: "center", gap: "0.6rem",
-              width: "100%", padding: "0.6rem 1rem",
-              background: "none", border: "none",
-              cursor: contextMenu.isOccupied ? "pointer" : "not-allowed",
-              color: contextMenu.isOccupied ? "var(--text-primary)" : "var(--text-muted)",
-              opacity: contextMenu.isOccupied ? 1 : 0.4,
-              fontSize: "0.95rem", textAlign: "left",
-            }}
-            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-          >
-            🖨️ Print All KOTs
-          </button>
-
-          {/* Add Note to Table */}
-          <button
-            onClick={() => {
-              if (!contextMenu.isOccupied) return;
-              const tableNo = contextMenu.tableNo;
-              const currentNote = tableGroups[tableNo]?.orders?.[0]?.notes || "";
-              setNoteText(currentNote);
-              setNoteModal({ tableNo });
-              setContextMenu(null);
-            }}
-            style={{
-              display: "flex", alignItems: "center", gap: "0.6rem",
-              width: "100%", padding: "0.6rem 1rem",
-              background: "none", border: "none",
-              cursor: contextMenu.isOccupied ? "pointer" : "not-allowed",
-              color: contextMenu.isOccupied ? "var(--text-primary)" : "var(--text-muted)",
-              opacity: contextMenu.isOccupied ? 1 : 0.4,
-              fontSize: "0.95rem", textAlign: "left",
-            }}
-            onMouseEnter={(e) => { if (contextMenu.isOccupied) e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-          >
-            ✏️ Add Note
+            🧾 Master Bill
           </button>
         </div>
       )}
@@ -1457,99 +1707,114 @@ export default function AdminTablesPage() {
                 </span>
               </div>
 
+              {/* Primary Auto Settle Button */}
               <button
-                onClick={() => {
-                  const choice = prompt(
-                    `টেবিল ${selectedTable}-এর মাস্টার বিল কীভাবে Settle ও প্রিন্ট করতে চান?\n\n` +
-                    `১ লিখুন = 💵 Cash দিয়ে Settle ও প্রিন্ট\n` +
-                    `২ লিখুন = 📱 UPI দিয়ে Settle ও প্রিন্ট\n` +
-                    `৩ লিখুন = ✂️ Split (Cash + UPI) দিয়ে Settle ও প্রিন্ট\n` +
-                    `Cancel চাপুন = 🖨️ শুধুমাত্র ড্রাফট বিল প্রিন্ট (টেবিল চালু থাকবে)\n\n` +
-                    `পছন্দ অনুযায়ী 1, 2, বা 3 লিখুন:`,
-                    "1"
-                  );
-                  if (choice === "1") {
-                    handleSettleTable(selectedTable, "cash", undefined, tableDiscount);
-                  } else if (choice === "2") {
-                    handleSettleTable(selectedTable, "upi", undefined, tableDiscount);
-                  } else if (choice === "3") {
-                    const netBill = Math.max(0, tableGroups[selectedTable].total - tableDiscount);
-                    setSplitPaymentModal({ tableNo: selectedTable, total: netBill, discount: tableDiscount });
-                    setSplitAmounts({ cash: netBill, upi: 0, card: 0 });
-                  } else if (choice === null) {
-                    // User canceled prompt -> print draft check without settling or locking
-                    handlePrintBill(selectedTable, tableDiscount);
-                  } else {
-                    handlePrintBill(selectedTable, tableDiscount);
-                  }
-                }}
-                className="btn btn-ghost"
+                onClick={() => openSettleModal(selectedTable, "cash")}
+                className="btn btn-primary"
                 style={{
                   width: "100%",
-                  marginBottom: "1rem",
-                  border: "1px solid var(--border-color)",
+                  marginBottom: "0.75rem",
+                  padding: "0.85rem",
+                  fontSize: "1rem",
+                  fontWeight: 700,
                   display: "flex",
                   justifyContent: "center",
+                  alignItems: "center",
                   gap: "0.5rem",
-                  fontWeight: 600,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
                 }}
               >
-                🖨️ Print Master Bill (Auto Settle)
+                <span>⚡ Auto Settle & Print Master Bill</span>
+                <kbd className="kbd" style={{ marginLeft: "4px", fontSize: "0.75rem", background: "rgba(255,255,255,0.25)", color: "#fff", borderColor: "rgba(255,255,255,0.4)" }}>Enter / S</kbd>
               </button>
 
+              {/* Quick Payment Mode Buttons */}
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "1rem",
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                  gap: "0.5rem",
+                  marginBottom: "0.75rem",
                 }}
               >
                 <button
-                  onClick={() => handleSettleTable(selectedTable, "cash", undefined, tableDiscount)}
+                  onClick={() => openSettleModal(selectedTable, "cash")}
                   disabled={settlingTable === selectedTable}
-                  className="btn btn-primary"
+                  className="btn btn-ghost"
                   style={{
                     display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
                     justifyContent: "center",
-                    gap: "0.5rem",
+                    gap: "0.25rem",
+                    padding: "0.6rem 0.4rem",
+                    border: "1px solid var(--border-color)",
+                    fontWeight: 600,
                   }}
                 >
-                  {settlingTable === selectedTable ? "..." : "💵 Settle Cash & Print"}
+                  <span style={{ fontSize: "1.1rem" }}>💵</span>
+                  <span>Cash</span>
+                  <kbd className="kbd" style={{ fontSize: "0.65rem" }}>1</kbd>
                 </button>
                 <button
-                  onClick={() => handleSettleTable(selectedTable, "upi", undefined, tableDiscount)}
+                  onClick={() => openSettleModal(selectedTable, "upi")}
                   disabled={settlingTable === selectedTable}
-                  className="btn btn-secondary"
+                  className="btn btn-ghost"
                   style={{
                     display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
                     justifyContent: "center",
-                    gap: "0.5rem",
-                    background: "#3b82f6",
-                    color: "white",
-                    border: "none",
+                    gap: "0.25rem",
+                    padding: "0.6rem 0.4rem",
+                    border: "1px solid var(--border-color)",
+                    fontWeight: 600,
                   }}
                 >
-                  {settlingTable === selectedTable ? "..." : "📱 Settle UPI & Print"}
+                  <span style={{ fontSize: "1.1rem" }}>📱</span>
+                  <span>UPI</span>
+                  <kbd className="kbd" style={{ fontSize: "0.65rem" }}>2</kbd>
                 </button>
                 <button
-                  onClick={() => {
-                    const netBill = Math.max(0, tableGroups[selectedTable].total - tableDiscount);
-                    setSplitPaymentModal({ tableNo: selectedTable, total: netBill, discount: tableDiscount });
-                    setSplitAmounts({ cash: netBill, upi: 0, card: 0 });
-                  }}
+                  onClick={() => openSettleModal(selectedTable, "split")}
                   disabled={settlingTable === selectedTable}
-                  className="btn btn-warning"
+                  className="btn btn-ghost"
                   style={{
                     display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
                     justifyContent: "center",
-                    gap: "0.5rem",
-                    gridColumn: "1 / -1",
-                    marginTop: "0.5rem"
+                    gap: "0.25rem",
+                    padding: "0.6rem 0.4rem",
+                    border: "1px solid var(--border-color)",
+                    fontWeight: 600,
                   }}
                 >
-                  ✂️ Split Payment (Cash + UPI) & Print
+                  <span style={{ fontSize: "1.1rem" }}>✂️</span>
+                  <span>Split</span>
+                  <kbd className="kbd" style={{ fontSize: "0.65rem" }}>3</kbd>
                 </button>
               </div>
+
+              {/* Print Draft Bill Button */}
+              <button
+                onClick={() => handlePrintBill(selectedTable, tableDiscount)}
+                className="btn btn-ghost"
+                style={{
+                  width: "100%",
+                  border: "1px dashed var(--border-color)",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  fontSize: "0.85rem",
+                  padding: "0.5rem",
+                  color: "var(--text-muted)",
+                }}
+              >
+                <span>🖨️ Print Draft Bill (Keep Table Open)</span>
+                <kbd className="kbd" style={{ marginLeft: "4px", fontSize: "0.7rem" }}>P</kbd>
+              </button>
             </div>
           </div>
         </div>
@@ -1626,73 +1891,450 @@ export default function AdminTablesPage() {
         </div>
       )}
 
-      {/* Split Payment Modal */}
-      {splitPaymentModal && (
-        <div className="modal-overlay" onClick={() => setSplitPaymentModal(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Split Payment - Table {splitPaymentModal.tableNo}</h2>
+      {/* Auto Settle Modal (Cash / UPI / Split) */}
+      {settleModal && (
+        <div className="modal-overlay" onClick={() => setSettleModal(null)}>
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "480px", width: "95%" }}
+          >
+            <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700 }}>
+                  ⚡ Settle Table {settleModal.tableNo}
+                </h2>
+                <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                  Select payment mode, enter amount and save
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setSettleModal(null)}
+                style={{ padding: "0.3rem 0.6rem", fontSize: "1.1rem" }}
+              >
+                ✕
+              </button>
             </div>
-            <div className="modal-body">
-              <div style={{ marginBottom: '1rem', fontSize: '1.2rem', fontWeight: 'bold' }}>
-                Total Bill: ₹{splitPaymentModal.total.toFixed(2)}
-              </div>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <label>Cash Amount (₹)</label>
-                <input 
-                  type="number" 
-                  className="input" 
-                  value={splitAmounts.cash}
-                  onChange={(e) => setSplitAmounts({...splitAmounts, cash: parseFloat(e.target.value) || 0})}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label>UPI Amount (₹)</label>
-                <input 
-                  type="number" 
-                  className="input" 
-                  value={splitAmounts.upi}
-                  onChange={(e) => setSplitAmounts({...splitAmounts, upi: parseFloat(e.target.value) || 0})}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label>Card Amount (₹)</label>
-                <input 
-                  type="number" 
-                  className="input" 
-                  value={splitAmounts.card}
-                  onChange={(e) => setSplitAmounts({...splitAmounts, card: parseFloat(e.target.value) || 0})}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              
-              <div style={{ 
-                marginTop: '1rem', 
-                padding: '1rem', 
-                background: (splitAmounts.cash + splitAmounts.upi + splitAmounts.card) === splitPaymentModal.total ? 'var(--success)' : 'var(--danger)',
-                color: 'white',
-                borderRadius: '8px'
-              }}>
-                Sum: ₹{(splitAmounts.cash + splitAmounts.upi + splitAmounts.card).toFixed(2)}
-                { (splitAmounts.cash + splitAmounts.upi + splitAmounts.card) !== splitPaymentModal.total && " (Must equal Total Bill)" }
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setSplitPaymentModal(null)}>Cancel</button>
-              <button 
-                className="btn btn-primary" 
-                disabled={(splitAmounts.cash + splitAmounts.upi + splitAmounts.card) !== splitPaymentModal.total}
-                onClick={() => {
-                  const targetTable = splitPaymentModal.tableNo;
-                  const targetDiscount = splitPaymentModal.discount;
-                  setSplitPaymentModal(null);
-                  handleSettleTable(targetTable, "split", splitAmounts, targetDiscount);
+
+            <div className="modal-body" style={{ padding: "1.25rem" }}>
+              {/* Total Bill Card */}
+              <div
+                style={{
+                  background: "var(--glass-bg)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "10px",
+                  padding: "1rem",
+                  marginBottom: "1.25rem",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
                 }}
               >
-                Confirm Settle
+                <div>
+                  <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 500 }}>
+                    Master Bill Total
+                  </div>
+                  {settleModal.discount > 0 && (
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                      Discount: ₹{settleModal.discount.toFixed(2)} applied
+                    </div>
+                  )}
+                </div>
+                <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--primary)" }}>
+                  ₹{settleModal.total.toFixed(2)}
+                </div>
+              </div>
+
+              {/* 3 Payment Mode Buttons: Cash / UPI / Split */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                  gap: "0.5rem",
+                  marginBottom: "1.25rem",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSettleMethod("cash");
+                    setSettleCashAmount(settleModal.total.toFixed(2));
+                    setSettleUpiAmount("0");
+                  }}
+                  className={`btn ${settleMethod === "cash" ? "btn-primary" : "btn-ghost"}`}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "0.35rem",
+                    padding: "0.75rem 0.5rem",
+                    borderRadius: "10px",
+                    fontWeight: 700,
+                    fontSize: "0.95rem",
+                    border: settleMethod === "cash" ? "2px solid #10b981" : "1px solid var(--border-color)",
+                    background: settleMethod === "cash" ? "rgba(16, 185, 129, 0.15)" : "var(--glass-bg)",
+                    color: settleMethod === "cash" ? "#10b981" : "var(--text-primary)",
+                  }}
+                >
+                  <span style={{ fontSize: "1.4rem" }}>💵</span>
+                  <span>Cash</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSettleMethod("upi");
+                    setSettleCashAmount("0");
+                    setSettleUpiAmount(settleModal.total.toFixed(2));
+                  }}
+                  className={`btn ${settleMethod === "upi" ? "btn-secondary" : "btn-ghost"}`}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "0.35rem",
+                    padding: "0.75rem 0.5rem",
+                    borderRadius: "10px",
+                    fontWeight: 700,
+                    fontSize: "0.95rem",
+                    border: settleMethod === "upi" ? "2px solid #3b82f6" : "1px solid var(--border-color)",
+                    background: settleMethod === "upi" ? "rgba(59, 130, 246, 0.15)" : "var(--glass-bg)",
+                    color: settleMethod === "upi" ? "#3b82f6" : "var(--text-primary)",
+                  }}
+                >
+                  <span style={{ fontSize: "1.4rem" }}>📱</span>
+                  <span>UPI</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSettleMethod("split");
+                    const c = parseFloat(settleCashAmount) || 0;
+                    const u = parseFloat(settleUpiAmount) || 0;
+                    if (Math.abs(c + u - settleModal.total) > 0.05) {
+                      setSettleCashAmount((settleModal.total / 2).toFixed(2));
+                      setSettleUpiAmount((settleModal.total / 2).toFixed(2));
+                    }
+                  }}
+                  className={`btn ${settleMethod === "split" ? "btn-warning" : "btn-ghost"}`}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "0.35rem",
+                    padding: "0.75rem 0.5rem",
+                    borderRadius: "10px",
+                    fontWeight: 700,
+                    fontSize: "0.95rem",
+                    border: settleMethod === "split" ? "2px solid #f59e0b" : "1px solid var(--border-color)",
+                    background: settleMethod === "split" ? "rgba(245, 158, 11, 0.15)" : "var(--glass-bg)",
+                    color: settleMethod === "split" ? "#f59e0b" : "var(--text-primary)",
+                  }}
+                >
+                  <span style={{ fontSize: "1.4rem" }}>✂️</span>
+                  <span>Split</span>
+                </button>
+              </div>
+
+              {/* Amount Inputs for User */}
+              {settleMethod === "cash" && (
+                <div>
+                  <label style={{ display: "block", marginBottom: "0.4rem", fontWeight: 600, fontSize: "0.9rem" }}>
+                    💵 Cash Amount Received (₹):
+                  </label>
+                  <div style={{ position: "relative", marginBottom: "0.5rem" }}>
+                    <span style={{ position: "absolute", left: "0.85rem", top: "50%", transform: "translateY(-50%)", fontWeight: 700, color: "var(--text-muted)" }}>
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="input"
+                      value={settleCashAmount}
+                      onChange={(e) => setSettleCashAmount(e.target.value)}
+                      style={{
+                        width: "100%",
+                        paddingLeft: "2rem",
+                        paddingRight: "0.75rem",
+                        paddingTop: "0.6rem",
+                        paddingBottom: "0.6rem",
+                        fontSize: "1.15rem",
+                        fontWeight: 700,
+                      }}
+                      placeholder="0.00"
+                      autoFocus
+                    />
+                  </div>
+
+                  {/* Quick Tender Suggestions */}
+                  <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.85rem" }}>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ fontSize: "0.75rem", padding: "0.25rem 0.6rem", border: "1px solid var(--border-color)" }}
+                      onClick={() => setSettleCashAmount(settleModal.total.toFixed(2))}
+                    >
+                      Exact (₹{settleModal.total.toFixed(2)})
+                    </button>
+                    {settleModal.total < 500 && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        style={{ fontSize: "0.75rem", padding: "0.25rem 0.6rem", border: "1px solid var(--border-color)" }}
+                        onClick={() => setSettleCashAmount("500")}
+                      >
+                        ₹500
+                      </button>
+                    )}
+                    {settleModal.total < 1000 && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        style={{ fontSize: "0.75rem", padding: "0.25rem 0.6rem", border: "1px solid var(--border-color)" }}
+                        onClick={() => setSettleCashAmount("1000")}
+                      >
+                        ₹1000
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Change or Due Indicator */}
+                  {(() => {
+                    const c = parseFloat(settleCashAmount) || 0;
+                    if (c >= settleModal.total && settleModal.total > 0) {
+                      const change = c - settleModal.total;
+                      return (
+                        <div
+                          style={{
+                            background: "rgba(16, 185, 129, 0.12)",
+                            border: "1px solid #10b981",
+                            color: "#10b981",
+                            borderRadius: "8px",
+                            padding: "0.6rem 0.85rem",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            fontSize: "0.95rem",
+                            fontWeight: 700,
+                          }}
+                        >
+                          <span>🪙 Return Change (ফেরত):</span>
+                          <span>₹{change.toFixed(2)}</span>
+                        </div>
+                      );
+                    } else if (c < settleModal.total) {
+                      return (
+                        <div
+                          style={{
+                            background: "rgba(239, 68, 68, 0.12)",
+                            border: "1px solid #ef4444",
+                            color: "#ef4444",
+                            borderRadius: "8px",
+                            padding: "0.6rem 0.85rem",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            fontSize: "0.9rem",
+                            fontWeight: 600,
+                          }}
+                        >
+                          <span>⚠️ Due Amount:</span>
+                          <span>₹{(settleModal.total - c).toFixed(2)}</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              )}
+
+              {settleMethod === "upi" && (
+                <div>
+                  <label style={{ display: "block", marginBottom: "0.4rem", fontWeight: 600, fontSize: "0.9rem" }}>
+                    📱 UPI Amount (₹):
+                  </label>
+                  <div style={{ position: "relative", marginBottom: "0.5rem" }}>
+                    <span style={{ position: "absolute", left: "0.85rem", top: "50%", transform: "translateY(-50%)", fontWeight: 700, color: "var(--text-muted)" }}>
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="input"
+                      value={settleUpiAmount}
+                      onChange={(e) => setSettleUpiAmount(e.target.value)}
+                      style={{
+                        width: "100%",
+                        paddingLeft: "2rem",
+                        paddingRight: "0.75rem",
+                        paddingTop: "0.6rem",
+                        paddingBottom: "0.6rem",
+                        fontSize: "1.15rem",
+                        fontWeight: 700,
+                      }}
+                      placeholder="0.00"
+                      autoFocus
+                    />
+                  </div>
+                  <div style={{ display: "flex", gap: "0.4rem", marginBottom: "0.85rem" }}>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ fontSize: "0.75rem", padding: "0.25rem 0.6rem", border: "1px solid var(--border-color)" }}
+                      onClick={() => setSettleUpiAmount(settleModal.total.toFixed(2))}
+                    >
+                      Exact (₹{settleModal.total.toFixed(2)})
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {settleMethod === "split" && (
+                <div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.3rem" }}>
+                        <label style={{ fontWeight: 600, fontSize: "0.85rem" }}>💵 Cash (₹)</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const u = parseFloat(settleUpiAmount) || 0;
+                            setSettleCashAmount(Math.max(0, settleModal.total - u).toFixed(2));
+                          }}
+                          style={{ background: "none", border: "none", color: "var(--primary)", fontSize: "0.7rem", cursor: "pointer", textDecoration: "underline" }}
+                        >
+                          Auto Rest
+                        </button>
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="input"
+                        value={settleCashAmount}
+                        onChange={(e) => setSettleCashAmount(e.target.value)}
+                        style={{ width: "100%", padding: "0.55rem", fontSize: "1rem", fontWeight: 700 }}
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.3rem" }}>
+                        <label style={{ fontWeight: 600, fontSize: "0.85rem" }}>📱 UPI (₹)</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const c = parseFloat(settleCashAmount) || 0;
+                            setSettleUpiAmount(Math.max(0, settleModal.total - c).toFixed(2));
+                          }}
+                          style={{ background: "none", border: "none", color: "#3b82f6", fontSize: "0.7rem", cursor: "pointer", textDecoration: "underline" }}
+                        >
+                          Auto Rest
+                        </button>
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="input"
+                        value={settleUpiAmount}
+                        onChange={(e) => setSettleUpiAmount(e.target.value)}
+                        style={{ width: "100%", padding: "0.55rem", fontSize: "1rem", fontWeight: 700 }}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "0.4rem", marginBottom: "0.75rem" }}>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ fontSize: "0.75rem", padding: "0.25rem 0.5rem", border: "1px solid var(--border-color)" }}
+                      onClick={() => {
+                        const half = (settleModal.total / 2).toFixed(2);
+                        setSettleCashAmount(half);
+                        setSettleUpiAmount(half);
+                      }}
+                    >
+                      50% / 50%
+                    </button>
+                  </div>
+
+                  {/* Split Validation Box */}
+                  {(() => {
+                    const c = parseFloat(settleCashAmount) || 0;
+                    const u = parseFloat(settleUpiAmount) || 0;
+                    const sum = c + u;
+                    const diff = settleModal.total - sum;
+                    const isMatched = Math.abs(diff) < 0.05;
+
+                    return (
+                      <div
+                        style={{
+                          padding: "0.6rem 0.85rem",
+                          borderRadius: "8px",
+                          background: isMatched ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.12)",
+                          border: `1px solid ${isMatched ? "#10b981" : "#ef4444"}`,
+                          color: isMatched ? "#10b981" : "#ef4444",
+                          fontSize: "0.85rem",
+                          fontWeight: 600,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span>
+                          Sum: ₹{sum.toFixed(2)} / Total: ₹{settleModal.total.toFixed(2)}
+                        </span>
+                        <span>
+                          {isMatched ? "✓ Exact Match" : `Diff: ${diff > 0 ? "+" : ""}₹${diff.toFixed(2)}`}
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer" style={{ display: "flex", justifyContent: "space-between", gap: "0.5rem", padding: "1rem 1.25rem" }}>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setSettleModal(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  title="Print draft check without closing the table"
+                  style={{ border: "1px solid var(--border-color)", fontSize: "0.85rem" }}
+                  onClick={() => handlePrintBill(settleModal.tableNo, settleModal.discount)}
+                >
+                  🖨️ Draft Bill
+                </button>
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={
+                  settlingTable === settleModal.tableNo ||
+                  (settleMethod === "split" && Math.abs((parseFloat(settleCashAmount) || 0) + (parseFloat(settleUpiAmount) || 0) - settleModal.total) > 0.05)
+                }
+                onClick={handleConfirmSettle}
+                style={{
+                  fontWeight: 700,
+                  padding: "0.6rem 1.2rem",
+                  fontSize: "0.95rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.4rem",
+                }}
+              >
+                {settlingTable === settleModal.tableNo ? "Settling..." : "💾 Save & Print Bill"}
               </button>
             </div>
           </div>
