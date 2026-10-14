@@ -22,6 +22,7 @@ const withPWA = withPWAInit({
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: false,
+  publicExcludes: ["!index.html"],
   fallbacks: {
     document: "/offline.html",
   },
