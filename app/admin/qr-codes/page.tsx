@@ -18,7 +18,7 @@ export default function QRCodesPage() {
   const [gridPreset, setGridPreset] = useState<"4-per-page" | "6-per-page" | "8-per-page" | "2-per-page" | "custom">("4-per-page");
   const [customWidthCm, setCustomWidthCm] = useState<number>(9.5);
   const [customHeightCm, setCustomHeightCm] = useState<number>(13.5);
-  const [themeStyle, setThemeStyle] = useState<"clean" | "gradient">("clean");
+  const [themeStyle, setThemeStyle] = useState<"clean" | "gradient">("gradient");
   const [showCutLines, setShowCutLines] = useState<boolean>(true);
   const [showRestaurantName, setShowRestaurantName] = useState<boolean>(true);
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
@@ -100,7 +100,7 @@ export default function QRCodesPage() {
     const cleanParam = getCleanTableParam(tableNo);
     const displayName = getTableDisplayName(tableNo);
     const orderUrl = `${appUrl}/menu?table=${encodeURIComponent(cleanParam)}`;
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(orderUrl)}&margin=10`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(orderUrl)}&margin=10`;
 
     const html = `
       <!DOCTYPE html>
@@ -109,71 +109,86 @@ export default function QRCodesPage() {
           <meta charset="utf-8">
           <title>Print QR - ${displayName}</title>
           <style>
+              * {
+                  box-sizing: border-box;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+              }
               body {
-                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
                   display: flex;
                   justify-content: center;
                   align-items: center;
                   min-height: 100vh;
                   margin: 0;
                   background: #f0f0f0;
-                  -webkit-print-color-adjust: exact;
-                  print-color-adjust: exact;
               }
               .qr-card {
-                  background: linear-gradient(135deg, #f97316 0%, #a855f7 100%);
-                  color: white;
+                  background: linear-gradient(135deg, #f97316 0%, #ea580c 45%, #a855f7 100%);
+                  color: #ffffff;
                   text-align: center;
-                  padding: 40px;
-                  border-radius: 20px;
-                  width: 350px;
-                  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                  padding: 40px 32px;
+                  border-radius: 24px;
+                  width: 360px;
+                  box-shadow: 0 12px 36px rgba(0,0,0,0.25);
               }
-              h1 { margin: 0; font-size: 36px; letter-spacing: 1px; font-weight: 900; }
+              h1 { 
+                  margin: 0; 
+                  font-size: 36px; 
+                  letter-spacing: 1.5px; 
+                  font-weight: 900; 
+                  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+              }
               h2 { 
-                  margin: 15px 0 25px 0; 
-                  font-weight: 700; 
-                  font-size: 22px; 
+                  margin: 12px 0 24px 0; 
+                  font-weight: 800; 
+                  font-size: 20px; 
                   letter-spacing: 0.5px;
+                  text-shadow: 0 1px 3px rgba(0,0,0,0.25);
               }
               .qr-wrapper {
-                  background: white;
+                  background: #ffffff;
                   padding: 16px;
-                  border-radius: 16px;
+                  border-radius: 20px;
                   display: inline-block;
-                  margin-bottom: 25px;
-                  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+                  margin-bottom: 24px;
+                  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
               }
               .qr-wrapper img {
                   width: 250px;
                   height: 250px;
                   display: block;
+                  image-rendering: -webkit-optimize-contrast;
               }
               p.scan-text {
-                  margin: 0 0 20px 0;
-                  font-size: 16px;
-                  font-weight: 800;
+                  margin: 0 0 18px 0;
+                  font-size: 15px;
+                  font-weight: 900;
                   text-transform: uppercase;
                   letter-spacing: 1.5px;
+                  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
               }
               .logo-wrapper {
-                  background: rgba(255, 255, 255, 0.95);
-                  padding: 8px 20px;
+                  background: rgba(255, 255, 255, 0.98);
+                  padding: 7px 22px;
                   border-radius: 100px;
                   display: inline-flex;
                   align-items: center;
-                  gap: 10px;
-                  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-                  color: #0f172a;
+                  justify-content: center;
+                  gap: 8px;
+                  box-shadow: 0 4px 15px rgba(0,0,0,0.18);
               }
               .logo-wrapper .powered-by {
-                  font-size: 12px;
-                  color: #555;
-                  font-weight: 600;
+                  font-size: 11px;
+                  color: #475569;
+                  font-weight: 800;
+                  letter-spacing: 0.8px;
                   text-transform: uppercase;
               }
               .logo-wrapper img {
-                  height: 30px;
+                  height: 26px;
+                  width: auto;
+                  display: block;
               }
               @media print {
                   body { background: white; align-items: flex-start; padding-top: 20px; }
@@ -191,10 +206,10 @@ export default function QRCodesPage() {
                   <img src="${qrUrl}" alt="QR Code ${displayName}" onload="setTimeout(() => { window.print(); window.close(); }, 500);" />
               </div>
               
-              <p class="scan-text">Scan to view menu & order!</p>
+              <p class="scan-text">SCAN TO VIEW MENU & ORDER!</p>
               
               <div class="logo-wrapper">
-                  <span class="powered-by">Powered by</span>
+                  <span class="powered-by">POWERED BY</span>
                   <img src="${appUrl}/OrderZo_Logo_Mod.png" alt="OrderZo Logo" />
               </div>
           </div>
@@ -249,31 +264,36 @@ export default function QRCodesPage() {
       pages.push(selectedTables.slice(i, i + itemsPerPage));
     }
 
-    // Generate HTML for each page and card
+    // Generate HTML for each page and card matching Image 1
     const pagesHtml = pages
-      .map((pageTables, pageIdx) => {
+      .map((pageTables) => {
         const cardsHtml = pageTables
           .map((tableNo) => {
             const cleanParam = getCleanTableParam(tableNo);
             const displayName = getTableDisplayName(tableNo);
             const orderUrl = `${appUrl}/menu?table=${encodeURIComponent(cleanParam)}`;
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(orderUrl)}&margin=6`;
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(orderUrl)}&margin=8`;
 
             return `
-              <div class="sticker-card ${themeStyle === "gradient" ? "theme-gradient" : "theme-clean"}" style="${customCardStyle}">
+              <div class="card-cell ${showCutLines ? "has-cut-lines" : ""}" style="${customCardStyle}">
                 ${showCutLines ? `<div class="cut-indicator">✂</div>` : ""}
-                <div class="card-top">
-                  <div class="table-name">${displayName.toUpperCase()}</div>
-                  ${showRestaurantName ? `<div class="rest-name">${restaurantName}</div>` : ""}
-                </div>
+                <div class="qr-card ${themeStyle === "gradient" ? "theme-gradient" : "theme-clean"}">
+                  <div class="card-header">
+                    <h1 class="table-title">${displayName.toUpperCase()}</h1>
+                    ${showRestaurantName ? `<h2 class="welcome-text">Welcome to ${restaurantName}</h2>` : ""}
+                  </div>
 
-                <div class="qr-container">
-                  <img src="${qrUrl}" alt="${displayName}" class="qr-img" />
-                </div>
+                  <div class="qr-wrapper">
+                    <img src="${qrUrl}" alt="QR Code ${displayName}" class="qr-img" />
+                  </div>
 
-                <div class="card-bottom">
-                  <div class="scan-pill">📱 SCAN TO ORDER</div>
-                  <div class="brand-sub">Powered by <strong>OrderZo</strong></div>
+                  <div class="card-footer">
+                    <p class="scan-text">SCAN TO VIEW MENU & ORDER!</p>
+                    <div class="logo-wrapper">
+                      <span class="powered-by">POWERED BY</span>
+                      <img src="${appUrl}/OrderZo_Logo_Mod.png" alt="OrderZo Logo" class="brand-logo" />
+                    </div>
+                  </div>
                 </div>
               </div>
             `;
@@ -333,15 +353,15 @@ export default function QRCodesPage() {
           .grid-4 {
             grid-template-columns: repeat(2, 1fr);
             grid-template-rows: repeat(2, 1fr);
-            gap: 5mm;
-            padding: 3mm;
+            gap: 4mm;
+            padding: 2mm;
           }
 
           /* 6 Per Page Grid: 2 columns x 3 rows */
           .grid-6 {
             grid-template-columns: repeat(2, 1fr);
             grid-template-rows: repeat(3, 1fr);
-            gap: 4mm;
+            gap: 3.5mm;
             padding: 2mm;
           }
 
@@ -353,15 +373,15 @@ export default function QRCodesPage() {
             padding: 2mm;
           }
 
-          /* 2 Per Page Grid: 1 column x 2 rows */
+          /* 2 Per Page Grid: 1 column x 2 rows (Tent Card) */
           .grid-2 {
             grid-template-columns: 1fr;
             grid-template-rows: repeat(2, 1fr);
-            gap: 6mm;
-            padding: 4mm;
+            gap: 5mm;
+            padding: 3mm;
           }
 
-          /* Custom Flex Grid */
+          /* Custom Grid */
           .grid-custom {
             display: flex;
             flex-wrap: wrap;
@@ -370,20 +390,20 @@ export default function QRCodesPage() {
             padding: 3mm;
           }
 
-          /* Sticker Card */
-          .sticker-card {
+          /* Card Cell Container with cutting guide */
+          .card-cell {
             position: relative;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            justify-content: space-between;
-            padding: 10px 12px;
+            justify-content: center;
+            padding: 2.5mm;
             box-sizing: border-box;
-            text-align: center;
-            border-radius: 10px;
-            ${showCutLines ? "border: 1.5px dashed #94a3b8;" : "border: 1px solid #e2e8f0;"}
             page-break-inside: avoid;
             break-inside: avoid;
+            overflow: hidden;
+          }
+          .card-cell.has-cut-lines {
+            border: 1.5px dashed #94a3b8;
           }
 
           .cut-indicator {
@@ -392,115 +412,269 @@ export default function QRCodesPage() {
             right: 4px;
             font-size: 11px;
             color: #94a3b8;
-            opacity: 0.7;
+            opacity: 0.8;
+            user-select: none;
+            z-index: 5;
           }
 
-          /* Themes */
+          /* The QR Stand Card - Image 1 Fidelity */
+          .qr-card {
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            text-align: center;
+            overflow: hidden;
+          }
+
+          /* Theme: Vibrant Gradient (Exact replica of Image 1) */
+          .theme-gradient {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 45%, #a855f7 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+          }
+          .theme-gradient .table-title {
+            color: #ffffff;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.35);
+          }
+          .theme-gradient .welcome-text {
+            color: #ffffff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+          }
+          .theme-gradient .scan-text {
+            color: #ffffff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.35);
+          }
+
+          /* Theme: Clean White */
           .theme-clean {
             background: #ffffff;
             color: #0f172a;
+            border: 2px solid #e2e8f0;
           }
-          .theme-clean .table-name {
+          .theme-clean .table-title {
             color: #0f172a;
-            font-size: 24px;
-            font-weight: 900;
-            letter-spacing: 0.5px;
-            margin: 0;
-            line-height: 1.1;
           }
-          .theme-clean .rest-name {
+          .theme-clean .welcome-text {
             color: #ea580c;
-            font-size: 13px;
-            font-weight: 700;
-            margin-top: 3px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
           }
-          .theme-clean .qr-container {
+          .theme-clean .qr-wrapper {
             background: #ffffff;
-            padding: 6px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            border: 1.5px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
           }
-          .theme-clean .qr-img {
-            max-width: 100%;
-            max-height: 52mm;
-            width: auto;
-            height: auto;
-            display: block;
+          .theme-clean .scan-text {
+            color: #0f172a;
           }
-          .theme-clean .scan-pill {
-            background: #0f172a;
-            color: #ffffff;
-            padding: 5px 14px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.8px;
-            display: inline-block;
-          }
-          .theme-clean .brand-sub {
-            font-size: 10px;
-            color: #64748b;
-            margin-top: 4px;
+          .theme-clean .logo-wrapper {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
           }
 
-          /* Gradient Theme */
-          .theme-gradient {
-            background: linear-gradient(135deg, #f97316 0%, #a855f7 100%);
-            color: #ffffff;
+          /* Header Elements */
+          .card-header {
+            width: 100%;
           }
-          .theme-gradient .table-name {
-            color: #ffffff;
-            font-size: 24px;
-            font-weight: 900;
-            letter-spacing: 0.5px;
+          .table-title {
             margin: 0;
             line-height: 1.1;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            font-weight: 900;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
           }
-          .theme-gradient .rest-name {
-            color: #ffffff;
-            font-size: 13px;
-            font-weight: 700;
-            margin-top: 3px;
-            opacity: 0.95;
-            letter-spacing: 0.5px;
+          .welcome-text {
+            margin: 5px 0 0 0;
+            line-height: 1.2;
+            font-weight: 800;
+            letter-spacing: 0.3px;
           }
-          .theme-gradient .qr-container {
+
+          /* QR Wrapper */
+          .qr-wrapper {
             background: #ffffff;
-            padding: 6px;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.18);
           }
-          .theme-gradient .qr-img {
-            max-width: 100%;
-            max-height: 52mm;
-            width: auto;
-            height: auto;
+          .qr-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            image-rendering: -webkit-optimize-contrast;
+          }
+
+          /* Footer Elements */
+          .card-footer {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .scan-text {
+            font-weight: 900;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            line-height: 1.1;
+          }
+          .logo-wrapper {
+            background: #ffffff;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.16);
+          }
+          .logo-wrapper .powered-by {
+            color: #475569;
+            font-weight: 800;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            line-height: 1;
+          }
+          .logo-wrapper .brand-logo {
+            object-fit: contain;
             display: block;
           }
-          .theme-gradient .scan-pill {
-            background: #ffffff;
-            color: #0f172a;
-            padding: 5px 14px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.8px;
-            display: inline-block;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+
+          /* === Sizing For 4 Per Page (Default / Standard A6 Table Stands) === */
+          .grid-4 .qr-card, .grid-custom .qr-card {
+            padding: 14px 10px;
           }
-          .theme-gradient .brand-sub {
+          .grid-4 .table-title, .grid-custom .table-title {
+            font-size: 28px;
+          }
+          .grid-4 .welcome-text, .grid-custom .welcome-text {
+            font-size: 15px;
+          }
+          .grid-4 .qr-wrapper, .grid-custom .qr-wrapper {
+            padding: 10px;
+            border-radius: 18px;
+            width: 58mm;
+            height: 58mm;
+          }
+          .grid-4 .scan-text, .grid-custom .scan-text {
+            font-size: 13.5px;
+            margin: 0 0 8px 0;
+          }
+          .grid-4 .logo-wrapper, .grid-custom .logo-wrapper {
+            padding: 5px 16px;
+            gap: 8px;
+          }
+          .grid-4 .logo-wrapper .powered-by, .grid-custom .logo-wrapper .powered-by {
+            font-size: 10.5px;
+          }
+          .grid-4 .logo-wrapper .brand-logo, .grid-custom .logo-wrapper .brand-logo {
+            height: 22px;
+            width: auto;
+          }
+
+          /* === Sizing For 6 Per Page === */
+          .grid-6 .qr-card {
+            padding: 8px 8px;
+            border-radius: 14px;
+          }
+          .grid-6 .table-title {
+            font-size: 21px;
+          }
+          .grid-6 .welcome-text {
+            font-size: 12px;
+            margin-top: 3px;
+          }
+          .grid-6 .qr-wrapper {
+            padding: 6px;
+            border-radius: 12px;
+            width: 40mm;
+            height: 40mm;
+          }
+          .grid-6 .scan-text {
+            font-size: 11px;
+            margin: 0 0 5px 0;
+          }
+          .grid-6 .logo-wrapper {
+            padding: 4px 12px;
+            gap: 6px;
+          }
+          .grid-6 .logo-wrapper .powered-by {
+            font-size: 9px;
+          }
+          .grid-6 .logo-wrapper .brand-logo {
+            height: 16px;
+            width: auto;
+          }
+
+          /* === Sizing For 8 Per Page === */
+          .grid-8 .qr-card {
+            padding: 6px 6px;
+            border-radius: 10px;
+          }
+          .grid-8 .table-title {
+            font-size: 16px;
+          }
+          .grid-8 .welcome-text {
             font-size: 10px;
-            color: #ffffff;
-            opacity: 0.85;
-            margin-top: 4px;
+            margin-top: 2px;
+          }
+          .grid-8 .qr-wrapper {
+            padding: 4px;
+            border-radius: 8px;
+            width: 30mm;
+            height: 30mm;
+          }
+          .grid-8 .scan-text {
+            font-size: 9px;
+            margin: 0 0 4px 0;
+          }
+          .grid-8 .logo-wrapper {
+            padding: 3px 8px;
+            gap: 4px;
+          }
+          .grid-8 .logo-wrapper .powered-by {
+            font-size: 7.5px;
+          }
+          .grid-8 .logo-wrapper .brand-logo {
+            height: 13px;
+            width: auto;
+          }
+
+          /* === Sizing For 2 Per Page (Tent Cards) === */
+          .grid-2 .qr-card {
+            padding: 24px 20px;
+            border-radius: 24px;
+          }
+          .grid-2 .table-title {
+            font-size: 38px;
+          }
+          .grid-2 .welcome-text {
+            font-size: 20px;
+            margin-top: 8px;
+          }
+          .grid-2 .qr-wrapper {
+            padding: 14px;
+            border-radius: 20px;
+            width: 68mm;
+            height: 68mm;
+          }
+          .grid-2 .scan-text {
+            font-size: 16px;
+            margin: 0 0 10px 0;
+          }
+          .grid-2 .logo-wrapper {
+            padding: 6px 20px;
+            gap: 10px;
+          }
+          .grid-2 .logo-wrapper .powered-by {
+            font-size: 12px;
+          }
+          .grid-2 .logo-wrapper .brand-logo {
+            height: 25px;
+            width: auto;
           }
 
           @media print {
@@ -546,7 +720,7 @@ export default function QRCodesPage() {
                 };
               }
             });
-            setTimeout(done, 3000); // 3s fallback
+            setTimeout(done, 3500); // 3.5s fallback
           };
         </script>
       </body>
@@ -889,6 +1063,29 @@ export default function QRCodesPage() {
                 <div style={{ display: "flex", gap: "8px" }}>
                   <button
                     type="button"
+                    onClick={() => setThemeStyle("gradient")}
+                    style={{
+                      flex: 1,
+                      padding: "8px",
+                      borderRadius: "8px",
+                      border:
+                        themeStyle === "gradient"
+                          ? "2px solid #f97316"
+                          : "1px solid rgba(255, 255, 255, 0.15)",
+                      background:
+                        themeStyle === "gradient"
+                          ? "rgba(249, 115, 22, 0.15)"
+                          : "rgba(255, 255, 255, 0.05)",
+                      color: themeStyle === "gradient" ? "#f97316" : "inherit",
+                      fontSize: "0.82rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    🌈 Vibrant Gradient (যেমন ছবিতে আছে)
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setThemeStyle("clean")}
                     style={{
                       flex: 1,
@@ -909,29 +1106,6 @@ export default function QRCodesPage() {
                     }}
                   >
                     ⚪ Clean White (কালি বাঁচবে)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setThemeStyle("gradient")}
-                    style={{
-                      flex: 1,
-                      padding: "8px",
-                      borderRadius: "8px",
-                      border:
-                        themeStyle === "gradient"
-                          ? "2px solid #f97316"
-                          : "1px solid rgba(255, 255, 255, 0.15)",
-                      background:
-                        themeStyle === "gradient"
-                          ? "rgba(249, 115, 22, 0.15)"
-                          : "rgba(255, 255, 255, 0.05)",
-                      color: themeStyle === "gradient" ? "#f97316" : "inherit",
-                      fontSize: "0.82rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    🌈 Vibrant Gradient
                   </button>
                 </div>
               </div>
