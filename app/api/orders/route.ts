@@ -14,6 +14,8 @@ export async function GET(request: Request) {
         const orderType = searchParams.get('type');
         const paymentStatus = searchParams.get('payment_status');
         const dateParam = searchParams.get('date'); // 'today' or ISO date string
+        const startDate = searchParams.get('startDate') || searchParams.get('start');
+        const endDate = searchParams.get('endDate') || searchParams.get('end');
         const since = searchParams.get('since');
         const fy_id = searchParams.get('fy_id'); // ISO timestamp for polling
         const includeItems = searchParams.get('include_items') === 'true';
@@ -71,6 +73,18 @@ export async function GET(request: Request) {
         if (paymentStatus) {
             queryText += ` AND o.payment_status = $${paramCount}`;
             params.push(paymentStatus);
+            paramCount++;
+        }
+
+        if (startDate) {
+            queryText += ` AND o.created_at >= $${paramCount}`;
+            params.push(`${startDate} 00:00:00`);
+            paramCount++;
+        }
+
+        if (endDate) {
+            queryText += ` AND o.created_at <= $${paramCount}`;
+            params.push(`${endDate} 23:59:59.999`);
             paramCount++;
         }
 

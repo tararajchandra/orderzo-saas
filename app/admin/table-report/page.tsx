@@ -38,12 +38,29 @@ export default function TableReportPage() {
       const data = await response.json();
       if (data.success) {
         // Filter only paid dine_in orders that have a table number
+        let start = new Date(0);
+        if (startDate) {
+          const [sYear, sMonth, sDay] = startDate.split("-").map(Number);
+          start = new Date(sYear, sMonth - 1, sDay, 0, 0, 0, 0);
+        }
+        let end = new Date();
+        if (endDate) {
+          const [eYear, eMonth, eDay] = endDate.split("-").map(Number);
+          end = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
+        }
+
         const tableOrders = data.data.filter(
-          (o: any) =>
-            (o.order_type === "dine_in" || o.order_type === "dine-in") &&
-            o.table_number &&
-            o.payment_status === "paid" &&
-            o.order_status !== "cancelled",
+          (o: any) => {
+            const oDate = new Date(o.created_at);
+            return (
+              (o.order_type === "dine_in" || o.order_type === "dine-in") &&
+              o.table_number &&
+              o.payment_status === "paid" &&
+              o.order_status !== "cancelled" &&
+              oDate >= start &&
+              oDate <= end
+            );
+          }
         );
         setOrders(tableOrders);
       }

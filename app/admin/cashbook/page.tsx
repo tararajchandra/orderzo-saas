@@ -256,7 +256,7 @@ export default function CashBookPage() {
 
   const getDateRange = () => {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
 
     const endOfDay = new Date(today);
     endOfDay.setHours(23, 59, 59, 999);
@@ -264,23 +264,51 @@ export default function CashBookPage() {
     switch (dateFilter) {
       case "today":
         return { start: today, end: endOfDay };
-      case "week":
+      case "yesterday": {
+        const yStart = new Date(today);
+        yStart.setDate(today.getDate() - 1);
+        yStart.setHours(0, 0, 0, 0);
+
+        const yEnd = new Date(today);
+        yEnd.setDate(today.getDate() - 1);
+        yEnd.setHours(23, 59, 59, 999);
+
+        return { start: yStart, end: yEnd };
+      }
+      case "week": {
         const weekStart = new Date(today);
         weekStart.setDate(today.getDate() - 7);
+        weekStart.setHours(0, 0, 0, 0);
         return { start: weekStart, end: endOfDay };
-      case "month":
+      }
+      case "month": {
         const monthStart = new Date(today);
         monthStart.setMonth(today.getMonth() - 1);
+        monthStart.setHours(0, 0, 0, 0);
         return { start: monthStart, end: endOfDay };
-      case "custom":
-        const customEnd = customEndDate ? new Date(customEndDate) : new Date();
-        if (customEndDate) customEnd.setHours(23, 59, 59, 999);
+      }
+      case "custom": {
+        let customStart = new Date(0);
+        if (customStartDate) {
+          const [sYear, sMonth, sDay] = customStartDate.split("-").map(Number);
+          customStart = new Date(sYear, sMonth - 1, sDay, 0, 0, 0, 0);
+        }
+
+        let customEnd = new Date();
+        if (customEndDate) {
+          const [eYear, eMonth, eDay] = customEndDate.split("-").map(Number);
+          customEnd = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
+        } else {
+          customEnd.setHours(23, 59, 59, 999);
+        }
+
         return {
-          start: customStartDate ? new Date(customStartDate) : new Date(0),
+          start: customStart,
           end: customEnd,
         };
+      }
       default:
-        return { start: new Date(0), end: endOfDay };
+        return { start: new Date(0), end: new Date(8640000000000000) };
     }
   };
 
@@ -531,6 +559,7 @@ export default function CashBookPage() {
               >
                 <option value="all">All Time</option>
                 <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
                 <option value="week">Last 7 Days</option>
                 <option value="month">Last 30 Days</option>
                 <option value="custom">Custom Range</option>

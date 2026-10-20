@@ -95,12 +95,23 @@ export default function GSTReportPage() {
         filteredOrders = filteredOrders.filter(
           (o: any) => new Date(o.created_at) >= monthAgo,
         );
+      } else if (dateFilter === "yesterday") {
+        const yStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0);
+        const yEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
+        filteredOrders = filteredOrders.filter((o: any) => {
+          const d = new Date(o.created_at);
+          return d >= yStart && d <= yEnd;
+        });
       } else if (dateFilter === "custom" && startDate && endDate) {
+        const [sYear, sMonth, sDay] = startDate.split("-").map(Number);
+        const start = new Date(sYear, sMonth - 1, sDay, 0, 0, 0, 0);
+        const [eYear, eMonth, eDay] = endDate.split("-").map(Number);
+        const end = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
         filteredOrders = filteredOrders.filter((o: any) => {
           const orderDate = new Date(o.created_at);
           return (
-            orderDate >= new Date(startDate) &&
-            orderDate <= new Date(endDate + "T23:59:59")
+            orderDate >= start &&
+            orderDate <= end
           );
         });
       }
@@ -184,6 +195,7 @@ export default function GSTReportPage() {
     // Get current date range for report header
     let dateRange = "All Time";
     if (dateFilter === "today") dateRange = "Today";
+    else if (dateFilter === "yesterday") dateRange = "Yesterday";
     else if (dateFilter === "week") dateRange = "Last 7 Days";
     else if (dateFilter === "month") dateRange = "Last 30 Days";
     else if (dateFilter === "custom" && startDate && endDate) {
@@ -309,6 +321,14 @@ export default function GSTReportPage() {
               }
             >
               All Time
+            </button>
+            <button
+              onClick={() => setDateFilter("yesterday")}
+              className={
+                dateFilter === "yesterday" ? "btn btn-primary" : "btn btn-ghost"
+              }
+            >
+              Yesterday
             </button>
             <button
               onClick={() => setDateFilter("today")}
